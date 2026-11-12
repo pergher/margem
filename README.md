@@ -1,4 +1,4 @@
-# editor-md · núcleo do vault
+# Margem · núcleo do vault
 
 Biblioteca e ferramentas em Rust para um vault de Markdown (compatível com o Obsidian) usado no ensino de Português e, separadamente, na pesquisa. Tudo é arquivo `.md`; nada é guardado em formato próprio. Escopo completo: `escopo-editor-markdown-ensino.md`. Formato do vault: [docs/formato-do-vault.md](docs/formato-do-vault.md).
 

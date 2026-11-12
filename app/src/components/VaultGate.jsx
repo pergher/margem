@@ -19,7 +19,7 @@ export function EscolherVault({ onDone }) {
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold">Bem-vindo ao editor-md</h1>
+        <h1 className="text-xl font-semibold">Bem-vindo ao Margem</h1>
         <p className="mt-3 text-sm text-muted-foreground">Escolha a pasta do seu vault (a pasta <code>Escola</code>, com <code>_sistema</code>, <code>Acervo</code> e <code>Anos</code>). O app só lê e grava dentro dela. Dá para trocar depois em Configurações.</p>
         <button onClick={escolher} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">
           <FolderOpen className="h-4 w-4" strokeWidth={1.6} />Escolher pasta…

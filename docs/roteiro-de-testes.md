@@ -1,4 +1,4 @@
-# Roteiro de testes e avaliação — editor-md
+# Roteiro de testes e avaliação — Margem
 
 Como usar: rode `npm run tauri dev` na pasta `app` (vault de teste, nunca o real). Para cada item marque `[x]` se funcionou, `[~]` se funcionou com problema, `[ ]` se falhou, e anote em **Obs.** Ao final de cada bloco dê uma **nota de 1 a 5** para a utilidade (vale a pena manter?) e outra para a facilidade de uso.
 

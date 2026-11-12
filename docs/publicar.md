@@ -5,21 +5,21 @@ Fluxo: você mexe no código aqui → envia ao GitHub → o GitHub compila o ins
 ## Uma vez só (preparação)
 
 1. **Conta no GitHub:** crie em <https://github.com/signup> (gratuita). Anote o nome de usuário.
-2. **Repositório vazio:** em <https://github.com/new> crie `editor-md`, **Public**, sem README/.gitignore/licença (o projeto já tem).
+2. **Repositório vazio:** em <https://github.com/new> crie `margem`, **Public**, sem README/.gitignore/licença (o projeto já tem).
 3. **Troque `OWNER`** pelo seu usuário em `app/src-tauri/tauri.conf.json` (campo `endpoints`) e faça commit:
    ```bash
-   cd ~/dev/editor-md
+   cd ~/dev/editor-md   # a pasta local pode manter o nome
    sed -i 's#github.com/OWNER/#github.com/SEU_USUARIO/#' app/src-tauri/tauri.conf.json
    git add -A && git commit -m "Endereço do atualizador"
    ```
 4. **Ligue o repositório e envie** (o GitHub pede login; use um *Personal Access Token* como senha: Settings › Developer settings › Tokens (classic) › marque `repo` e `workflow`):
    ```bash
    git branch -M main
-   git remote add origin https://github.com/SEU_USUARIO/editor-md.git
+   git remote add origin https://github.com/SEU_USUARIO/margem.git
    git push -u origin main
    ```
-5. **Chave de assinatura das atualizações** (já gerada em `~/.tauri/editor-md.key`, sem senha; a pública já está no `tauri.conf.json`). No GitHub: repositório › Settings › Secrets and variables › Actions › *New repository secret*:
-   - Nome `TAURI_SIGNING_PRIVATE_KEY`, valor = todo o conteúdo de `~/.tauri/editor-md.key` (`cat ~/.tauri/editor-md.key`).
+5. **Chave de assinatura das atualizações** (já gerada em `~/.tauri/margem.key`, sem senha; a pública já está no `tauri.conf.json`). No GitHub: repositório › Settings › Secrets and variables › Actions › *New repository secret*:
+   - Nome `TAURI_SIGNING_PRIVATE_KEY`, valor = todo o conteúdo de `~/.tauri/margem.key` (`cat ~/.tauri/margem.key`).
    - Nome `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`, valor vazio (ou crie o secret com um espaço, se o GitHub recusar vazio).
    - **Guarde uma cópia da chave fora do computador** (ex.: Drive privado). Sem ela, apps já instalados não aceitam mais atualizações; o `.gitignore` já impede de ela ir ao repositório.
 
@@ -32,7 +32,7 @@ Fluxo: você mexe no código aqui → envia ao GitHub → o GitHub compila o ins
    git tag v0.1.1
    git push && git push --tag
    ```
-3. Em *Actions* no GitHub acompanhe o job **Release** (leva ~10–15 min na primeira vez). Ao terminar, a página *Releases* tem o instalador `editor-md_0.1.1_x64-setup.exe` e o `latest.json`.
+3. Em *Actions* no GitHub acompanhe o job **Release** (leva ~10–15 min na primeira vez). Ao terminar, a página *Releases* tem o instalador `Margem_0.1.1_x64-setup.exe` e o `latest.json`.
 
 ## No Windows da escola
 

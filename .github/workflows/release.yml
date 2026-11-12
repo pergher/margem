@@ -34,7 +34,7 @@ jobs:
         with:
           projectPath: app
           tagName: ${{ github.ref_name }}
-          releaseName: "editor-md ${{ github.ref_name }}"
+          releaseName: "Margem ${{ github.ref_name }}"
           releaseBody: "Instalador para Windows. Quem já tem o app instalado recebe esta versão pelo próprio app (Configurações › Atualizações)."
           releaseDraft: false
           prerelease: false
