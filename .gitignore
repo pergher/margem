@@ -1,0 +1,21 @@
+# Rust
+target/
+**/target/
+
+# App (Node/Vite/Tauri)
+app/node_modules/
+app/dist/
+app/src-tauri/gen/
+
+# Vault de teste: cópia local de dados reais de ensino, nunca versionar
+tests/fixtures/vault/
+
+# Histórico de versões e lixeira de qualquer vault
+.historico/
+.lixeira/
+
+# Chaves de assinatura do atualizador (a privada NUNCA vai ao repositório)
+*.key
+*.key.pub.private
+.env
+.DS_Store
