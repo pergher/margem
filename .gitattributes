@@ -1,0 +1,6 @@
+# Fim de linha sempre LF (o Windows converteria para CRLF e quebraria testes e diffs)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary
