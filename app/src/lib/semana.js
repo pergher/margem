@@ -210,6 +210,13 @@ export const adicionarAvulsa = (path, turma, texto, recurso = "") => editar(path
   x.aulas.push({ texto, recurso, dada: false, cicloNome: null, cicloN: null });
 }));
 
+/** Acrescenta à semana uma aula do ciclo (como sugerida por `proximasDoCiclo`), ligada ao ciclo. */
+export const adicionarDoCiclo = (path, turma, aula) => editar(path, (t) => reescrever(t, (s) => {
+  let x = s.turmas.find((z) => z.turma === turma);
+  if (!x) s.turmas.push((x = { turma, cicloNome: aula.cicloNome, aulas: [] }));
+  x.aulas.push({ texto: aula.texto, recurso: aula.recurso ?? "", dada: false, situacao: null, cicloNome: aula.cicloNome, cicloN: aula.cicloN });
+}));
+
 /**
  * Mantém as notas de semana certas quando o ciclo muda: ao inserir uma aula na posição P, as linhas ligadas às aulas de P em diante
  * passam a apontar para N+1; ao remover a aula N, a linha ligada a ela vira avulsa e as seguintes apontam para N-1.

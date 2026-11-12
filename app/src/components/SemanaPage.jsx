@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X, ArrowUpToLine } from "lucide-react";
 import { FASES, lerCiclos } from "@/lib/ciclos";
-import { AULAS_POR_SEMANA, SITUACOES, situacaoAula, lerSemana, lerSemanas, sugerirSemana, importarLegado, cicloDaTurma, proximasDoCiclo, criarSemana, segundaDe, rotuloDe, nomeSemana, removerAulaSemana, adicionarAvulsa, promoverAvulsa } from "@/lib/semana";
+import { AULAS_POR_SEMANA, SITUACOES, situacaoAula, lerSemana, lerSemanas, sugerirSemana, importarLegado, cicloDaTurma, proximasDoCiclo, criarSemana, segundaDe, rotuloDe, nomeSemana, removerAulaSemana, adicionarAvulsa, promoverAvulsa, adicionarDoCiclo } from "@/lib/semana";
 import { invoke } from "@/lib/api";
 
 const fase = Object.fromEntries(FASES.map((f) => [f.id, f]));
@@ -29,15 +29,19 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
     const seg = segundaDe();
     setRascunho({ seg, rotulo: rotuloDe(seg), turmas: sugerirSemana({ ciclos, semanas }) });
   };
-  const gravar = async () => {
+  const gravar = async (r = rascunho) => {
     try {
-      const turmas = rascunho.turmas.filter((t) => t.aulas.length || t.cicloNome);
-      await criarSemana(items, { ano, seg: rascunho.seg, rotulo: rascunho.rotulo, turmas });
+      const turmas = r.turmas.filter((t) => t.aulas.length || t.cicloNome);
+      await criarSemana(items, { ano, seg: r.seg, rotulo: r.rotulo, turmas });
       setRascunho(null); setIdx(-1); await onRefresh(); // items muda e a tela recarrega na última semana
     } catch (e) { falha(e); }
   };
+  // Semana corrente ainda sem nota: um clique cria com o modelo padrão (aulas não dadas + próximas do ciclo).
+  const segAtual = segundaDe();
+  const faltaAtual = !focoPath && semanas.length > 0 && !items.some((i) => i.name === nomeSemana(segAtual));
+  const criarAtual = () => gravar({ seg: segAtual, rotulo: rotuloDe(segAtual), turmas: sugerirSemana({ ciclos, semanas }) });
 
-  if (rascunho) return <Rascunho ciclos={ciclos} semanas={semanas} r={rascunho} setR={setRascunho} onOk={gravar} onCancel={() => setRascunho(null)} jaExiste={items.some((i) => i.name === nomeSemana(rascunho.seg))} />;
+  if (rascunho) return <Rascunho ciclos={ciclos} semanas={semanas} r={rascunho} setR={setRascunho} onOk={() => gravar()} onCancel={() => setRascunho(null)} jaExiste={items.some((i) => i.name === nomeSemana(rascunho.seg))} />;
   if (!semanas.length) return (
     <div className="min-h-0 flex-1 overflow-auto p-8">
       <h1 className="font-serif text-3xl font-semibold">Esta semana</h1>
@@ -68,6 +72,13 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
         <button onClick={() => onOpen(s.path)} className="text-xs text-primary hover:underline">abrir nota</button>
         <button onClick={iniciar} className="rounded-md bg-primary px-3 py-1 text-[13px] text-primary-foreground hover:opacity-90">Semana nova</button>
       </div>
+      {faltaAtual && (
+        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-primary/40 bg-primary/5 px-4 py-3 text-[13px]">
+          <span className="flex-1">A semana de <b>{rotuloDe(segAtual)}</b> ainda não tem nota. Ela já nasce com as aulas não dadas da semana anterior e as próximas do ciclo de cada turma.</span>
+          <button onClick={criarAtual} className="rounded-md bg-primary px-3 py-1 text-primary-foreground hover:opacity-90">Criar esta semana</button>
+          <button onClick={iniciar} className="text-muted-foreground hover:underline">revisar antes</button>
+        </div>
+      )}
       <div className="mb-5 text-[13px] text-muted-foreground">Só o rótulo da semana importa, sem datas de aula. Aula não dada continua aqui até você levá-la para a próxima semana.</div>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -99,6 +110,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
                   </div>
                 </div>
               ))}
+              {ehUltima && <Sugestoes lista={proximasDoCiclo({ ciclos, semanas, turma: t.turma, nomeCiclo: t.cicloNome ?? cicloDaTurma(semanas, t.turma), qtd: 3 })} onAdd={(a) => mexer(() => adicionarDoCiclo(s.path, t.turma, a))} />}
               <NovaAvulsa onAdd={(texto, rec) => mexer(() => adicionarAvulsa(s.path, t.turma, texto, rec))} />
             </div>
           </div>
@@ -137,6 +149,21 @@ function PrepararAula({ turma, aula, semana, ciclo, existe, onOpen, onClose }) {
         {dadasHoje.length > 0 && <div className="mt-4 text-[13px]"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Já dadas nesta semana</div>{dadasHoje.map((a) => <div key={a.n}>✓ {limpa(a.texto)}</div>)}</div>}
         {ciclo && <div className="mt-5"><button onClick={() => onOpen(ciclo.path)} className="text-xs text-primary hover:underline">abrir o plano do ciclo</button></div>}
       </div>
+    </div>
+  );
+}
+
+/** Próximas aulas do ciclo que ainda não estão em nenhuma semana; "+" leva a aula para esta. */
+function Sugestoes({ lista, onAdd }) {
+  if (!lista.length) return null;
+  return (
+    <div className="mt-1 rounded-lg border border-dashed p-2">
+      <div className="mb-1 text-[11px] font-semibold uppercase text-muted-foreground">Próximas do ciclo</div>
+      {lista.map((a) => (
+        <button key={a.cicloN} onClick={() => onAdd(a)} title="Adicionar a esta semana" className="flex w-full items-start gap-2 rounded px-1.5 py-1 text-left text-[13px] hover:bg-accent">
+          <Plus className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /><span><span className="text-muted-foreground">aula {a.cicloN} · </span>{limpa(a.texto)}</span>
+        </button>
+      ))}
     </div>
   );
 }
