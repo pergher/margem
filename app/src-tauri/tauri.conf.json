@@ -15,7 +15,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZGMkI3QkNENkQ5NDdENDcKUldSSGZaUnR6WHNyYitUMWJFMUlLYnJ4UmVCakpiY2FLa2dCeHdPalArS0U0b00xZHZLWG1Ca1kK",
-      "endpoints": ["https://github.com/OWNER/margem/releases/latest/download/latest.json"],
+      "endpoints": ["https://github.com/pergher/margem/releases/latest/download/latest.json"],
       "windows": { "installMode": "passive" }
     }
   }
