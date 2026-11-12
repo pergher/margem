@@ -140,7 +140,7 @@ pub fn plan(root: &Path, ano: &str, raiz_nome: &str) -> io::Result<Plan> {
     // 3) links por caminho -> links por nome
     let mut por_caminho: HashMap<String, Vec<&PathBuf>> = HashMap::new();
     for f in &files {
-        let s = f.to_string_lossy().to_string();
+        let s = f.to_string_lossy().replace('\\', "/"); // chaves com "/" também no Windows
         por_caminho.entry(strip_ext(&s).to_lowercase()).or_default().push(f);
     }
     let prefixo = format!("{}/", raiz_nome.to_lowercase());
