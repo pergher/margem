@@ -5,5 +5,18 @@
   "identifier": "br.editormd.app",
   "build": { "beforeDevCommand": "npm run dev", "devUrl": "http://localhost:1420", "beforeBuildCommand": "npm run build", "frontendDist": "../dist" },
   "app": { "windows": [{ "title": "editor-md", "width": 1200, "height": 800, "dragDropEnabled": false }], "security": { "csp": null } },
-  "bundle": { "active": false }
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.icns", "icons/icon.ico"],
+    "windows": { "nsis": { "installMode": "currentUser", "languages": ["PortugueseBR"] } }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZGMkI3QkNENkQ5NDdENDcKUldSSGZaUnR6WHNyYitUMWJFMUlLYnJ4UmVCakpiY2FLa2dCeHdPalArS0U0b00xZHZLWG1Ca1kK",
+      "endpoints": ["https://github.com/OWNER/editor-md/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
+  }
 }

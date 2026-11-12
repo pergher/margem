@@ -2,6 +2,7 @@
 import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 
 const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+export const isTauri = inTauri;
 const get = (u) => fetch("/__vault" + u).then((r) => r.json());
 
 // Navegador (dev): as operações de gerenciar notas valem só em memória, para testar a interface.

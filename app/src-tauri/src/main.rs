@@ -4,13 +4,25 @@ use serde::Serialize;
 use tauri::{Manager, State};
 use vault_core::vault::Vault;
 
-struct App { root: PathBuf, vault: Mutex<Option<Vault>> }
+struct App { root_cell: Mutex<PathBuf>, vault: Mutex<Option<Vault>> }
+
+impl App {
+    fn new(root: PathBuf) -> Self { App { root_cell: Mutex::new(root), vault: Mutex::new(None) } }
+    fn root(&self) -> PathBuf { self.root_cell.lock().unwrap().clone() }
+}
+
+/// Caminho para o JS: sempre com `/` (o Windows aceita) e sem o prefixo `\\?\`.
+fn slash(p: &Path) -> String { simp(p).to_string_lossy().replace('\\', "/") }
+
+/// `canonicalize` sem o prefixo `\\?\` do Windows (deixa os caminhos iguais aos da lista de notas).
+fn canon(p: &Path) -> std::io::Result<PathBuf> { dunce::canonicalize(p) }
+fn simp(p: &Path) -> PathBuf { dunce::simplified(p).to_path_buf() }
 
 #[derive(Serialize)]
 struct Item { name: String, path: String, rel: String, tipo: Option<String> }
 
 fn load(app: &App) -> Result<(), String> {
-    let v = Vault::open(&app.root).map_err(|e| e.to_string())?;
+    let v = Vault::open(&app.root()).map_err(|e| e.to_string())?;
     *app.vault.lock().unwrap() = Some(v);
     Ok(())
 }
@@ -20,13 +32,13 @@ fn list_notes(app: State<App>) -> Result<Vec<Item>, String> {
     load(&app)?;
     let g = app.vault.lock().unwrap();
     Ok(g.as_ref().unwrap().notes.iter().map(|n| Item {
-        name: n.name.clone(), path: n.path.to_string_lossy().into(),
-        rel: n.path.strip_prefix(&app.root).unwrap_or(&n.path).to_string_lossy().replace('\\', "/"), tipo: n.tipo().map(String::from),
+        name: n.name.clone(), path: slash(&n.path),
+        rel: n.path.strip_prefix(&app.root()).unwrap_or(&n.path).to_string_lossy().replace('\\', "/"), tipo: n.tipo().map(String::from),
     }).collect())
 }
 
 fn inside(app: &App, p: &str) -> Result<PathBuf, String> {
-    inside_root(&app.root, p)
+    inside_root(&app.root(), p)
 }
 
 fn inside_root(root: &Path, p: &str) -> Result<PathBuf, String> {
@@ -34,8 +46,8 @@ fn inside_root(root: &Path, p: &str) -> Result<PathBuf, String> {
 }
 
 fn inside_ext(root: &Path, p: &str, exts: &[&str]) -> Result<PathBuf, String> {
-    let p = Path::new(p).canonicalize().map_err(|e| format!("{p}: {e}"))?;
-    let root = root.canonicalize().map_err(|e| e.to_string())?;
+    let p = canon(Path::new(p)).map_err(|e| format!("{p}: {e}"))?;
+    let root = canon(root).map_err(|e| e.to_string())?;
     if p.starts_with(&root) && p.extension().is_some_and(|x| exts.iter().any(|e| x == *e)) { Ok(p) } else { Err("fora do vault".into()) }
 }
 
@@ -49,7 +61,7 @@ fn read_note(app: State<App>, path: String) -> Result<String, String> {
 fn read_sidecar(app: State<App>, path: String) -> Result<Option<String>, String> {
     let p = Path::new(&path);
     if !p.exists() { return Ok(None); }
-    let p = inside_ext(&app.root, &path, &["json"])?;
+    let p = inside_ext(&app.root(), &path, &["json"])?;
     std::fs::read_to_string(p).map(Some).map_err(|e| e.to_string())
 }
 
@@ -64,7 +76,7 @@ fn save_attachment(app: State<App>, dir: String, name: String, data: Vec<u8>) ->
     if !d.is_dir() { return Err("destino não é pasta".into()); }
     let p = d.join(name);
     std::fs::write(&p, data).map_err(|e| e.to_string())?;
-    Ok(p.to_string_lossy().into())
+    Ok(slash(&p))
 }
 
 use vault_core::historico::{hist_dir, hist_ids, mover_historico, snapshot};
@@ -109,16 +121,16 @@ fn restore_version(app: State<App>, path: String, id: String) -> Result<String, 
 #[tauri::command]
 fn resolve_link(app: State<App>, target: String) -> Option<String> {
     let g = app.vault.lock().unwrap();
-    g.as_ref()?.resolve(&target).map(|n| n.path.to_string_lossy().into())
+    g.as_ref()?.resolve(&target).map(|n| slash(&n.path))
 }
 
 // ---------- gerenciar notas e pastas ----------
 
-fn root_of(app: &App) -> Result<PathBuf, String> { app.root.canonicalize().map_err(|e| e.to_string()) }
+fn root_of(app: &App) -> Result<PathBuf, String> { canon(&app.root()).map_err(|e| e.to_string()) }
 
 /// Caminho existente (arquivo ou pasta) dentro do vault, nunca a própria raiz nem pasta oculta.
 fn inside_any(app: &App, p: &str) -> Result<PathBuf, String> {
-    let p = Path::new(p).canonicalize().map_err(|e| format!("{p}: {e}"))?;
+    let p = canon(Path::new(p)).map_err(|e| format!("{p}: {e}"))?;
     let root = root_of(app)?;
     let oculto = p.strip_prefix(&root).map_or(true, |r| r.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')));
     if p == root || !p.starts_with(&root) || oculto { Err("fora do vault".into()) } else { Ok(p) }
@@ -134,7 +146,7 @@ struct Changed { path: String, links: usize }
 
 /// Troca `[[antigo]]` por `[[novo]]` em todas as notas (por nome, como o vault resolve).
 fn rewrite_name(app: &App, old: &str, new: &str) -> Result<usize, String> {
-    let v = Vault::open(&app.root).map_err(|e| e.to_string())?;
+    let v = Vault::open(&app.root()).map_err(|e| e.to_string())?;
     let mut total = 0;
     for n in &v.notes {
         let Ok(text) = std::fs::read_to_string(&n.path) else { continue };
@@ -144,7 +156,7 @@ fn rewrite_name(app: &App, old: &str, new: &str) -> Result<usize, String> {
             let stem = last.strip_suffix(".md").unwrap_or(last);
             if stem.eq_ignore_ascii_case(old) { feitos += 1; Some(format!("{dir}{new}")) } else { None }
         });
-        if feitos > 0 { let _ = snapshot(&app.root.canonicalize().unwrap_or_else(|_| app.root.clone()), &n.path.canonicalize().unwrap_or_else(|_| n.path.clone()), true); std::fs::write(&n.path, out).map_err(|e| e.to_string())?; total += feitos; }
+        if feitos > 0 { let _ = snapshot(&canon(&app.root()).unwrap_or_else(|_| app.root()), &canon(&n.path).unwrap_or_else(|_| n.path.clone()), true); std::fs::write(&n.path, out).map_err(|e| e.to_string())?; total += feitos; }
     }
     Ok(total)
 }
@@ -157,7 +169,7 @@ fn create_note(app: State<App>, dir: String, name: String) -> Result<String, Str
     let p = d.join(format!("{name}.md"));
     if p.exists() { return Err(format!("já existe: {name}.md")); }
     std::fs::write(&p, format!("# {name}\n")).map_err(|e| e.to_string())?;
-    Ok(p.to_string_lossy().into())
+    Ok(slash(&p))
 }
 
 #[tauri::command]
@@ -167,7 +179,7 @@ fn create_folder(app: State<App>, dir: String, name: String) -> Result<String, S
     let p = d.join(name);
     if p.exists() { return Err(format!("já existe: {name}")); }
     std::fs::create_dir(&p).map_err(|e| e.to_string())?;
-    Ok(p.to_string_lossy().into())
+    Ok(slash(&p))
 }
 
 /// Renomeia nota (atualizando wikilinks) ou pasta. `name` sem extensão.
@@ -182,7 +194,7 @@ fn rename_entry(app: State<App>, path: String, name: String) -> Result<Changed, 
     std::fs::rename(&from, &to).map_err(|e| e.to_string())?;
     mover_historico(&root_of(&app)?, &from, &to);
     let links = if is_note { rewrite_name(&app, &from.file_stem().unwrap().to_string_lossy(), &name)? } else { 0 };
-    Ok(Changed { path: to.to_string_lossy().into(), links })
+    Ok(Changed { path: slash(&to), links })
 }
 
 /// Move nota ou pasta para outra pasta (`dir` vazio = raiz). Links por nome continuam valendo.
@@ -197,7 +209,7 @@ fn move_entry(app: State<App>, path: String, dir: String) -> Result<Changed, Str
     if to.exists() { return Err("já existe um item com esse nome no destino".into()); }
     std::fs::rename(&from, &to).map_err(|e| e.to_string())?;
     mover_historico(&root_of(&app)?, &from, &to);
-    Ok(Changed { path: to.to_string_lossy().into(), links: 0 })
+    Ok(Changed { path: slash(&to), links: 0 })
 }
 
 /// Exclui para `.lixeira/` na raiz do vault (recuperável; pastas ocultas são ignoradas pelo vault).
@@ -272,8 +284,8 @@ fn note_info(app: State<App>, path: String) -> Result<Info, String> {
     for n in v.notes.iter().filter(|n| n.name != name) {
         let Some(l) = n.links.iter().find(|l| !l.target.is_empty() && v.resolve(&l.target).is_some_and(|d| d.name == name)) else { continue };
         backlinks.push(Back {
-            name: n.name.clone(), path: n.path.to_string_lossy().into(),
-            rel: n.path.strip_prefix(&app.root).unwrap_or(&n.path).to_string_lossy().replace('\\', "/"),
+            name: n.name.clone(), path: slash(&n.path),
+            rel: n.path.strip_prefix(&app.root()).unwrap_or(&n.path).to_string_lossy().replace('\\', "/"),
             line: vault_core::links::line_of(&n.text, l.offset),
         });
     }
@@ -314,8 +326,8 @@ fn search_text(app: State<App>, query: String, limit: Option<usize>) -> Result<V
         }).map(|(i, _)| i).unwrap_or(0);
         let snippet: String = lines.get(best).map(|l| l.trim()).unwrap_or("").chars().take(160).collect();
         hits.push(Hit {
-            name: n.name.clone(), path: n.path.to_string_lossy().into(),
-            rel: n.path.strip_prefix(&app.root).unwrap_or(&n.path).to_string_lossy().replace('\\', "/"),
+            name: n.name.clone(), path: slash(&n.path),
+            rel: n.path.strip_prefix(&app.root()).unwrap_or(&n.path).to_string_lossy().replace('\\', "/"),
             line: best + 1, snippet, count,
         });
     }
@@ -376,7 +388,7 @@ fn read_embed(app: State<App>, target: String, anchor: Option<String>) -> Result
         let Some(n) = g.as_ref().unwrap().resolve(&target) else { return Ok(None) };
         let text = section(n.body(), anchor.as_deref());
         let text: String = text.chars().take(20000).collect();
-        return Ok(Some(json!({ "kind": "note", "name": n.name, "path": n.path.to_string_lossy(), "text": text })));
+        return Ok(Some(json!({ "kind": "note", "name": n.name, "path": slash(&n.path), "text": text })));
     }
     let Some(f) = find_file(&root_of(&app)?, &last.to_lowercase()) else { return Ok(None) };
     let ext = f.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
@@ -405,12 +417,53 @@ fn write_config(h: tauri::AppHandle, text: String) -> Result<(), String> {
     std::fs::write(p, text).map_err(|e| e.to_string())
 }
 
+/// Arquivo onde o app guarda a pasta do vault escolhida pelo usuário.
+fn root_file(h: &tauri::AppHandle) -> Result<PathBuf, String> {
+    h.path().app_config_dir().map(|d| d.join("vault.json")).map_err(|e| e.to_string())
+}
+
+fn saved_root(h: &tauri::AppHandle) -> Option<PathBuf> {
+    let j: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root_file(h).ok()?).ok()?).ok()?;
+    let p = PathBuf::from(j.get("raiz")?.as_str()?);
+    p.is_dir().then_some(p)
+}
+
+/// Pasta do vault em uso (`None` = ainda não escolhida).
+#[tauri::command]
+fn get_vault_root(app: State<App>) -> Option<String> {
+    let r = app.root();
+    if r.as_os_str().is_empty() { None } else { Some(slash(&r)) }
+}
+
+/// Guarda a pasta escolhida e passa a usá-la.
+#[tauri::command]
+fn set_vault_root(h: tauri::AppHandle, app: State<App>, path: String) -> Result<String, String> {
+    let p = canon(Path::new(&path)).map_err(|e| format!("{path}: {e}"))?;
+    if !p.is_dir() { return Err("não é uma pasta".into()); }
+    let f = root_file(&h)?;
+    if let Some(d) = f.parent() { std::fs::create_dir_all(d).map_err(|e| e.to_string())?; }
+    std::fs::write(&f, serde_json::json!({ "raiz": p.to_string_lossy() }).to_string()).map_err(|e| e.to_string())?;
+    *app.root_cell.lock().unwrap() = p.clone();
+    *app.vault.lock().unwrap() = None;
+    Ok(slash(&p))
+}
+
 fn main() {
-    let root = std::env::var("VAULT_ROOT").map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/vault")));
-    tauri::Builder::default()
-        .manage(App { root, vault: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![list_notes, read_note, save_note, resolve_link, read_config, write_config, create_note, create_folder, rename_entry, move_entry, delete_entry, list_dirs, note_info, search_text, read_embed, read_sidecar, save_attachment, vault_health, list_history, read_version, restore_version])
+    // Ordem: VAULT_ROOT (desenvolvimento) → pasta salva → (só em debug) vault de teste → nenhuma (o app pede).
+    let env_root = std::env::var("VAULT_ROOT").map(PathBuf::from).ok();
+    let builder = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
+        .invoke_handler(tauri::generate_handler![list_notes, read_note, save_note, resolve_link, read_config, write_config, create_note, create_folder, rename_entry, move_entry, delete_entry, list_dirs, note_info, search_text, read_embed, read_sidecar, save_attachment, vault_health, list_history, read_version, restore_version, get_vault_root, set_vault_root]);
+    builder
+        .setup(move |app| {
+            let root = env_root.clone().or_else(|| saved_root(app.handle())).unwrap_or_else(|| {
+                if cfg!(debug_assertions) { PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/vault")) } else { PathBuf::new() }
+            });
+            app.manage(App::new(root));
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("erro ao iniciar");
 }
@@ -424,7 +477,7 @@ mod tests {
         let root = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/vault"));
         let v = Vault::open(&root).unwrap();
         let n = v.notes.iter().next().unwrap();
-        let p: String = n.path.to_string_lossy().into();
+        let p: String = slash(&n.path);
         let p = inside_root(&root, &p).expect("caminho da lista deve passar em inside()");
         let orig = std::fs::read_to_string(&p).unwrap();
         std::fs::write(&p, &orig).unwrap();
@@ -451,7 +504,7 @@ mod tests {
         std::fs::create_dir_all(d.join("A")).unwrap();
         std::fs::write(d.join("A/Velha.md"), "x").unwrap();
         std::fs::write(d.join("B.md"), "ver [[Velha]] e [[A/velha#t|alias]] e [[Outra]]").unwrap();
-        let app = App { root: d.clone(), vault: Mutex::new(None) };
+        let app = App::new(d.clone());
         assert_eq!(rewrite_name(&app, "Velha", "Nova").unwrap(), 2);
         assert_eq!(std::fs::read_to_string(d.join("B.md")).unwrap(), "ver [[Nova]] e [[A/Nova#t|alias]] e [[Outra]]");
         assert!(inside_any(&app, d.to_str().unwrap()).is_err());

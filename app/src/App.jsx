@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { invoke } from "@/lib/api";
+import { invoke, isTauri } from "@/lib/api";
 import { BookOpen, HeartPulse, ArrowLeft, ArrowRight, CalendarCheck, CalendarDays, PenLine, FileCheck, FolderTree, ListTree, PanelLeft, Settings, Search, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -23,6 +23,8 @@ import { DiarioPage } from "@/components/DiarioPage";
 import { CicloPage } from "@/components/CicloPage";
 import { capturing } from "@/components/ShortcutsPage";
 import { SettingsPage } from "@/components/SettingsPage";
+import { EscolherVault } from "@/components/VaultGate";
+import { procurarAtualizacao } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
 import { loadFromDisk, loadOverrides, effective, comboOf, pretty } from "@/lib/shortcuts";
@@ -89,8 +91,17 @@ export default function App() {
     ed.current?.remeasure();
   }, [zoom]);
   useEffect(() => { loadFromDisk().then((o) => o && setOverrides(o)); }, []);
+  // undefined = verificando; null = nenhuma pasta escolhida (só no app); texto = pasta do vault
+  const [vaultRoot, setVaultRoot] = useState(isTauri ? undefined : "navegador");
+  useEffect(() => { if (isTauri) invoke("get_vault_root").then(setVaultRoot).catch(() => setVaultRoot(null)); }, []);
+  // Procura atualização uma vez, em silêncio, pouco depois de abrir.
+  useEffect(() => {
+    if (!isTauri) return;
+    const t = setTimeout(() => procurarAtualizacao().then((u) => u && setStatus(`Nova versão ${u.version} disponível: Configurações › Atualizações`)).catch(() => {}), 8000);
+    return () => clearTimeout(t);
+  }, []);
   const refresh = useCallback(() => Promise.all([invoke("list_notes"), invoke("list_dirs")]).then(([n, d]) => { setItems(n); setDirs(d); }).catch((e) => setStatus(String(e))), []);
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => { if (vaultRoot) refresh(); }, [refresh, vaultRoot]);
 
   const refreshInfo = useCallback(async (path) => {
     try { const i = await invoke("note_info", { path }); if (path === cur.current) setInfo(i); } catch { /* nota sumiu ou ainda não existe */ }
@@ -281,6 +292,9 @@ export default function App() {
   };
   const goLine = (line) => { ed.current.goTo(lineStart(ed.current.getText(), line)); };
   const outlineVisible = showOutline && !!current;
+
+  if (vaultRoot === undefined) return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abrindo…</div>;
+  if (vaultRoot === null) return <EscolherVault onDone={setVaultRoot} />;
 
   return (
     <div className="flex h-full">

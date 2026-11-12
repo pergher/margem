@@ -72,7 +72,7 @@ claude mcp add vault -- /caminho/para/target/release/vault-mcp /caminho/para/Esc
 
 ## Editor (protótipo)
 
-Em `app/`. Abre o vault de `tests/fixtures/vault` (ou o de `VAULT_ROOT`), mostra a árvore de pastas, edita com renderização ao vivo e salva com `Ctrl+S`.
+Em `app/`. Em desenvolvimento abre o vault de `tests/fixtures/vault` (ou o de `VAULT_ROOT`); o app instalado pede a pasta do vault na primeira abertura (guardada em `vault.json` na pasta de configuração do app). Instalador Windows, atualização automática e publicação: `docs/publicar.md`, mostra a árvore de pastas, edita com renderização ao vivo e salva com `Ctrl+S`.
 
 ```bash
 cd app && npm install            # uma vez
