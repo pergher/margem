@@ -113,12 +113,13 @@ function Atualizacoes() {
       <p className="mt-1 text-sm text-muted-foreground">Versão instalada: <strong>{versao}</strong>. O app também procura sozinho ao abrir. Seus arquivos do vault não são tocados na atualização.</p>
       <button onClick={procurar} disabled={prog !== null} className="mt-6 rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">Procurar atualização</button>
       {msg && <p className="mt-3 text-sm text-muted-foreground">{msg}</p>}
+      {prog !== null && prog >= 1 && <p className="mt-3 text-sm text-muted-foreground">Instalando… a janela vai fechar por alguns segundos e reabrir na versão nova. Se não reabrir, abra o Margem pelo menu Iniciar: sua nota já está salva.</p>}
       {achada && (
         <div className="mt-5 rounded-xl border p-4">
           <div className="text-sm font-medium">Versão {achada.version} disponível</div>
           {achada.notes && <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{achada.notes}</pre>}
           <button onClick={instalar} disabled={prog !== null} className="mt-3 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50">
-            {prog === null ? "Baixar e instalar (o app reinicia)" : `Baixando… ${Math.round(prog * 100)}%`}
+            {prog === null ? "Baixar e instalar (salva sua nota e o app reabre sozinho)" : `Baixando… ${Math.round(prog * 100)}%`}
           </button>
         </div>
       )}

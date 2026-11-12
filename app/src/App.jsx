@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
-import { BookOpen, HeartPulse, ArrowLeft, ArrowRight, CalendarCheck, CalendarDays, PenLine, FileCheck, FolderTree, ListTree, PanelLeft, Settings, Search, Sun, Moon } from "lucide-react";
+import { BookOpen, HeartPulse, ArrowLeft, ArrowRight, CalendarCheck, CalendarDays, PenLine, FileCheck, FolderTree, ListTree, PanelLeft, Settings, Search, Sun, Moon, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/FileTree";
@@ -24,7 +24,7 @@ import { CicloPage } from "@/components/CicloPage";
 import { capturing } from "@/components/ShortcutsPage";
 import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault } from "@/components/VaultGate";
-import { procurarAtualizacao } from "@/lib/atualizar";
+import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
 import { loadFromDisk, loadOverrides, effective, comboOf, pretty } from "@/lib/shortcuts";
@@ -72,6 +72,7 @@ export default function App() {
   const [ciclo, setCiclo] = useState(null);
   const [textoAtiv, setTextoAtiv] = useState(null);
   const [showSide, setShowSide] = useState(() => store.get("side", true));
+  const [foco, setFoco] = useState(false);
   const [showOutline, setShowOutline] = useState(() => store.get("outline", true));
   const ed = useRef(null);
   const cur = useRef(null);          // caminho aberto
@@ -143,6 +144,27 @@ export default function App() {
     setHeadings(headingsOf(text)); setPropsText(text); setInfo(null); refreshInfo(path);
   };
   const [histTick, setHistTick] = useState(0);
+  // Atualização: salva a nota e guarda onde o usuário estava; ao reabrir, volta para lá.
+  useEffect(() => {
+    antesDeAtualizar(async () => {
+      await save();
+      store.set("reabrir", { page, path: cur.current });
+    });
+  });
+  useEffect(() => {
+    if (!vaultRoot) return;
+    const r = store.get("reabrir", null);
+    if (!r) return;
+    try { localStorage.removeItem("reabrir"); } catch {}
+    (async () => {
+      try {
+        if (r.path) await load(r.path);
+        if (r.page && r.page !== "editor") setPage(r.page);
+        setStatus("Atualizado. Você voltou de onde estava.");
+      } catch { /* nota não existe mais: fica na tela inicial */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultRoot]);
   // Depois de "Restaurar" o arquivo já foi gravado no disco: só atualiza o editor e os painéis.
   const restoreText = (text) => {
     ed.current.setText(text); dirty.current = false;
@@ -214,6 +236,13 @@ export default function App() {
     try { await save(); const r = await invoke("move_entry", { path: u.from, dir: u.dir }); remap(u.from, r.path); await refresh(); setStatus("Movimento desfeito"); } catch (e) { fail(e); }
   };
 
+  useEffect(() => {
+    if (!foco) return;
+    const esc = (e) => { if (e.key === "Escape" && !e.defaultPrevented) setFoco(false); };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [foco]);
+
   // ---------- atalhos ----------
   const kb = useRef({});
   kb.current = { go, save, page, map: effective(overrides) };
@@ -225,6 +254,7 @@ export default function App() {
       save: () => kb.current.save(),
       insertTable: () => { if (cur.current && kb.current.page === "editor") ed.current.insertTable(); },
       toggleSide: () => setShowSide((v) => !v),
+      focus: () => setFoco((v) => !v),
       back: () => kb.current.go(-1),
       forward: () => kb.current.go(1),
       zoomIn: () => zoomBy(0.1),
@@ -266,6 +296,7 @@ export default function App() {
     { id: "salvar", label: "Salvar agora", keys: pretty(keys.save), run: () => save() },
     { id: "tabela", label: "Inserir tabela", keys: pretty(keys.insertTable), run: () => { if (cur.current) { setPage("editor"); setTimeout(() => ed.current?.insertTable(), 50); } } },
     { id: "nota", label: "Nova nota", hint: "criar", run: () => createNote(items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length - 1) : "") },
+    { id: "foco", label: "Modo foco (esconde menus e barras)", keys: pretty(keys.focus), run: () => setFoco((v) => !v) },
     { id: "lado", label: "Ocultar/mostrar arquivos (coluna 1)", keys: pretty(keys.toggleSide), run: () => setShowSide((v) => !v) },
     { id: "painel", label: "Ocultar/mostrar painel lateral", run: () => setShowOutline((v) => !v) },
     { id: "tema", label: dark ? "Tema claro" : "Tema escuro", run: () => setDark((v) => !v) },
@@ -291,14 +322,14 @@ export default function App() {
     ed.current.replaceDoc(t); setPropsText(t);
   };
   const goLine = (line) => { ed.current.goTo(lineStart(ed.current.getText(), line)); };
-  const outlineVisible = showOutline && !!current;
+  const outlineVisible = showOutline && !!current && !foco;
 
   if (vaultRoot === undefined) return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abrindo…</div>;
   if (vaultRoot === null) return <EscolherVault onDone={setVaultRoot} />;
 
   return (
     <div className="flex h-full">
-      <nav aria-label="Navegação" className="flex w-14 shrink-0 flex-col items-center gap-1.5 border-r bg-muted py-3">
+      {!foco && <nav aria-label="Navegação" className="flex w-14 shrink-0 flex-col items-center gap-1.5 border-r bg-muted py-3">
         <RailButton label="Arquivos" active><FolderTree className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Planejamento do ano" active={page === "ano" || page === "ciclo"} onClick={() => setPage(page === "ano" || page === "ciclo" ? "editor" : "ano")}><CalendarDays className="h-5 w-5" strokeWidth={1.6} /></RailButton>
@@ -312,9 +343,9 @@ export default function App() {
         <RailButton label={dark ? "Tema claro" : "Tema escuro"} onClick={() => setDark(!dark)}>
           {dark ? <Sun className="h-5 w-5" strokeWidth={1.6} /> : <Moon className="h-5 w-5" strokeWidth={1.6} />}
         </RailButton>
-      </nav>
+      </nav>}
 
-      {showSide && <aside style={{ width: sideW }} className="flex shrink-0 flex-col bg-muted/50">
+      {showSide && !foco && <aside style={{ width: sideW }} className="flex shrink-0 flex-col bg-muted/50">
         <div className="p-2.5">
           <button onClick={() => setSearchOpen(true)}
             className="flex h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-left text-sm text-muted-foreground hover:border-primary/40">
@@ -328,10 +359,11 @@ export default function App() {
             onCreate={createNote} onCreateFolder={createFolder} onRename={renameEntry} onDelete={deleteEntry} onMove={moveEntry} />
         </ScrollArea>
       </aside>}
-      {showSide && <ResizeHandle width={sideW} setWidth={setSideW} min={180} max={560} side="left" />}
+      {showSide && !foco && <ResizeHandle width={sideW} setWidth={setSideW} min={180} max={560} side="left" />}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[52px] shrink-0 items-center gap-2 border-b px-4">
+        {foco && <button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
+        {!foco && <header className="flex h-[52px] shrink-0 items-center gap-2 border-b px-4">
           <RailButton size="sm" label={`Ocultar/mostrar arquivos (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
@@ -353,16 +385,17 @@ export default function App() {
           <div className="flex-1" />
           {visao && page === "editor" && (
             <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-[13px]">
-              <button onClick={() => escolherVisao("markdown")} className={cn("px-3 py-1", !personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>1. Markdown</button>
-              <button onClick={() => escolherVisao("personalizado")} className={cn("border-l px-3 py-1", personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>2. {visao.nome}</button>
+              <button onClick={() => escolherVisao("markdown")} className={cn("px-3 py-1", !personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Markdown</button>
+              <button onClick={() => escolherVisao("personalizado")} className={cn("border-l px-3 py-1", personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Personalizada</button>
             </div>
           )}
           {info?.tipo === "texto" && current && page === "editor" && <button onClick={() => { setTextoAtiv(current); setPage("prova"); }} className="rounded-md border px-3 py-1 text-[13px] hover:bg-accent">Atividade a partir deste texto</button>}
+          <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>
-        </header>
+        </header>}
 
         {page === "config" && <SettingsPage overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
-        {page === "ano" && <AnoPage items={items} onOpen={open} onRefresh={refresh} onCiclo={(c) => { setCiclo(c); setPage("ciclo"); }} />}
+        {page === "ano" && <AnoPage items={items} onOpen={open} onRefresh={refresh} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
         {page === "prova" && <ProvaPage items={items} onOpen={open} onRefresh={refresh} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
         {page === "correcao" && <CorrecaoPage items={items} onOpen={open} />}
         {page === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} />}
@@ -379,7 +412,7 @@ export default function App() {
           <Editor ref={ed} onChange={onChange} onSave={save} onLink={link} />
         </main>
 
-        <footer className="flex h-[30px] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
+        {!foco && <footer className="flex h-[30px] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
           <span>{status}</span>
           {undo && <button onClick={undoMove} className="text-primary hover:underline">Desfazer movimento</button>}
           <span className="flex-1" />
@@ -387,7 +420,7 @@ export default function App() {
           {current && <span>{words} palavras</span>}
           {zoom !== 1 && <button onClick={() => setZoom(1)} title={`Restaurar (${pretty(keys.zoomReset)})`} className="hover:text-foreground">{Math.round(zoom * 100)}%</button>}
           <span>Salva sozinho</span>
-        </footer>
+        </footer>}
       </div>
 
       {outlineVisible && (
