@@ -46,15 +46,15 @@ export function SearchModal({ items, onPick, onClose }) {
         <div className="flex items-center gap-2 border-b px-4">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={key} placeholder="Buscar pelo nome, pasta ou texto…"
-            className="h-12 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted-foreground" />
-          <kbd className="rounded border px-1.5 text-[11px] text-muted-foreground">Esc</kbd>
+            className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+          <kbd className="rounded border px-1.5 text-xs text-muted-foreground">Esc</kbd>
         </div>
         <div ref={list} className="max-h-[50vh] overflow-auto p-1.5">
           {q.trim() && results.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nenhuma nota encontrada.</p>}
           {!q.trim() && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Digite para buscar no nome e no texto (3+ letras). ↑ ↓ navegam, Enter abre.</p>}
           {results.map(({ it, text }, i) => (
             <div key={(text ? "t:" : "n:") + it.path}>
-              {text && !results[i - 1]?.text && <div className="px-3 pb-1 pt-2 text-[11px] uppercase tracking-wide text-muted-foreground">No texto das notas</div>}
+              {text && !results[i - 1]?.text && <div className="px-3 pb-1 pt-2 text-xs uppercase tracking-wide text-muted-foreground">No texto das notas</div>}
               <button onClick={() => onPick(it.path, text?.line)} onMouseMove={() => setIdx(i)}
                 className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left", i === idx && "bg-accent")}>
                 {text ? <TextSearch className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}

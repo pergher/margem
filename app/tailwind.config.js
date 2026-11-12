@@ -4,6 +4,8 @@ export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
   theme: {
     extend: {
+      // Escala única de texto da interface: 13 (apoio) / 15 (corpo) / 16 (base). Antes havia 8,5 a 17px misturados.
+      fontSize: { xs: ["0.8125rem", "1.25rem"], sm: ["0.9375rem", "1.4rem"] },
       colors: {
         border: "hsl(var(--border))", input: "hsl(var(--input))", ring: "hsl(var(--ring))",
         background: "hsl(var(--background))", foreground: "hsl(var(--foreground))",

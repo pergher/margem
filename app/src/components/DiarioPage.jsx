@@ -45,7 +45,7 @@ export function DiarioPage({ items, onOpen, onRefresh, focoPath }) {
         <div className="flex-1" />
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={ocultar} onChange={(e) => setOcultar(e.target.checked)} />ocultar nomes</label>
       </div>
-      <div className="mb-4 text-[13px] text-muted-foreground">Dados sensíveis: estas pastas ficam bloqueadas no MCP (o Claude não lê o diário nem as notas de aluno).</div>
+      <div className="mb-4 text-xs text-muted-foreground">Dados sensíveis: estas pastas ficam bloqueadas no MCP (o Claude não lê o diário nem as notas de aluno).</div>
       {erro && <div className="mb-3 text-sm text-destructive">Erro: {erro} <button className="underline" onClick={() => setErro("")}>ok</button></div>}
       {!turma ? <div className="text-sm text-muted-foreground">Nenhuma turma encontrada ainda. Crie uma semana ou um aluno.</div>
         : aba === "diario"
@@ -92,10 +92,10 @@ function Diarios({ items, turma, ano, diarios, alunos, semanas, ocultar, onRefre
             <div className="flex gap-3">
               {meta.foto && <><div style={{ width: wFoto }} className="shrink-0"><div className="mb-1 text-xs text-muted-foreground">{meta.foto}</div><Foto nome={meta.foto} /></div>
                 <ResizeHandle width={wFoto} setWidth={setWFoto} min={200} max={800} side="left" /></>}
-              <textarea value={texto} onChange={(e) => gravar(e.target.value)} spellCheck={false} className="min-h-[360px] min-w-0 flex-1 rounded-lg border bg-background p-3 font-mono text-[13px] leading-6 outline-none" />
+              <textarea value={texto} onChange={(e) => gravar(e.target.value)} spellCheck={false} className="min-h-[360px] min-w-0 flex-1 rounded-lg border bg-background p-3 font-mono text-xs leading-6 outline-none" />
             </div>
             <Ocorrencia alunos={alunos} aulas={aulasDoDiario(texto)} onAdd={(n, aluno, t) => gravar(inserirOcorrencia(texto, n, aluno, t))} />
-            {ocs.length > 0 && <div className="mt-3 text-[13px] text-muted-foreground">{ocs.length} ocorrência(s): {ocs.map((o, i) => <span key={i} className={cn("mr-2", ocultar && "blur-sm hover:blur-none")}>{o.aluno}</span>)}</div>}
+            {ocs.length > 0 && <div className="mt-3 text-xs text-muted-foreground">{ocs.length} ocorrência(s): {ocs.map((o, i) => <span key={i} className={cn("mr-2", ocultar && "blur-sm hover:blur-none")}>{o.aluno}</span>)}</div>}
           </>
         )}
         {!novo && texto == null && sel && <div className="text-sm text-muted-foreground">Lendo…</div>}

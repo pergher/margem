@@ -83,13 +83,13 @@ export function SaudePage({ items, onOpen, onRefresh }) {
     <div className="min-h-0 flex-1 overflow-auto p-8">
       <div className="mb-1 flex flex-wrap items-baseline gap-3">
         <h1 className="font-serif text-3xl font-semibold">Saúde do vault</h1>
-        <span className="text-[13px] text-muted-foreground">{total} aviso(s){erros ? `, ${erros} erro(s)` : ""} · {lista.length ? Object.keys(Object.fromEntries(lista.map((x) => [x.code, 1]))).length : 0} tipos de problema</span>
+        <span className="text-xs text-muted-foreground">{total} aviso(s){erros ? `, ${erros} erro(s)` : ""} · {lista.length ? Object.keys(Object.fromEntries(lista.map((x) => [x.code, 1]))).length : 0} tipos de problema</span>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground">{aviso}</span>
         <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por nota ou texto" aria-label="Filtrar avisos" className="w-56 rounded border bg-background px-2 py-1 text-sm" />
-        <button onClick={() => { setLista(null); carregar(); }} className="rounded-md border px-3 py-1 text-[13px] hover:bg-accent">Verificar de novo</button>
+        <button onClick={() => { setLista(null); carregar(); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Verificar de novo</button>
       </div>
-      <div className="mb-5 text-[13px] text-muted-foreground">Cada grupo é um tipo de problema; clique no nome da nota para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias (reversível pela lixeira .lixeira).</div>
+      <div className="mb-5 text-xs text-muted-foreground">Cada grupo é um tipo de problema; clique no nome da nota para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias (reversível pela lixeira .lixeira).</div>
 
       {grupos.length === 0 && <div className="rounded-xl bg-muted p-4 text-sm">Nenhum aviso{filtro ? " para este filtro" : ""}. 🎉</div>}
       <div className="flex flex-col gap-3">
@@ -102,7 +102,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
               <span className="text-xs text-muted-foreground">{xs[0].severity}</span>
             </button>
             {aberto[code] && (
-              <ul className="border-t px-4 py-1 text-[13px]">
+              <ul className="border-t px-4 py-1 text-xs">
                 {xs.slice(0, 200).map((x, i) => {
                   const it = porNome.get(x.note), k = code + i + x.note;
                   return (
@@ -120,7 +120,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
         ))}
       </div>
 
-      <div className="mt-6 rounded-xl bg-muted p-4 text-[13px]">
+      <div className="mt-6 rounded-xl bg-muted p-4 text-xs">
         <div className="mb-1 font-semibold">Aplicar no vault real (sempre com simulação e cópia antes)</div>
         <div className="leading-7 text-muted-foreground">
           1. Copie a pasta do vault (ex.: <code>cp -r Escola Escola-antes</code>). 2. Simule: <code>vault reorganizar &lt;pasta&gt;</code> e <code>vault migrar &lt;pasta&gt;</code> (sem <code>--aplicar</code> só mostram o que mudaria).

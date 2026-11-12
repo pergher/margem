@@ -66,7 +66,7 @@
 .cm-embed-box { display: block; margin: .5rem 0; font-family: 'Inter Variable', sans-serif; font-size: .85rem; color: hsl(var(--muted-foreground)); }
 .cm-embed-img img { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid hsl(var(--border)); display: block; }
 .cm-embed-note { border: 1px solid hsl(var(--border)); border-left: 3px solid hsl(var(--primary) / .6); border-radius: 8px; padding: .6rem .9rem; background: hsl(var(--muted) / .5); color: hsl(var(--foreground)); line-height: 1.55; }
-.cm-embed-title { font-size: .72rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: .35rem; cursor: pointer; }
+.cm-embed-title { font-size: .78rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: .35rem; cursor: pointer; }
 .cm-embed-title:hover { color: hsl(var(--primary)); }
 .cm-embed-h { font-weight: 650; margin-top: .4rem; }
 .cm-embed-gap { height: .5rem; }
@@ -85,11 +85,11 @@
 .dark .cm-callout { --c-bg: 186 18% 17%; --c-fg: 186 40% 70%; }
 .dark .cm-callout-tip, .dark .cm-callout-professor, .dark .cm-callout-example { --c-bg: 100 14% 16%; --c-fg: 100 30% 70%; }
 .dark .cm-callout-warning, .dark .cm-callout-attention, .dark .cm-callout-important { --c-bg: 40 30% 16%; --c-fg: 40 80% 70%; }
-.cm-callout-title { font-family: 'Inter Variable', sans-serif; font-size: .82rem; font-weight: 600; color: hsl(var(--c-fg)); display: inline-flex; align-items: center; gap: .6rem; }
-.cm-callout-badge { font-weight: 500; font-size: .7rem; background: hsl(var(--c-fg) / .14); border-radius: 999px; padding: .05rem .5rem; }
+.cm-callout-title { font-family: 'Inter Variable', sans-serif; font-size: .9rem; font-weight: 600; color: hsl(var(--c-fg)); display: inline-flex; align-items: center; gap: .6rem; }
+.cm-callout-badge { font-weight: 500; font-size: .75rem; background: hsl(var(--c-fg) / .14); border-radius: 999px; padding: .05rem .5rem; }
 
 /* propriedades (frontmatter) */
-.cm-props { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: 0 0 1.25rem; font-family: 'Inter Variable', sans-serif; font-size: .75rem; }
+.cm-props { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: 0 0 1.25rem; font-family: 'Inter Variable', sans-serif; font-size: .8125rem; }
 .cm-chip { background: hsl(var(--secondary)); color: hsl(var(--foreground) / .8); border-radius: 999px; padding: .15rem .65rem; }
 .cm-chip-soft { color: hsl(var(--muted-foreground)); }
 .cm-chip-warn { background: hsl(42 87% 90%); color: hsl(40 100% 22%); }
@@ -98,7 +98,7 @@
 .cm-chip-status[data-status="andamento"]::before { background: #c98a1b; }
 .cm-chip-status[data-status="finalizado"]::before { background: #4d8a3f; }
 .cm-chip-status[data-status="pendente"]::before { background: #b9b3a8; }
-.cm-props-edit { margin-left: auto; color: hsl(var(--muted-foreground)); font-size: .72rem; padding: .1rem .3rem; border-radius: 4px; }
+.cm-props-edit { margin-left: auto; color: hsl(var(--muted-foreground)); font-size: .78rem; padding: .1rem .3rem; border-radius: 4px; }
 .cm-props-edit:hover { background: hsl(var(--accent)); }
 
 /* tabelas */
@@ -121,6 +121,6 @@
 .cm-table-wrap th:focus, .cm-table-wrap td:focus { background: hsl(var(--accent)); box-shadow: inset 0 0 0 2px hsl(var(--ring) / .5); white-space: pre-wrap; }
 .cm-table-bar { display: flex; gap: .25rem; justify-content: flex-end; height: 1.6rem; margin-bottom: .2rem; opacity: 0; transition: opacity .15s; font-family: 'Inter Variable', sans-serif; }
 .cm-table-wrap:hover .cm-table-bar, .cm-table-wrap:focus-within .cm-table-bar { opacity: 1; }
-.cm-table-bar button { white-space: nowrap; flex-shrink: 0; font-size: .72rem; padding: 0 .5rem; border-radius: 6px; border: 1px solid hsl(var(--border)); background: hsl(var(--background)); color: hsl(var(--muted-foreground)); }
+.cm-table-bar button { white-space: nowrap; flex-shrink: 0; font-size: .78rem; padding: 0 .5rem; border-radius: 6px; border: 1px solid hsl(var(--border)); background: hsl(var(--background)); color: hsl(var(--muted-foreground)); }
 .cm-table-bar button:hover { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
 .cm-table-wrap th, .cm-table-wrap td { min-width: 3rem; height: 2.2rem; }

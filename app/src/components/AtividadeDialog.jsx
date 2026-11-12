@@ -25,12 +25,12 @@ export function AtividadeDialog({ items, banco, textoInicial, onClose, onDone })
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/30 p-6" onMouseDown={onClose}>
       <div role="dialog" aria-label="Atividade a partir de um texto" className="w-[min(860px,96vw)] rounded-xl border bg-background p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center"><h2 className="flex-1 font-serif text-2xl font-semibold">Atividade a partir de um texto</h2><button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">fechar</button></div>
-        <p className="mb-4 text-[13px] text-muted-foreground">O app não escreve as questões: ele monta o pedido para o Claude (com o texto, os alertas e o formato do banco “{banco.titulo.slice(0, 50)}…”) e, depois, confere e insere o que você colar. Será o Texto {nums.texto}, a partir da questão {nums.questao}.</p>
+        <p className="mb-4 text-xs text-muted-foreground">O app não escreve as questões: ele monta o pedido para o Claude (com o texto, os alertas e o formato do banco “{banco.titulo.slice(0, 50)}…”) e, depois, confere e insere o que você colar. Será o Texto {nums.texto}, a partir da questão {nums.questao}.</p>
 
         <div className="mb-4 grid gap-4 md:grid-cols-[260px_1fr]">
           <div>
             <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Buscar texto" aria-label="Buscar texto" className="mb-2 w-full rounded border bg-background px-2 py-1 text-sm" />
-            <div className="max-h-56 overflow-auto rounded border text-[13px]">
+            <div className="max-h-56 overflow-auto rounded border text-xs">
               {lista.map((t) => <button key={t.path} onClick={() => setPath(t.path)} className={"block w-full truncate px-2 py-1 text-left hover:bg-accent " + (t.path === path ? "bg-accent font-medium" : "")}>{t.name}</button>)}
             </div>
           </div>
@@ -46,7 +46,7 @@ export function AtividadeDialog({ items, banco, textoInicial, onClose, onDone })
                   <label>Conteúdo <input type="number" min={0} max={8} value={nCont} onChange={(e) => setNC(Number(e.target.value))} className="w-14 rounded border bg-background px-1" /></label>
                   <button onClick={copiar} className="rounded-md bg-primary px-3 py-1 text-primary-foreground">Copiar pedido para o Claude</button>
                 </div>
-                <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-[11px] text-muted-foreground">{pedido.slice(0, 700)}…</pre>
+                <pre className="mt-2 max-h-28 overflow-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs text-muted-foreground">{pedido.slice(0, 700)}…</pre>
               </>
             )}
           </div>
@@ -54,9 +54,9 @@ export function AtividadeDialog({ items, banco, textoInicial, onClose, onDone })
 
         {ficha && (
           <>
-            <div className="mb-1 text-[13px] font-medium">Cole aqui as questões que o Claude devolveu</div>
+            <div className="mb-1 text-xs font-medium">Cole aqui as questões que o Claude devolveu</div>
             <textarea value={questoes} onChange={(e) => setQ(e.target.value)} placeholder={"### Questões sobre o Texto " + nums.texto + "\n\n#### Questão " + nums.questao + " · Interpretação · Dissertativa\n…"} className="mb-3 h-40 w-full rounded border bg-background p-2 font-mono text-xs" />
-            <div className="mb-1 text-[13px] font-medium">Gabarito (opcional; linhas “- **N:** …”)</div>
+            <div className="mb-1 text-xs font-medium">Gabarito (opcional; linhas “- **N:** …”)</div>
             <textarea value={gab} onChange={(e) => setG(e.target.value)} className="mb-3 h-20 w-full rounded border bg-background p-2 font-mono text-xs" />
             <div className="flex items-center gap-3"><button onClick={inserir} disabled={!questoes.trim()} className="rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground disabled:opacity-40">Conferir e inserir no banco</button>
               <span className="text-xs text-muted-foreground">{msg}</span></div>

@@ -33,7 +33,7 @@ function RailButton({ label, active, onClick, disabled, size = "lg", children })
   return (
     <button aria-label={label} title={label} onClick={onClick} disabled={disabled}
       className={cn("flex items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-35",
-        size === "lg" ? "h-10 w-10" : "h-8 w-8", active && "bg-accent text-foreground")}>
+        size === "lg" ? "h-10 w-10" : "h-8 w-8", active && "bg-primary/10 text-primary hover:text-primary")}>
       {children}
     </button>
   );
@@ -351,7 +351,7 @@ export default function App() {
             className="flex h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-left text-sm text-muted-foreground hover:border-primary/40">
             <Search className="h-4 w-4 shrink-0" />
             <span className="flex-1 truncate">Buscar nota…</span>
-            <kbd className="text-[11px]">{pretty(keys.search).replace(/ /g, "")}</kbd>
+            <kbd className="text-xs">{pretty(keys.search).replace(/ /g, "")}</kbd>
           </button>
         </div>
         <ScrollArea className="flex-1 px-1.5 pb-2">
@@ -363,11 +363,11 @@ export default function App() {
 
       <div className="flex min-w-0 flex-1 flex-col">
         {foco && <button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
-        {!foco && <header className="flex h-[52px] shrink-0 items-center gap-2 border-b px-4">
+        {!foco && <header className="flex min-h-[3.5rem] shrink-0 items-center gap-2 border-b px-4 py-2">
           <RailButton size="sm" label={`Ocultar/mostrar arquivos (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
-          <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-[13px] text-muted-foreground">
+          <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
             {crumbs.length === 0 && <span>Selecione uma nota</span>}
             {crumbs.map((c, i) => {
               const last = i === crumbs.length - 1;
@@ -384,12 +384,12 @@ export default function App() {
           </nav>
           <div className="flex-1" />
           {visao && page === "editor" && (
-            <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-[13px]">
+            <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-xs">
               <button onClick={() => escolherVisao("markdown")} className={cn("px-3 py-1", !personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Markdown</button>
               <button onClick={() => escolherVisao("personalizado")} className={cn("border-l px-3 py-1", personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Personalizada</button>
             </div>
           )}
-          {info?.tipo === "texto" && current && page === "editor" && <button onClick={() => { setTextoAtiv(current); setPage("prova"); }} className="rounded-md border px-3 py-1 text-[13px] hover:bg-accent">Atividade a partir deste texto</button>}
+          {info?.tipo === "texto" && current && page === "editor" && <button onClick={() => { setTextoAtiv(current); setPage("prova"); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Atividade a partir deste texto</button>}
           <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>
         </header>}
@@ -412,7 +412,7 @@ export default function App() {
           <Editor ref={ed} onChange={onChange} onSave={save} onLink={link} />
         </main>
 
-        {!foco && <footer className="flex h-[30px] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
+        {!foco && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
           <span>{status}</span>
           {undo && <button onClick={undoMove} className="text-primary hover:underline">Desfazer movimento</button>}
           <span className="flex-1" />

@@ -30,7 +30,7 @@ export function Outline({ headings, active, onGo }) {
         {headings.length === 0 && <p className="px-2 py-1 text-sm text-muted-foreground">Sem títulos.</p>}
         {headings.map((h, i) => (
           <button key={i} onClick={() => onGo(h.pos)} title={h.title} style={{ paddingLeft: 8 + (h.level - min) * 12 }}
-            className={cn("block w-full truncate rounded-md py-1 pr-2 text-left text-[13px] text-muted-foreground hover:bg-accent hover:text-foreground", h.level === min && "font-medium text-foreground/90", active === i && "bg-accent text-foreground")}>
+            className={cn("block w-full truncate rounded-md py-1 pr-2 text-left text-xs text-muted-foreground hover:bg-accent hover:text-foreground", h.level === min && "font-medium text-foreground/90", active === i && "bg-accent text-foreground")}>
             {h.title}
           </button>
         ))}

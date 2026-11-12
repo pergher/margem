@@ -27,6 +27,7 @@ export async function instalarAtualizacao(onProgresso) {
     if (e.event === "Started") total = e.data.contentLength || 0;
     if (e.event === "Progress") { baixado += e.data.chunkLength; if (total) onProgresso?.(baixado / total); }
   });
+  onProgresso?.(1); // o Windows encerra o app logo depois; a tela já mostra o aviso de fechamento
   const { relaunch } = await import("@tauri-apps/plugin-process");
   await relaunch();
 }

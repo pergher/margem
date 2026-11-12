@@ -19,7 +19,7 @@ export function PlanejarCicloDialog({ items, onClose, onCriado }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/30 p-6" onMouseDown={onClose}>
       <div role="dialog" aria-label="Planejar ciclo" className="w-[min(860px,96vw)] rounded-xl border bg-background p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center"><h2 className="flex-1 font-serif text-2xl font-semibold">Planejar ciclo com o Claude</h2><button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">fechar</button></div>
-        <p className="mb-4 text-[13px] text-muted-foreground">O app não escreve o plano: ele monta o pedido (com as aulas e textos do seu acervo) e, depois, deixa você aceitar linha a linha o que o Claude propuser. Nada é gravado antes de “Criar ciclo”.</p>
+        <p className="mb-4 text-xs text-muted-foreground">O app não escreve o plano: ele monta o pedido (com as aulas e textos do seu acervo) e, depois, deixa você aceitar linha a linha o que o Claude propuser. Nada é gravado antes de “Criar ciclo”.</p>
 
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
           <label>Ano <input type="number" min={6} max={9} value={d.ano} onChange={set("ano")} className={num} /></label>
@@ -33,12 +33,12 @@ export function PlanejarCicloDialog({ items, onClose, onCriado }) {
         <div className="mb-4 flex items-center gap-3"><button onClick={copiar} disabled={!d.titulo.trim()} className="rounded-md bg-primary px-3 py-1 text-sm text-primary-foreground disabled:opacity-40">Copiar pedido para o Claude</button>
           <span className="text-xs text-muted-foreground">{rec.aulas.length} aulas e {rec.textos.length} textos do acervo entram no pedido. Arquivo: {d.titulo.trim() ? nomeCiclo(d) + ".md" : "—"}</span></div>
 
-        <div className="mb-1 text-[13px] font-medium">Cole aqui a proposta do Claude</div>
+        <div className="mb-1 text-xs font-medium">Cole aqui a proposta do Claude</div>
         <textarea value={colado} onChange={(e) => setColado(e.target.value)} placeholder={"## Conteúdos\n…\n## Habilidades\n…\n## Aulas\n| # | Conteúdo | Recurso |"} className="mb-2 h-36 w-full rounded border bg-background p-2 font-mono text-xs" />
         <button onClick={conferir} disabled={!colado.trim()} className="mb-3 rounded-md border px-3 py-1 text-sm hover:bg-accent disabled:opacity-40">Conferir proposta</button>
 
         {prop && (
-          <div className="mb-3 rounded border p-3 text-[13px]">
+          <div className="mb-3 rounded border p-3 text-xs">
             <div className="mb-1 font-medium">Aceite ou tire cada linha</div>
             {prop.conteudos.map((c, i) => <label key={"c" + i} className="flex gap-2"><input type="checkbox" checked={c.ok} onChange={() => marca("conteudos", i)} /><span className="text-xs text-muted-foreground">conteúdo</span> {c.texto}</label>)}
             {prop.habilidades.map((h, i) => <label key={"h" + i} className="flex gap-2"><input type="checkbox" checked={h.ok} onChange={() => marca("habilidades", i)} /><span className="text-xs text-muted-foreground">habilidade</span> {h.codigo} {h.texto}</label>)}

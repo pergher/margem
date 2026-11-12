@@ -31,7 +31,7 @@ function Text({ value, onCommit, warn }) {
   const commit = () => { if (v.trim() !== value) onCommit(v.trim()); };
   return <input value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} placeholder={warn ? "pendente" : ""}
     onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { setV(value); e.currentTarget.blur(); } }}
-    className={cn("h-7 w-full rounded-md border bg-background px-2 text-[13px] outline-none focus:border-primary", warn && "border-amber-400/70 placeholder:text-amber-600")} />;
+    className={cn("h-7 w-full rounded-md border bg-background px-2 text-xs outline-none focus:border-primary", warn && "border-amber-400/70 placeholder:text-amber-600")} />;
 }
 
 function Props({ text, info, onSet }) {
@@ -46,24 +46,24 @@ function Props({ text, info, onSet }) {
       {rows.length === 0 && <p className="py-1 text-sm text-muted-foreground">Esta nota não tem propriedades.</p>}
       {rows.map((r) => (
         <div key={r.key} className="mb-2.5">
-          <div className={cn("mb-1 text-[11px] uppercase tracking-wide text-muted-foreground", r.missing && "text-amber-600")}>{r.key}{r.missing && " · obrigatório"}</div>
+          <div className={cn("mb-1 text-xs uppercase tracking-wide text-muted-foreground", r.missing && "text-amber-600")}>{r.key}{r.missing && " · obrigatório"}</div>
           {r.items || listy(r.key)
             ? <Chips items={r.items ?? []} onChange={(it) => onSet(r.key, it)} />
             : r.key === "status"
-              ? <select value={r.value} onChange={(e) => onSet("status", e.target.value)} className="h-7 w-full rounded-md border bg-background px-1.5 text-[13px]">
+              ? <select value={r.value} onChange={(e) => onSet("status", e.target.value)} className="h-7 w-full rounded-md border bg-background px-1.5 text-xs">
                   {!(info?.status ?? []).includes(r.value) && <option value={r.value}>{r.value || "—"}</option>}
                   {(info?.status ?? []).map((s) => <option key={s}>{s}</option>)}
                 </select>
               : /^(true|false)$/.test(r.value)
-                ? <label className="flex items-center gap-2 text-[13px]"><input type="checkbox" checked={r.value === "true"} onChange={(e) => onSet(r.key, e.target.checked ? "true" : "false")} />{r.value === "true" ? "sim" : "não"}</label>
+                ? <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={r.value === "true"} onChange={(e) => onSet(r.key, e.target.checked ? "true" : "false")} />{r.value === "true" ? "sim" : "não"}</label>
                 : <Text value={r.value} warn={r.missing || (!r.value && !r.items)} onCommit={(v) => onSet(r.key, v)} />}
         </div>
       ))}
       {nk === null
-        ? <button onClick={() => setNk("")} className="mt-1 flex items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" />Propriedade</button>
+        ? <button onClick={() => setNk("")} className="mt-1 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" />Propriedade</button>
         : <input autoFocus value={nk} onChange={(e) => setNk(e.target.value)} placeholder="nome da propriedade" onBlur={() => setNk(null)}
             onKeyDown={(e) => { if (e.key === "Enter" && /^[\w-]+$/.test(nk.trim())) { onSet(nk.trim(), ""); setNk(null); } else if (e.key === "Escape") setNk(null); }}
-            className="h-7 w-full rounded-md border bg-background px-2 text-[13px] outline-none focus:border-primary" />}
+            className="h-7 w-full rounded-md border bg-background px-2 text-xs outline-none focus:border-primary" />}
     </ScrollArea>
   );
 }
@@ -72,19 +72,19 @@ function Links({ info, onOpen, onGoLine }) {
   if (!info) return <p className="px-4 py-3 text-sm text-muted-foreground">Carregando…</p>;
   return (
     <ScrollArea className="flex-1 px-2 py-2">
-      <h3 className="px-2 pb-1 text-[11px] uppercase tracking-wide text-muted-foreground">Avisos ({info.issues.length})</h3>
+      <h3 className="px-2 pb-1 text-xs uppercase tracking-wide text-muted-foreground">Avisos ({info.issues.length})</h3>
       {info.issues.length === 0 && <p className="px-2 pb-2 text-sm text-muted-foreground">Nenhum aviso.</p>}
       {info.issues.map((i, k) => (
-        <button key={k} onClick={() => onGoLine(i.line)} className="mb-0.5 flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent">
+        <button key={k} onClick={() => onGoLine(i.line)} className="mb-0.5 flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent">
           <AlertTriangle className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", i.severity === "erro" ? "text-red-600" : "text-amber-500")} />
           <span><span className="text-muted-foreground">linha {i.line} · </span>{i.msg}</span>
         </button>
       ))}
-      <h3 className="px-2 pb-1 pt-3 text-[11px] uppercase tracking-wide text-muted-foreground">Mencionada em ({info.backlinks.length})</h3>
+      <h3 className="px-2 pb-1 pt-3 text-xs uppercase tracking-wide text-muted-foreground">Mencionada em ({info.backlinks.length})</h3>
       {info.backlinks.length === 0 && <p className="px-2 text-sm text-muted-foreground">Nenhuma nota aponta para esta.</p>}
       {info.backlinks.map((b) => (
         <button key={b.path} onClick={() => onOpen(b.path)} title={b.rel} className="flex w-full flex-col rounded-md px-2 py-1.5 text-left hover:bg-accent">
-          <span className="truncate text-[13px]">{b.name}</span>
+          <span className="truncate text-xs">{b.name}</span>
           <span className="truncate text-xs text-muted-foreground">{b.rel.split("/").slice(0, -1).join(" / ")}</span>
         </button>
       ))}
@@ -111,7 +111,7 @@ function Historico({ path, text, onRestore, tick }) {
       {vers === null ? <p className="px-2 text-sm text-muted-foreground">Carregando…</p>
         : vers.length === 0 ? <p className="px-2 text-sm text-muted-foreground">Ainda não há versões antigas. A primeira aparece quando esta nota for salva com alterações.</p>
         : vers.map((v) => (
-          <button key={v.id} onClick={() => abrir(v)} className={cn("flex w-full justify-between rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-accent", sel?.id === v.id && "bg-accent")}>
+          <button key={v.id} onClick={() => abrir(v)} className={cn("flex w-full justify-between rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent", sel?.id === v.id && "bg-accent")}>
             <span>{quando(v.ts)}</span><span className="text-xs text-muted-foreground">{v.bytes} B</span>
           </button>))}
       {sel && (
@@ -120,12 +120,12 @@ function Historico({ path, text, onRestore, tick }) {
             <span className="text-xs text-muted-foreground">{mudou ? `${quando(sel.ts)} → agora` : "Igual ao texto atual"}</span>
             <button onClick={restaurar} disabled={!mudou} className="rounded-md bg-primary px-2 py-1 text-xs text-primary-foreground disabled:opacity-40">Restaurar</button>
           </div>
-          <div className="overflow-hidden rounded-md border font-mono text-[11px] leading-snug">
+          <div className="overflow-hidden rounded-md border font-mono text-xs leading-snug">
             {linhas.map((l, i) => l.t === " " && !linhas.slice(Math.max(0, i - 2), i + 3).some((x) => x.t !== " ")
               ? (i === 0 || !(linhas[i - 1].t === " " && !linhas.slice(Math.max(0, i - 3), i + 2).some((x) => x.t !== " ")) ? <div key={i} className="px-2 text-muted-foreground">…</div> : null)
               : <div key={i} className={cn("whitespace-pre-wrap break-words px-2", l.t === "+" && "bg-emerald-500/15", l.t === "-" && "bg-red-500/15 line-through decoration-red-500/40")}>{l.t === " " ? "  " : l.t + " "}{l.s || " "}</div>)}
           </div>
-          <p className="mt-2 px-1 text-[11px] text-muted-foreground">Verde: está agora e não estava. Vermelho: estava na versão antiga.</p>
+          <p className="mt-2 px-1 text-xs text-muted-foreground">Verde: está agora e não estava. Vermelho: estava na versão antiga.</p>
         </div>
       )}
     </ScrollArea>
@@ -136,7 +136,7 @@ export function RightPanel({ tab, setTab, info, text, onSet, onOpen, onGoLine, p
   const n = info?.issues.length ?? 0;
   return (
     <aside aria-label="Painel" className="flex h-full flex-col bg-muted/50">
-      <div role="tablist" className="flex h-[52px] shrink-0 items-center gap-1 border-b px-2">
+      <div role="tablist" className="flex min-h-[3.5rem] shrink-0 items-center gap-1 border-b px-2 py-2">
         {TABS.map(([id, label, Icon]) => (
           <button key={id} role="tab" aria-selected={tab === id} title={label} onClick={() => setTab(id)}
             className={cn("relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground", tab === id ? "flex-1 bg-accent text-foreground" : "shrink-0")}>

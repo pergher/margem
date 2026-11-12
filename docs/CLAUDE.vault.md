@@ -18,7 +18,7 @@ Vault de Markdown (compatível com o Obsidian) para ensinar Português do 6º ao
 5. Links por nome, nunca por caminho: `[[Tipos de sujeito]]`. Habilidades como links de bloco: `[[bncc-lp-6ano#^ef06lp04]]`. Nomes de nota são únicos.
 6. Códigos de conteúdo (`foco`, `conteudos`, `conteudo`, `conteudos_excluidos`) só os de `_sistema/_codigos.md`. Para usar um código novo, inclua-o lá primeiro, com descrição curta, e nunca renomeie nem apague os existentes.
 7. Valores com `: ` entre aspas: `fonte: "SILVA, A. Obra. São Paulo: Ed. X, 2020."`.
-8. Gabarito de atividades vai entre `[colchetes]` só nas fichas de aula. Em correções, colchetes são marcas de transcrição: `[palavra?]`, `[ilegível]`.
+8. Gabarito de atividades vai entre `[colchetes]` só nas fichas de aula. Em correções, colchetes são marcas de transcrição: `[palavra?]`, `[ilegível]`. Erros do aluno na transcrição vão entre chaves: ortografia `{errado|certo}` (a correção é opcional); pontuação `{p:antes|depois}`, por exemplo `{p:|,}` (falta vírgula), `{p:,|}` (vírgula a mais), `{p:e|, e}` (troca). A transcrição continua fiel ao que o aluno escreveu; as chaves só anotam.
 9. Poemas mantêm as quebras de verso; nunca junte versos numa linha. Textos literários não são corrigidos nem reescritos.
 10. Não altere `.obsidian/`.
 

@@ -62,7 +62,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
     <li className="flex gap-2.5 border-b py-2">
       <input type="checkbox" checked={sel.has(q.n)} onChange={() => toggle(q.n)} aria-label={`Questão ${q.rotulo ?? q.n}`} className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]" />
       <div className="min-w-0 flex-1">
-        <div className="text-[11px] text-muted-foreground">Questão {q.rotulo ?? q.n} · {rot}</div>
+        <div className="text-xs text-muted-foreground">Questão {q.rotulo ?? q.n} · {rot}</div>
         <div className="truncate">{q.corpo.split("\n")[0]}</div>
       </div>
     </li>
@@ -72,7 +72,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
     <div className="flex min-h-0 flex-1 flex-col">
       {ativ && <AtividadeDialog items={items} banco={b} textoInicial={textoInicial} onClose={() => { setAtiv(false); onUsouTexto?.(); }}
         onDone={(n) => { setAtiv(false); onUsouTexto?.(); dizer(`${n} questão(ões) inseridas no banco`); const it = bancos.find((x) => x.path === path); if (it) lerBanco(it).then(setB); }} />}
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4 text-[13px]">
+      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4 text-xs">
         <select value={path} onChange={(e) => setPath(e.target.value)} className="max-w-md truncate rounded-md border bg-background px-2 py-1">
           {bancos.map((x) => <option key={x.path} value={x.path}>{x.name}</option>)}
         </select>
@@ -95,17 +95,17 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
       <div className="flex min-h-0 flex-1">
         <section aria-label="Banco de questões" style={{ width: wBanco }} className="flex shrink-0 flex-col">
           <div className="border-b px-5 py-3">
-            <div className="mb-2 text-[13px] font-medium">Banco de questões · {b.ano}º ano</div>
+            <div className="mb-2 text-xs font-medium">Banco de questões · {b.ano}º ano</div>
             <div className="mb-1.5 text-xs text-muted-foreground">Conteúdos excluídos</div>
             <div className="flex flex-wrap gap-1.5 text-xs">
               {b.excluidos.length ? b.excluidos.map((e) => <span key={e} className="rounded-full bg-red-100 px-2.5 py-0.5 text-red-800 dark:bg-red-950 dark:text-red-200">{e} ✕</span>) : <span className="text-muted-foreground">nenhum</span>}
             </div>
           </div>
-          <div className="border-b px-5 py-2"><input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por conteúdo (ex.: crase, sujeito)" aria-label="Filtrar questões" className="w-full rounded border bg-background px-2 py-1 text-[13px] outline-none" /></div>
-          <div className="min-h-0 flex-1 overflow-auto px-5 py-1.5 text-[13px]">
+          <div className="border-b px-5 py-2"><input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por conteúdo (ex.: crase, sujeito)" aria-label="Filtrar questões" className="w-full rounded border bg-background px-2 py-1 text-xs outline-none" /></div>
+          <div className="min-h-0 flex-1 overflow-auto px-5 py-1.5 text-xs">
             {b.textos.filter((t) => t.questoes.some((q) => passa(q, t.titulo))).map((t) => (
               <div key={t.n}>
-                <div className="pb-1.5 pt-3"><div className="text-xs text-muted-foreground">Texto {t.n} · {t.genero}</div><div className="font-serif text-[15px] font-semibold">{t.titulo}</div></div>
+                <div className="pb-1.5 pt-3"><div className="text-xs text-muted-foreground">Texto {t.n} · {t.genero}</div><div className="font-serif text-sm font-semibold">{t.titulo}</div></div>
                 <ul>{t.questoes.filter((q) => passa(q, t.titulo)).map((q) => <Q key={q.n} q={q} rot={`${q.categoria} · ${q.formato}`} />)}</ul>
               </div>
             ))}
@@ -139,8 +139,8 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
         </section>
         <ResizeHandle width={wVerif} setWidth={setWVerif} min={220} max={520} side="right" />
         <aside aria-label="Verificação" style={{ width: wVerif }} className="flex shrink-0 flex-col">
-          <div className="flex h-11 shrink-0 items-center border-b px-5 text-[13px] font-medium">Verificação</div>
-          <ul className="px-5 py-2 text-[13px]">
+          <div className="flex h-11 shrink-0 items-center border-b px-5 text-xs font-medium">Verificação</div>
+          <ul className="px-5 py-2 text-xs">
             {v.itens.map((i) => (
               <li key={i.rotulo} className="flex items-baseline gap-2.5 border-b py-2.5">
                 {i.ok ? <Check className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-green-700" /> : <X className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-amber-600" />}
@@ -160,9 +160,9 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
             <label>Linhas por folha<input type="number" value={limite} onChange={(e) => setLimite(Number(e.target.value) || LIMITE_PADRAO)} className="mt-0.5 w-full rounded border bg-background px-2 py-1" /></label>
           </div>
           <label className="mx-5 mt-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={cfg.duasColunas} onChange={(e) => mudarCfg({ ...cfg, duasColunas: e.target.checked })} />prova em duas colunas (DOCX e impressão)</label>
-          <p className="mx-5 mt-1 text-[11px] text-muted-foreground">Cabeçalho da escola e logo: Configurações → Cabeçalho das provas.</p>
+          <p className="mx-5 mt-1 text-xs text-muted-foreground">Cabeçalho da escola e logo: Configurações → Cabeçalho das provas.</p>
           <label className="mx-5 mt-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={fonte} onChange={(e) => setFonte(e.target.checked)} />incluir a fonte dos textos</label>
-          <p className="mx-5 mt-3 text-[11px] text-muted-foreground">Regra do banco: 2 de interpretação e 2 de conteúdo do mesmo texto, mais 6 independentes. A checagem de excluídos e de folha é por palavras e estimativa de linhas.</p>
+          <p className="mx-5 mt-3 text-xs text-muted-foreground">Regra do banco: 2 de interpretação e 2 de conteúdo do mesmo texto, mais 6 independentes. A checagem de excluídos e de folha é por palavras e estimativa de linhas.</p>
           <div className="flex-1" />
           <div className="border-t px-5 py-3.5 text-xs text-muted-foreground">{sel.size} questões selecionadas</div>
         </aside>
@@ -188,7 +188,7 @@ function MenuAcoes({ itens }) {
         <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-64 rounded-md border bg-background p-1 shadow-lg">
           {itens.map((it) => (
             <button key={it.rotulo} role="menuitem" disabled={it.off} title={it.dica} onClick={() => { setAberto(false); it.fn(); }}
-              className="block w-full rounded px-3 py-1.5 text-left text-[13px] hover:bg-accent disabled:opacity-40 disabled:hover:bg-transparent">{it.rotulo}</button>
+              className="block w-full rounded px-3 py-1.5 text-left text-xs hover:bg-accent disabled:opacity-40 disabled:hover:bg-transparent">{it.rotulo}</button>
           ))}
         </div>
       )}

@@ -25,7 +25,7 @@ export function SettingsPage({ overrides, setOverrides, items = [], onRefresh })
         <h1 className="px-2 pb-3 pt-2 text-sm font-semibold">Configurações</h1>
         {SECOES.filter((s) => isTauri || !s.soApp).map((s) => (
           <button key={s.id} onClick={() => setSecao(s.id)}
-            className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-accent", secao === s.id && "bg-accent font-medium")}>
+            className={cn("flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-accent", secao === s.id && "bg-accent font-medium")}>
             <s.icon className="h-4 w-4" strokeWidth={1.6} />{s.label}
           </button>
         ))}
@@ -113,13 +113,13 @@ function Atualizacoes() {
       <p className="mt-1 text-sm text-muted-foreground">Versão instalada: <strong>{versao}</strong>. O app também procura sozinho ao abrir. Seus arquivos do vault não são tocados na atualização.</p>
       <button onClick={procurar} disabled={prog !== null} className="mt-6 rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">Procurar atualização</button>
       {msg && <p className="mt-3 text-sm text-muted-foreground">{msg}</p>}
-      {prog !== null && prog >= 1 && <p className="mt-3 text-sm text-muted-foreground">Instalando… a janela vai fechar por alguns segundos e reabrir na versão nova. Se não reabrir, abra o Margem pelo menu Iniciar: sua nota já está salva.</p>}
+      {prog !== null && prog >= 1 && <p className="mt-3 text-sm text-muted-foreground">Instalando… o Margem vai fechar agora e o instalador roda por alguns segundos. Quando a janelinha do instalador sumir, abra o Margem pelo menu Iniciar se ele não voltar sozinho. Sua nota já foi salva e você volta de onde estava.</p>}
       {achada && (
         <div className="mt-5 rounded-xl border p-4">
           <div className="text-sm font-medium">Versão {achada.version} disponível</div>
           {achada.notes && <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{achada.notes}</pre>}
           <button onClick={instalar} disabled={prog !== null} className="mt-3 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50">
-            {prog === null ? "Baixar e instalar (salva sua nota e o app reabre sozinho)" : `Baixando… ${Math.round(prog * 100)}%`}
+            {prog === null ? "Baixar e instalar (salva sua nota antes)" : `Baixando… ${Math.round(prog * 100)}%`}
           </button>
         </div>
       )}

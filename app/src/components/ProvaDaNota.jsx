@@ -61,7 +61,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4 text-[13px]">
+      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4 text-xs">
         <span className="font-medium">Prova {dados.turma} · {dados.data}</span>
         <span className="text-muted-foreground">banco: <button onClick={() => onOpen(bancoItem.path)} className="text-primary hover:underline">{bancoItem.name}</button></span>
         <div className="flex-1" />
@@ -71,7 +71,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
       </div>
       <div className="flex min-h-0 flex-1">
         <section aria-label="Prévia da prova" className="flex min-w-0 flex-1 justify-center overflow-auto bg-muted p-6">
-          <div className="w-[560px] shrink-0 self-start bg-white p-9 font-serif text-[13px] leading-snug text-[#1F1D1A] shadow" style={{ minHeight: 792 }}>
+          <div className="w-[560px] shrink-0 self-start bg-white p-9 font-serif text-xs leading-snug text-[#1F1D1A] shadow" style={{ minHeight: 792 }}>
             {cfg?.logo && <img src={cfg.logo} alt="" className="mx-auto mb-1 h-12" />}
             {cfg?.escola && <div className="text-center font-semibold">{cfg.escola}</div>}
             {cfg?.linha2 && <div className="mb-2 text-center">{cfg.linha2}</div>}
@@ -88,7 +88,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
             <label>Data<input type="date" value={dados.data} onChange={(e) => mudar("data", e.target.value)} className={campo} /></label>
             <label>Valor<input type="number" value={dados.valor} onChange={(e) => mudar("valor", e.target.value)} className={campo} /></label>
           </div>
-          <ul className="border-t px-5 py-2 text-[13px]">
+          <ul className="border-t px-5 py-2 text-xs">
             {v.itens.map((i) => (
               <li key={i.rotulo} className="flex items-baseline gap-2.5 border-b py-2.5">
                 {i.ok ? <Check className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-green-700" /> : <X className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-amber-600" />}
@@ -97,7 +97,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
             ))}
           </ul>
           <label className="mx-5 mt-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={fonte} onChange={(e) => setFonte(e.target.checked)} />incluir a fonte dos textos</label>
-          <p className="mx-5 mt-3 text-[11px] text-muted-foreground">As questões vêm da lista <code>questoes</code> do frontmatter, lidas no banco citado. Para trocar questões, monte a prova de novo em “Montar prova”.</p>
+          <p className="mx-5 mt-3 text-xs text-muted-foreground">As questões vêm da lista <code>questoes</code> do frontmatter, lidas no banco citado. Para trocar questões, monte a prova de novo em “Montar prova”.</p>
           <div className="mt-auto border-t px-5 py-3.5 text-xs text-muted-foreground">{sel.size} questões</div>
         </aside>
       </div>

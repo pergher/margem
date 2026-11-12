@@ -47,7 +47,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
       <div className="mb-4 flex items-baseline gap-3">
         <h1 className="text-xl font-semibold">Planejamento {anoLetivo}</h1>
         <span className="text-xs text-muted-foreground">{ciclos.length} ciclos · posição por trimestre, sem datas; o andamento vem das aulas ✓ nas notas de semana</span>
-        <div className="flex-1" /><button onClick={() => setPlan(true)} className="rounded-md border px-3 py-1 text-[13px] hover:bg-accent">+ Planejar ciclo</button>
+        <div className="flex-1" /><button onClick={() => setPlan(true)} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">+ Planejar ciclo</button>
       </div>
 
       <div className="grid gap-x-3" style={{ gridTemplateColumns: "100px repeat(3, minmax(0, 1fr))" }}>
@@ -61,13 +61,13 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
                 {ciclos.filter((c) => c.ano === ano && c.tri === t).map((c) => (
                   <button key={c.path} onClick={() => onCiclo(c)} title={c.name}
                     className="rounded-lg bg-muted p-2.5 text-left transition-colors hover:bg-accent">
-                    <div className="text-[13px] font-medium leading-tight">{c.titulo}</div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    <div className="text-xs font-medium leading-tight">{c.titulo}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">
                       {c.aulas.length ? `${c.aulas.length} aulas` : "sem tabela de aulas"}{c.habilidades.length ? ` · ${c.habilidades.join(", ")}` : " · sem habilidade"}
                     </div>
                     <Barra aulas={c.aulas} />
                     {situacao(progresso(c)) && (
-                      <div className="mt-2 text-[11px]">
+                      <div className="mt-2 text-xs">
                         <span className={"rounded-full px-2 py-0.5 text-white " + (situacao(progresso(c)) === "Concluído" ? "bg-emerald-700" : "bg-primary")}>{situacao(progresso(c))}</span>
                         <span className="ml-2 text-muted-foreground">{progresso(c).map((x) => `turma ${x.turma}: ${x.dadas} de ${x.total}`).join(" · ")}</span>
                       </div>

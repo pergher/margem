@@ -22,13 +22,13 @@ export function EntryDialog({ title, message, initial = "", input, okLabel = "OK
         className="w-[min(440px,92vw)] overflow-hidden rounded-xl border bg-background shadow-2xl">
         <div className="flex items-center gap-2.5 border-b px-4 py-3">
           {Icon && <Icon className={cn("h-4 w-4 shrink-0", danger ? "text-red-600" : "text-muted-foreground")} strokeWidth={1.8} />}
-          <h2 className="flex-1 text-[15px] font-medium">{title}</h2>
-          <kbd className="rounded border px-1.5 text-[11px] text-muted-foreground">Esc</kbd>
+          <h2 className="flex-1 text-sm font-medium">{title}</h2>
+          <kbd className="rounded border px-1.5 text-xs text-muted-foreground">Esc</kbd>
         </div>
         <div className="px-4 py-4">
           {message && <p className="text-sm leading-relaxed text-muted-foreground">{message}</p>}
           {input && <input ref={ref} value={v} onChange={(e) => { setV(e.target.value); setErr(""); }} placeholder="Nome"
-            className="h-10 w-full rounded-lg border bg-background px-3 text-[15px] outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20" />}
+            className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20" />}
           {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
         </div>
         <div className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">

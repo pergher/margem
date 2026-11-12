@@ -28,8 +28,8 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange }) {
   const [erro, setErro] = useState("");
   const aplicar = (acao, ajuste) => salvarAulas(c, acao).then(async (x) => { if (ajuste) await ajustarSemanasAoCiclo(items, c.name, ajuste); setErro(""); setNovo(null); onChange(x); }).catch((e) => setErro(String(e.message ?? e)));
   const linhaNova = (
-    <div className="flex items-center gap-2 border-b bg-primary/5 px-2.5 py-1.5 text-[13px]">
-      <span className="w-[34px] text-muted-foreground">{novo?.pos}</span>
+    <div className="flex items-center gap-2 border-b bg-primary/5 px-2.5 py-1.5 text-xs">
+      <span className="w-[2.125rem] text-muted-foreground">{novo?.pos}</span>
       <input autoFocus value={novo?.texto ?? ""} onChange={(e) => setNovo({ ...novo, texto: e.target.value })} placeholder="Conteúdo da nova aula (ex.: **Exercícios**. Livro p. 210)"
         onKeyDown={(e) => { if (e.key === "Enter" && novo.texto.trim()) aplicar((t) => inserirAula(t, novo.pos, novo.texto.trim()), { inserirEm: novo.pos }); if (e.key === "Escape") setNovo(null); }}
         className="min-w-0 flex-1 rounded-md border bg-background px-2 py-1" />
@@ -59,7 +59,7 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange }) {
         )) : <div className="mb-2 rounded-md border border-dashed px-2 py-1 text-xs text-muted-foreground">sem habilidade — a vincular</div>}
 
         <div className="mt-5 text-xs font-semibold text-muted-foreground">Etapas</div>
-        <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+        <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
           {contagem.map(({ f, n }) => <span key={f.id} className="rounded-full border px-2 py-0.5"><span aria-hidden className="mr-1 inline-block h-2 w-2" style={{ background: f.cor }} />{f.nome} · {n}</span>)}
         </div>
 
@@ -69,20 +69,20 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange }) {
 
       <section aria-label="Sequência do ciclo" className="flex min-w-0 flex-1 flex-col">
         <div className="shrink-0 px-6 pb-3 pt-4">
-          <div className="mb-2 flex items-center gap-3 text-[13px] font-medium">Sequência do ciclo <span className="font-normal text-muted-foreground">· {c.aulas.length} aulas</span>
+          <div className="mb-2 flex items-center gap-3 text-xs font-medium">Sequência do ciclo <span className="font-normal text-muted-foreground">· {c.aulas.length} aulas</span>
             <button onClick={() => setNovo({ pos: c.aulas.length + 1, texto: "" })} className="rounded-md border px-2 py-0.5 text-xs font-normal hover:bg-accent">+ Aula</button>
             {erro && <span className="text-xs font-normal text-destructive">{erro}</span>}
           </div>
           <div className="flex h-1.5 max-w-xl gap-0.5">{c.aulas.map((a) => <span key={a.n} style={{ flex: 1, background: fase[a.fase].cor }} />)}</div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto px-6 pb-6">
-          <div className="grid gap-x-2.5 border-b px-2.5 py-1.5 text-[11px] text-muted-foreground" style={{ gridTemplateColumns: "34px 148px 1fr 1fr 64px" }}>
+          <div className="grid gap-x-2.5 border-b px-2.5 py-1.5 text-xs text-muted-foreground" style={{ gridTemplateColumns: "34px 148px 1fr 1fr 64px" }}>
             <span>#</span><span>Etapa</span><span>Conteúdo</span><span>Recurso</span><span />
           </div>
           {c.aulas.map((a) => (
             <div key={a.n}>
             {novo?.pos === a.n && linhaNova}
-            <div className="group grid items-start gap-x-2.5 border-b px-2.5 py-1.5 text-[13px]" style={{ gridTemplateColumns: "34px 148px 1fr 1fr 64px" }}>
+            <div className="group grid items-start gap-x-2.5 border-b px-2.5 py-1.5 text-xs" style={{ gridTemplateColumns: "34px 148px 1fr 1fr 64px" }}>
               <span className="text-muted-foreground">{a.n}</span>
               <span><span className="rounded-md px-2 py-0.5 text-xs text-white" style={{ background: fase[a.fase].cor }}>{fase[a.fase].nome}</span></span>
               <span>{resumo(a.texto)}</span>

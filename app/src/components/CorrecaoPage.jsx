@@ -3,19 +3,35 @@ import { invoke } from "@/lib/api";
 import { ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Search, Star } from "lucide-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
-import { listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, fmt, num, gravarNota, aprovarTranscricao } from "@/lib/correcao";
+import { ERRO, listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, fmt, num, gravarNota, aprovarTranscricao } from "@/lib/correcao";
 
-// Marcas da transcrição e negrito/itálico simples.
-function Inline({ s }) {
-  return s.split(/(~~[^~]+~~|\^[^^]+\^|\[[^\]]*\?\]|\[ilegível\]|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean).map((p, i) => {
+// Marcas da transcrição, erros do aluno e negrito/itálico simples.
+// `ver` (só na transcrição) liga os erros: { orto, pont, corr } — sem ele as chaves ficam como texto.
+function Inline({ s, ver }) {
+  const partes = s.split(/(\{[^{}]*\}|~~[^~]+~~|\^[^^]+\^|\[[^\]]*\?\]|\[ilegível\]|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
+  return partes.map((p, i) => {
+    const e = ver && p.startsWith("{") ? ERRO.exec(p) : null;
+    if (e) {
+      const pont = !!e[1], antes = e[2], certo = e[3];
+      if (pont ? !ver.pont : !ver.orto) return <span key={i}>{antes}</span>;
+      const dica = (pont ? "Pontuação" : "Ortografia") + (certo != null ? (certo ? ` → ${certo}` : " → remover") : "");
+      const corr = ver.corr && certo ? <span className="ml-0.5 rounded bg-green-100 px-1 text-xs text-green-800 dark:bg-green-950 dark:text-green-200">{certo}</span> : null;
+      if (!pont) return <span key={i} title={dica} className="underline decoration-red-500 decoration-wavy decoration-2 underline-offset-4">{antes}{corr}</span>;
+      if (!antes) return <span key={i} title={dica} className="mx-px rounded bg-sky-200 px-1 text-sky-900 dark:bg-sky-900 dark:text-sky-100">{certo ? (ver.corr ? certo : "▲") : "▲"}</span>;
+      return <span key={i} title={dica} className="rounded bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-100">{antes}{corr}</span>;
+    }
     if (p.startsWith("~~")) return <s key={i} className="text-muted-foreground">{p.slice(2, -2)}</s>;
-    if (p.startsWith("^")) return <sup key={i} className="rounded bg-primary/15 px-1 text-[13px] text-primary">{p.slice(1, -1)}</sup>;
+    if (p.startsWith("^")) return <sup key={i} className="rounded bg-primary/15 px-1 text-xs text-primary">{p.slice(1, -1)}</sup>;
     if (p === "[ilegível]") return <span key={i} className="rounded bg-red-100 px-1.5 text-red-800 dark:bg-red-950 dark:text-red-200">{p}</span>;
     if (/^\[.*\?\]$/.test(p)) return <span key={i} className="rounded bg-amber-100 px-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-200">{p}</span>;
     if (p.startsWith("**")) return <strong key={i}>{p.slice(2, -2)}</strong>;
     if (p.startsWith("*")) return <em key={i}>{p.slice(1, -1)}</em>;
     return <span key={i}>{p}</span>;
   });
+}
+
+function Chip({ on, onClick, cls, children }) {
+  return <button onClick={onClick} aria-pressed={on} className={"rounded-full border px-2.5 py-0.5 " + (on ? "border-primary/50 bg-primary/5 " : "text-muted-foreground opacity-60 ")}><span className={on ? cls : ""}>{children}</span></button>;
 }
 
 function Foto({ nome, zoom, rot, lupa }) {
@@ -72,6 +88,7 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
   const [nomes, setNomes] = useState(false);
   const [vista, setVista] = useState("aluno");
   const [ordem, setOrdem] = useState("original");
+  const [ver, setVer] = useState({ orto: true, pont: true, corr: false });
   const [zoom, setZoom] = useState(1), [rot, setRot] = useState(0);
   const [aviso, setAviso] = useState("");
   const [lupa, setLupa] = useState(true);
@@ -101,7 +118,7 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4 text-[13px]">
+      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4 text-xs">
         <select value={lote} onChange={(e) => setLote(e.target.value)} className="rounded-md border bg-background px-2 py-1">
           {lotes.map((l) => <option key={l.path} value={l.path}>{l.pasta}</option>)}
         </select>
@@ -130,7 +147,7 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
           </div>
           <div className="px-4 pb-2"><select value={ordem} onChange={(e) => setOrdem(e.target.value)} aria-label="Ordenar" className="w-full rounded border bg-background px-1 py-0.5 text-xs">
             <option value="original">ordem da lista</option><option value="nota-">maior nota</option><option value="nota+">menor nota</option><option value="pendencia">mais marcas</option></select></div>
-          <ul className="px-2 text-[13px]">
+          <ul className="px-2 text-xs">
             {lista.map(({ x, i }) => (
               <li key={x.n}>
                 <button onClick={() => setSel(i)} className={"flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-accent " + (i === sel ? "bg-accent font-medium" : "")}>
@@ -141,12 +158,12 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
               </li>
             ))}
           </ul>
-          <p className="px-4 py-3 text-[11px] text-muted-foreground">Nomes ocultos por padrão.</p>
+          <p className="px-4 py-3 text-xs text-muted-foreground">Nomes ocultos por padrão.</p>
         </aside>
         <ResizeHandle width={wLista} setWidth={setWLista} min={150} max={360} side="left" />
 
         <section aria-label="Foto do manuscrito" style={{ width: wFoto }} className="shrink-0 overflow-auto bg-muted p-4">
-          <div className="mb-2 flex items-center gap-1 text-[13px] font-medium"><span className="flex-1 truncate">{a.foto ?? "Foto"}</span>
+          <div className="mb-2 flex items-center gap-1 text-xs font-medium"><span className="flex-1 truncate">{a.foto ?? "Foto"}</span>
             <button aria-label="Lupa" title="Lupa ao passar o mouse (foto sem girar)" onClick={() => setLupa(!lupa)} className={lupa ? "text-primary" : "text-muted-foreground"}><Search className="h-4 w-4" /></button>
             <button aria-label="Diminuir foto" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}><ZoomOut className="h-4 w-4" /></button>
             <button aria-label="Aumentar foto" onClick={() => setZoom((z) => Math.min(3, z + 0.25))}><ZoomIn className="h-4 w-4" /></button>
@@ -163,28 +180,35 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
             <span><s>riscado</s></span>
             <span><sup className="rounded bg-primary/15 px-1 text-primary">acrescentado</sup></span>
           </div>
-          <div className="font-serif text-[17px] leading-[1.75]">
-            <p className="mb-4 font-semibold"><Inline s={titulo} /></p>
-            {par.map((p, i) => <p key={i} className="mb-4"><Inline s={p} /></p>)}
+          <div className="mb-5 flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground">Erros do aluno:</span>
+            <Chip on={ver.orto} onClick={() => setVer({ ...ver, orto: !ver.orto })} cls="decoration-red-500 underline decoration-wavy underline-offset-4">Ortografia · {a.erros.orto}</Chip>
+            <Chip on={ver.pont} onClick={() => setVer({ ...ver, pont: !ver.pont })} cls="bg-sky-100 text-sky-900">Pontuação · {a.erros.pont}</Chip>
+            <Chip on={ver.corr} onClick={() => setVer({ ...ver, corr: !ver.corr })} cls="">Mostrar correção</Chip>
+            {!a.erros.orto && !a.erros.pont && <span className="text-muted-foreground">nenhum marcado. Use <code>{"{errado|certo}"}</code> e <code>{"{p:|,}"}</code> na transcrição.</span>}
+          </div>
+          <div className="font-serif text-base leading-[1.75]">
+            <p className="mb-4 font-semibold"><Inline s={titulo} ver={ver} /></p>
+            {par.map((p, i) => <p key={i} className="mb-4"><Inline s={p} ver={ver} /></p>)}
           </div>
         </section>
 
         <ResizeHandle width={wAval} setWidth={setWAval} min={300} max={640} side="right" />
         <section aria-label="Avaliação" style={{ width: wAval }} className="flex shrink-0 flex-col">
-          <div className="flex h-11 shrink-0 items-center gap-2 border-b px-5 text-[13px] font-medium"><span className="flex-1">Avaliação</span>
+          <div className="flex h-11 shrink-0 items-center gap-2 border-b px-5 text-xs font-medium"><span className="flex-1">Avaliação</span>
             <button onClick={() => copiar(devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">copiar devolutiva</button>
             <button onClick={() => baixar(nomeArq(a), devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">baixar</button></div>
           <ul className="min-h-0 flex-1 overflow-auto px-5">
             {a.criterios.map((c) => (
               <li key={c.nome} className="border-b py-2.5">
-                <div className="flex items-center gap-2 text-[14px]"><span className="flex-1 font-semibold">{c.nome}</span>
+                <div className="flex items-center gap-2 text-sm"><span className="flex-1 font-semibold">{c.nome}</span>
                   <Rating nome={c.nome} valor={num(c.nota)} opcoes={opcoesDe(d, c.nome)} onChange={(v) => mudarNota(c, v)} /></div>
                 <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground"><Inline s={c.comentario} /></div>
               </li>
             ))}
           </ul>
           <div className="shrink-0 border-t bg-muted p-4">
-            <div className="flex items-baseline justify-between"><span className="text-[15px] font-semibold">Nota final</span><span className="font-serif text-2xl font-semibold">{fmt(a.total)} <span className="text-sm font-normal text-muted-foreground">de {fmt(est.maximo)}</span></span></div>
+            <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">Nota final</span><span className="font-serif text-2xl font-semibold">{fmt(a.total)} <span className="text-sm font-normal text-muted-foreground">de {fmt(est.maximo)}</span></span></div>
             {est.divergentes.includes(a.n) && <div className="mt-1 text-xs text-amber-700">A “Nota final” do arquivo ({a.final}) difere da soma dos critérios.</div>}
           </div>
         </section>
@@ -197,21 +221,21 @@ function Turma({ d, est, rotulo, nomes, setNomes, onAluno, onTodas }) {
   const maxF = Math.max(1, ...est.faixas.map((f) => f.n));
   return (
     <div className="min-h-0 flex-1 overflow-auto p-8">
-      <div className="mb-1 flex items-baseline gap-3"><h1 className="font-serif text-3xl font-semibold">Visão da turma {d.turma}</h1><span className="text-[13px] text-muted-foreground">{d.atividade} · {d.mes}</span>
+      <div className="mb-1 flex items-baseline gap-3"><h1 className="font-serif text-3xl font-semibold">Visão da turma {d.turma}</h1><span className="text-xs text-muted-foreground">{d.atividade} · {d.mes}</span>
         <div className="flex-1" /><button onClick={() => setNomes(!nomes)} className="text-xs text-muted-foreground hover:text-foreground">{nomes ? "ocultar nomes" : "mostrar nomes"}</button>
-        <button onClick={onTodas} className="rounded-md border px-3 py-1 text-[13px] hover:bg-accent">Baixar todas as devolutivas</button></div>
+        <button onClick={onTodas} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Baixar todas as devolutivas</button></div>
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
         {[["Média", fmt(est.media)], ["Mediana", fmt(est.mediana)], ["Menor / maior", `${fmt(est.min)} / ${fmt(est.max)}`], [`Abaixo de ${fmt(d.media)}`, `${est.abaixo} de ${d.alunos.length}`], ["Pendências", est.marcas ? `${est.pendentes} produções (${est.marcas} marcas)` : "nenhuma"]].map(([k, v]) => (
           <div key={k} className="rounded-xl bg-muted p-4"><div className="text-xs text-muted-foreground">{k}</div><div className="font-serif text-2xl font-semibold">{v}</div></div>))}
       </div>
       <div className="grid gap-6 lg:grid-cols-2">
-        <div><div className="mb-2 text-[13px] font-semibold">Distribuição das notas (máximo {fmt(est.maximo)})</div>
-          {est.faixas.map((f) => <div key={f.de} className="mb-1.5 flex items-center gap-2 text-[13px]"><span className="w-20 text-muted-foreground">{fmt(f.de)} a {fmt(f.ate)}</span><span className="h-4 rounded bg-primary/70" style={{ width: `${(f.n / maxF) * 60}%`, minWidth: f.n ? 6 : 0 }} /><span>{f.n}</span></div>)}</div>
-        <div><div className="mb-2 text-[13px] font-semibold">Média por critério (cada um com seu máximo)</div>
-          {est.porCriterio.map((c) => <div key={c.nome} className="mb-1.5 flex items-center gap-2 text-[13px]"><span className="w-48 truncate" title={c.nome}>{c.nome}</span><span className="h-3 rounded bg-primary/70" style={{ width: `${((c.media ?? 0) / (c.max || 1)) * 40}%`, minWidth: 4 }} /><span className="text-muted-foreground">{fmt(c.media)} / {fmt(c.max)}</span></div>)}</div>
+        <div><div className="mb-2 text-xs font-semibold">Distribuição das notas (máximo {fmt(est.maximo)})</div>
+          {est.faixas.map((f) => <div key={f.de} className="mb-1.5 flex items-center gap-2 text-xs"><span className="w-20 text-muted-foreground">{fmt(f.de)} a {fmt(f.ate)}</span><span className="h-4 rounded bg-primary/70" style={{ width: `${(f.n / maxF) * 60}%`, minWidth: f.n ? 6 : 0 }} /><span>{f.n}</span></div>)}</div>
+        <div><div className="mb-2 text-xs font-semibold">Média por critério (cada um com seu máximo)</div>
+          {est.porCriterio.map((c) => <div key={c.nome} className="mb-1.5 flex items-center gap-2 text-xs"><span className="w-48 truncate" title={c.nome}>{c.nome}</span><span className="h-3 rounded bg-primary/70" style={{ width: `${((c.media ?? 0) / (c.max || 1)) * 40}%`, minWidth: 4 }} /><span className="text-muted-foreground">{fmt(c.media)} / {fmt(c.max)}</span></div>)}</div>
       </div>
-      <div className="mt-6"><div className="mb-2 text-[13px] font-semibold">Alunos</div>
-        <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">{d.alunos.map((x, i) => <button key={x.n} onClick={() => onAluno(i)} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-[13px] hover:bg-accent"><span>{rotulo(x)}</span><span className={x.total != null && x.total < d.media ? "text-red-700" : ""}>{fmt(x.total)}{x.marcas ? ` · ${x.marcas}?` : ""}</span></button>)}</div></div>
+      <div className="mt-6"><div className="mb-2 text-xs font-semibold">Alunos</div>
+        <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">{d.alunos.map((x, i) => <button key={x.n} onClick={() => onAluno(i)} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-xs hover:bg-accent"><span>{rotulo(x)}</span><span className={x.total != null && x.total < d.media ? "text-red-700" : ""}>{fmt(x.total)}{x.marcas ? ` · ${x.marcas}?` : ""}</span></button>)}</div></div>
       {est.divergentes.length > 0 && <div className="mt-4 text-xs text-amber-700">{est.divergentes.length} produção(ões) com “Nota final” diferente da soma dos critérios.</div>}
     </div>
   );

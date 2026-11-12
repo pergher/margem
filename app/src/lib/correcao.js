@@ -4,6 +4,18 @@ import { setProp } from "@/lib/frontmatter";
 
 export const MARCAS = /\[[^\]]*\?\]|\[ilegível\]/g;
 
+/**
+ * Erros do aluno marcados na transcrição (a transcrição guarda o que o aluno escreveu; quem marca é o professor/Claude):
+ *   {errado|certo}      ortografia (a correção é opcional: {errado})
+ *   {p:antes|depois}    pontuação: {p:|,} falta a vírgula; {p:,|} vírgula a mais; {p:e|, e} troca
+ */
+export const ERRO = /\{(p:)?([^{}|]*)(?:\|([^{}]*))?\}/;
+export function contarErros(texto) {
+  let orto = 0, pont = 0;
+  for (const m of texto.matchAll(new RegExp(ERRO.source, "g"))) { if (m[1]) pont++; else orto++; }
+  return { orto, pont };
+}
+
 export function parseCorrecao(text, dados = null) {
   const fm = /^---\n([\s\S]*?)\n---\n?/.exec(text)?.[1] ?? "";
   const prop = (k) => new RegExp(`^${k}:\\s*(.*)$`, "m").exec(fm)?.[1]?.trim() ?? "";
@@ -24,7 +36,7 @@ export function parseCorrecao(text, dados = null) {
       criterios.push({ nome: c[0], nota: c[1], comentario: c[2] ?? "" });
     }
     const total = somar(criterios);
-    return { n: i + 1, nome, foto, texto, criterios, final, total, marcas: (texto.match(MARCAS) ?? []).length };
+    return { n: i + 1, nome, foto, texto, criterios, final, total, marcas: (texto.match(MARCAS) ?? []).length, erros: contarErros(texto) };
   });
   const { pesos, niveis, gradacao } = pesosDe(dados);
   return { pesos, niveis, gradacao, transcricao: prop("transcricao"), media: Number(/Média:\s*(\d+(?:[.,]\d+)?)/.exec(legenda)?.[1]?.replace(",", ".")) || 6, maxCriterio: maximoCriterio(legenda), turma: prop("turma"), mes: prop("mês") || prop("mes"), atividade: prop("atividade"), status: prop("status"), legenda: legenda.trim(), alunos };
