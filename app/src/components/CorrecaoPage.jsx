@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@/lib/api";
-import { ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Search, Star } from "lucide-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, fmt, num, gravarNota, aprovarTranscricao } from "@/lib/correcao";
@@ -21,6 +21,13 @@ function Inline({ s }) {
 function Foto({ nome, zoom, rot, lupa }) {
   const [src, setSrc] = useState(null);
   const [mira, setMira] = useState(null); // posição do mouse na imagem (0–1)
+  const [aberta, setAberta] = useState(false);
+  useEffect(() => {
+    if (!aberta) return;
+    const esc = (e) => { if (e.key === "Escape") { e.preventDefault(); setAberta(false); } };
+    window.addEventListener("keydown", esc);
+    return () => window.removeEventListener("keydown", esc);
+  }, [aberta]);
   useEffect(() => {
     setSrc(null);
     if (nome) invoke("read_embed", { target: nome }).then((r) => setSrc(r?.kind === "image" ? r.data : null)).catch(() => setSrc(null));
@@ -29,15 +36,21 @@ function Foto({ nome, zoom, rot, lupa }) {
   if (!src) return <div className="p-4 text-xs text-muted-foreground">{nome}: imagem não encontrada.</div>;
   const ativa = lupa && rot === 0;
   const mover = (e) => { const r = e.currentTarget.getBoundingClientRect(); setMira({ w: r.width, h: r.height, px: e.clientX - r.left, py: e.clientY - r.top }); };
-  const L = 180, Z = 3; // diâmetro da lupa e aumento
+  const L = 360, Z = 3; // diâmetro da lupa e aumento
   return (
     <div className="relative" style={{ width: `${zoom * 100}%`, maxWidth: "none", margin: rot % 180 ? `${zoom * 20}% 0` : 0, cursor: ativa ? "none" : undefined }}
-      onMouseMove={ativa ? mover : undefined} onMouseLeave={() => setMira(null)}>
+      onMouseMove={ativa ? mover : undefined} onMouseLeave={() => setMira(null)} onClick={() => setAberta(true)} title="Clique para ampliar">
       <img src={src} alt={nome} style={{ width: "100%", transform: `rotate(${rot}deg)` }} className="block rounded bg-white shadow" draggable={false} />
       {ativa && mira && (
         <div aria-hidden className="pointer-events-none absolute rounded-full border-2 border-primary shadow-xl"
           style={{ width: L, height: L, left: mira.px - L / 2, top: mira.py - L / 2, backgroundImage: `url(${src})`, backgroundRepeat: "no-repeat",
             backgroundSize: `${mira.w * Z}px ${mira.h * Z}px`, backgroundPosition: `${L / 2 - mira.px * Z}px ${L / 2 - mira.py * Z}px` }} />
+      )}
+      {aberta && (
+        <div role="dialog" aria-label={`Foto ${nome} ampliada`} onClick={(e) => { e.stopPropagation(); setAberta(false); }} className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/80 p-4">
+          <img src={src} alt={nome} className="max-h-full max-w-full rounded bg-white object-contain shadow-2xl" />
+          <span className="absolute right-4 top-3 text-xs text-white/70">Esc ou clique para fechar</span>
+        </div>
       )}
     </div>
   );
@@ -164,10 +177,8 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
           <ul className="min-h-0 flex-1 overflow-auto px-5">
             {a.criterios.map((c) => (
               <li key={c.nome} className="border-b py-2.5">
-                <div className="flex items-baseline gap-2 text-[13px]"><span className="flex-1 font-medium">{c.nome}</span>
-                  <select aria-label={`Nota de ${c.nome}`} value={String(num(c.nota))} onChange={(e) => mudarNota(c, Number(e.target.value))} className="rounded border bg-background px-1 py-0.5 text-[13px]">
-                    {num(c.nota) != null && !opcoesDe(d, c.nome).includes(num(c.nota)) && <option value={String(num(c.nota))}>{c.nota}</option>}
-                    {opcoesDe(d, c.nome).map((o) => <option key={o} value={String(o)}>{fmt(o)}</option>)}</select></div>
+                <div className="flex items-center gap-2 text-[14px]"><span className="flex-1 font-semibold">{c.nome}</span>
+                  <Rating nome={c.nome} valor={num(c.nota)} opcoes={opcoesDe(d, c.nome)} onChange={(v) => mudarNota(c, v)} /></div>
                 <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground"><Inline s={c.comentario} /></div>
               </li>
             ))}
@@ -203,5 +214,24 @@ function Turma({ d, est, rotulo, nomes, setNomes, onAluno, onTodas }) {
         <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">{d.alunos.map((x, i) => <button key={x.n} onClick={() => onAluno(i)} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-[13px] hover:bg-accent"><span>{rotulo(x)}</span><span className={x.total != null && x.total < d.media ? "text-red-700" : ""}>{fmt(x.total)}{x.marcas ? ` · ${x.marcas}?` : ""}</span></button>)}</div></div>
       {est.divergentes.length > 0 && <div className="mt-4 text-xs text-amber-700">{est.divergentes.length} produção(ões) com “Nota final” diferente da soma dos critérios.</div>}
     </div>
+  );
+}
+
+/** Nota por critério em forma de rating: estrelas pintadas até a nota; clicar na última pintada zera. */
+function Rating({ nome, valor, opcoes, onChange }) {
+  const min = opcoes[0] ?? 0, niveis = opcoes.filter((o) => o > min);
+  return (
+    <span role="radiogroup" aria-label={`Nota de ${nome}`} className="flex items-center gap-1">
+      {niveis.map((o) => {
+        const cheia = valor != null && o <= valor;
+        return (
+          <button key={o} role="radio" aria-checked={valor === o} title={fmt(o)} onClick={() => onChange(valor === o ? min : o)}
+            className={"rounded p-0.5 " + (cheia ? "text-amber-500" : "text-muted-foreground/40 hover:text-amber-400")}>
+            <Star className="h-5 w-5" fill={cheia ? "currentColor" : "none"} strokeWidth={1.5} />
+          </button>
+        );
+      })}
+      <span className="ml-1 w-9 text-right font-medium tabular-nums">{fmt(valor)}</span>
+    </span>
   );
 }

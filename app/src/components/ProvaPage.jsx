@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Check, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, X } from "lucide-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { AtividadeDialog } from "@/components/AtividadeDialog";
@@ -79,14 +79,16 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
         <span className="truncate text-muted-foreground">{b.titulo}</span>
         <div className="flex-1" />
         {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
-        <button onClick={() => onOpen(b.path)} className="rounded-md border px-3 py-1 hover:bg-accent">Abrir como nota</button>
-        <button onClick={() => setAtiv(true)} className="rounded-md border px-3 py-1 hover:bg-accent" title="Monta o pedido para o Claude e insere as questões no banco">Atividade de um texto</button>
-        <button onClick={() => setSel(sugerir(b))} className="rounded-md border px-3 py-1 hover:bg-accent" title="Escolhe 2 de interpretação, 2 de conteúdo e 6 independentes, sem conteúdos excluídos">Sugerir</button>
-        <button onClick={() => setSel(new Set())} disabled={!sel.size} className="rounded-md border px-3 py-1 hover:bg-accent disabled:opacity-40">Limpar</button>
-        <button onClick={copiar} disabled={!sel.size} className="rounded-md border px-3 py-1 hover:bg-accent disabled:opacity-40">Copiar</button>
-        <button onClick={async () => baixar(nomeArq("Prova"), await docxBlob(ps(), opcExport()))} disabled={!sel.size} className="rounded-md border px-3 py-1 hover:bg-accent disabled:opacity-40">DOCX</button>
-        <button onClick={() => imprimir(ps(), "Prova", opcExport())} disabled={!sel.size} className="rounded-md border px-3 py-1 hover:bg-accent disabled:opacity-40">PDF / imprimir</button>
-        <button onClick={async () => baixar(nomeArq("Gabarito"), await docxBlob(gabarito(b, sel)))} disabled={!sel.size} className="rounded-md border px-3 py-1 hover:bg-accent disabled:opacity-40">Gabarito</button>
+        <MenuAcoes itens={[
+          { rotulo: "Abrir banco como nota", fn: () => onOpen(b.path) },
+          { rotulo: "Atividade de um texto", fn: () => setAtiv(true), dica: "Monta o pedido para o Claude e insere as questões no banco" },
+          { rotulo: "Sugerir questões", fn: () => setSel(sugerir(b)), dica: "2 de interpretação, 2 de conteúdo e 6 independentes, sem conteúdos excluídos" },
+          { rotulo: "Limpar seleção", fn: () => setSel(new Set()), off: !sel.size },
+          { rotulo: "Copiar (Markdown)", fn: copiar, off: !sel.size },
+          { rotulo: "Baixar DOCX", fn: async () => baixar(nomeArq("Prova"), await docxBlob(ps(), opcExport())), off: !sel.size },
+          { rotulo: "PDF / imprimir", fn: () => imprimir(ps(), "Prova", opcExport()), off: !sel.size },
+          { rotulo: "Baixar gabarito", fn: async () => baixar(nomeArq("Gabarito"), await docxBlob(gabarito(b, sel))), off: !sel.size },
+        ]} />
         <button onClick={gravar} disabled={!sel.size} className="rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground disabled:opacity-40">Salvar como nota</button>
       </div>
 
@@ -114,9 +116,13 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
         <ResizeHandle width={wBanco} setWidth={setWBanco} min={300} max={720} side="left" />
         <section aria-label="Prévia da prova" className="flex min-w-0 flex-1 justify-center overflow-auto bg-muted p-6">
           <div className="w-[560px] shrink-0 self-start bg-white p-9 font-serif text-[#1F1D1A] shadow" style={{ minHeight: 792 }}>
+            {cfg.logo && <img src={cfg.logo} alt="" className="mx-auto mb-1 h-12" />}
+            {cfg.escola && <div className="text-center text-[11px] font-semibold">{cfg.escola}</div>}
+            {cfg.linha2 && <div className="mb-1 text-center text-[10px]">{cfg.linha2}</div>}
             <div className="mb-2 flex items-baseline justify-between border-b border-[#1F1D1A] pb-1.5"><div className="text-[13px] font-semibold">Prova de Língua Portuguesa · {b.ano}º ano</div><div className="font-sans text-[9px] text-neutral-500">1 folha</div></div>
             <div className="mb-3 flex gap-4 font-sans text-[9px] text-neutral-600"><span className="flex-1 border-b border-neutral-400">Nome:</span><span className="w-16 border-b border-neutral-400">Turma:</span><span className="w-16 border-b border-neutral-400">Data:</span></div>
             {!sel.size && <p className="font-sans text-xs text-neutral-500">Marque questões no banco para montar a prova.</p>}
+            <div style={cfg.duasColunas ? { columnCount: 2, columnGap: 20, columnRule: "1px solid #d4d4d4" } : undefined}>
             {v.textosUsados.map((t) => (
               <div key={t.n}>
                 <div className="mb-2 rounded bg-[#F6F4F0] p-2.5">
@@ -128,6 +134,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
             ))}
             {b.independentes.some((q) => sel.has(q.n)) && <div className="mb-1.5 mt-2 border-t pt-1 font-sans text-[8.5px] text-neutral-500">Questões independentes</div>}
             {b.independentes.filter((q) => sel.has(q.n)).map((q) => <Folha key={q.n} q={q} n={++num} />)}
+            </div>
           </div>
         </section>
         <ResizeHandle width={wVerif} setWidth={setWVerif} min={220} max={520} side="right" />
@@ -160,6 +167,31 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
           <div className="border-t px-5 py-3.5 text-xs text-muted-foreground">{sel.size} questões selecionadas</div>
         </aside>
       </div>
+    </div>
+  );
+}
+
+function MenuAcoes({ itens }) {
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!aberto) return;
+    const fora = (e) => { if (!ref.current?.contains(e.target)) setAberto(false); };
+    const esc = (e) => { if (e.key === "Escape") setAberto(false); };
+    document.addEventListener("mousedown", fora); document.addEventListener("keydown", esc);
+    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc); };
+  }, [aberto]);
+  return (
+    <div ref={ref} className="relative">
+      <button onClick={() => setAberto(!aberto)} aria-haspopup="menu" aria-expanded={aberto} className="flex items-center gap-1 rounded-md border px-3 py-1 hover:bg-accent">Ações<ChevronDown className="h-3.5 w-3.5" /></button>
+      {aberto && (
+        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-64 rounded-md border bg-background p-1 shadow-lg">
+          {itens.map((it) => (
+            <button key={it.rotulo} role="menuitem" disabled={it.off} title={it.dica} onClick={() => { setAberto(false); it.fn(); }}
+              className="block w-full rounded px-3 py-1.5 text-left text-[13px] hover:bg-accent disabled:opacity-40 disabled:hover:bg-transparent">{it.rotulo}</button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

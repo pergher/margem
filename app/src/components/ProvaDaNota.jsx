@@ -4,9 +4,12 @@ import { invoke } from "@/lib/api";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { lerBanco, verificar, paragrafos, gabarito, docxBlob, imprimir, fonteDoTexto, definirLimite, LIMITE_PADRAO } from "@/lib/prova";
 import { useConfigProva } from "@/lib/useConfigProva";
+import { useWidth } from "@/lib/useWidth";
+import { ResizeHandle } from "@/components/ResizeHandle";
 
 /** Visão de uma nota `tipo: prova` (Anos/AAAA/Provas): a prova montada a partir do banco citado, com exportação e edição de turma/data/valor. */
 export function ProvaDaNota({ item, items, onOpen, tick }) {
+  const [wDados, setWDados] = useWidth("provanota.dados", 300);
   const [texto, setTexto] = useState(null);
   const [b, setB] = useState(null);
   const [erro, setErro] = useState("");
@@ -37,7 +40,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
 
   if (erro) return <div className="p-8 text-sm text-destructive">{erro}</div>;
   if (!texto) return <div className="p-8 text-sm text-muted-foreground">Lendo a prova…</div>;
-  if (!nomeBanco || !bancoItem) return <div className="p-8 text-sm text-muted-foreground">Esta nota não cita um banco de questões existente (linha <code>Banco: [[nome]]</code>). Use “1. Markdown” para ver o texto.</div>;
+  if (!nomeBanco || !bancoItem) return <div className="p-8 text-sm text-muted-foreground">Esta nota não cita um banco de questões existente (linha <code>Banco: [[nome]]</code>). Use “Markdown” para ver o texto.</div>;
   if (!b) return <div className="p-8 text-sm text-muted-foreground">Lendo o banco…</div>;
 
   const sel = new Set((get("questoes")?.items ?? []).map(Number).filter(Number.isFinite));
@@ -72,11 +75,14 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
             {cfg?.logo && <img src={cfg.logo} alt="" className="mx-auto mb-1 h-12" />}
             {cfg?.escola && <div className="text-center font-semibold">{cfg.escola}</div>}
             {cfg?.linha2 && <div className="mb-2 text-center">{cfg.linha2}</div>}
-            {ps.map((p, i) => p.linha ? <div key={i} className="h-[14px] border-b border-dotted border-neutral-400" />
-              : <div key={i} className={[p.b ? "mt-2 font-bold" : "", p.i ? "italic" : "", p.rec ? "pl-4" : ""].join(" ")}>{p.t}</div>)}
+            <div style={cfg?.duasColunas ? { columnCount: 2, columnGap: 20, columnRule: "1px solid #d4d4d4" } : undefined}>
+              {ps.map((p, i) => p.linha ? <div key={i} className="h-[14px] border-b border-dotted border-neutral-400" />
+                : <div key={i} className={[p.b ? "mt-2 font-bold" : "", p.i ? "italic" : "", p.rec ? "pl-4" : ""].join(" ")}>{p.t}</div>)}
+            </div>
           </div>
         </section>
-        <aside aria-label="Dados e verificação" className="flex w-[300px] shrink-0 flex-col overflow-auto border-l">
+        <ResizeHandle width={wDados} setWidth={setWDados} min={220} max={520} side="right" />
+        <aside aria-label="Dados e verificação" style={{ width: wDados }} className="flex shrink-0 flex-col overflow-auto border-l">
           <div className="grid grid-cols-2 gap-2 px-5 py-4 text-xs">
             <label>Turma<input value={dados.turma} onChange={(e) => mudar("turma", e.target.value)} className={campo} /></label>
             <label>Data<input type="date" value={dados.data} onChange={(e) => mudar("data", e.target.value)} className={campo} /></label>
