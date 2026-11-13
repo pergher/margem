@@ -1,5 +1,5 @@
 // Atualização automática (só no app): plugin updater do Tauri. No navegador não faz nada.
-import { isTauri } from "@/lib/api";
+import { isTauri, invoke } from "@/lib/api";
 
 let pendente = null;
 let antes = null;
@@ -23,10 +23,13 @@ export async function instalarAtualizacao(onProgresso) {
   if (!pendente) throw new Error("Procure a atualização antes.");
   let total = 0, baixado = 0;
   try { await antes?.(); } catch (e) { throw new Error("Não consegui salvar antes de atualizar: " + e); }
-  await pendente.downloadAndInstall((e) => {
+  await pendente.download((e) => {
     if (e.event === "Started") total = e.data.contentLength || 0;
     if (e.event === "Progress") { baixado += e.data.chunkLength; if (total) onProgresso?.(baixado / total); }
   });
+  // Baixou: avisa o vigia que reabre o app depois do instalador (só faz algo no Windows) e instala.
+  try { await invoke("agendar_reabertura"); } catch { /* sem vigia: o usuário abre pelo menu Iniciar */ }
+  await pendente.install();
   onProgresso?.(1); // o Windows encerra o app logo depois; a tela já mostra o aviso de fechamento
   const { relaunch } = await import("@tauri-apps/plugin-process");
   await relaunch();

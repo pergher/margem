@@ -29,6 +29,32 @@ fn load(app: &App) -> Result<(), String> {
     Ok(())
 }
 
+/// Windows: o instalador do atualizador encerra o app e nem sempre o reabre. Antes de instalar, deixa um vigia (PowerShell,
+/// sem janela) que espera este processo sair, espera o instalador terminar e reabre o app se ele ainda não estiver rodando.
+/// Se este processo não sair em 2 minutos (instalação cancelada ou falhou), o vigia desiste.
+#[tauri::command]
+fn agendar_reabertura() -> Result<(), String> {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let nome = exe.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        let script = format!(
+            "$exe='{exe}'; $n='{nome}'; $pid0={pid}; \
+             $p=Get-Process -Id $pid0 -ErrorAction SilentlyContinue; if($p){{ if(-not $p.WaitForExit(120000)){{ exit }} }}; \
+             Start-Sleep -Seconds 3; \
+             for($i=0;$i -lt 60;$i++){{ \
+               if(Get-Process -Name $n -ErrorAction SilentlyContinue){{ exit }}; \
+               if(-not (Get-Process -Name 'Margem_*' -ErrorAction SilentlyContinue) -and -not (Get-Process -Name 'setup*' -ErrorAction SilentlyContinue)){{ Start-Process -FilePath $exe; exit }}; \
+               Start-Sleep -Seconds 2 }}",
+            exe = exe.to_string_lossy().replace('\'', "''"), nome = nome.replace('\'', "''"), pid = std::process::id());
+        // CREATE_NO_WINDOW | DETACHED_PROCESS: sem janela e independente deste processo
+        std::process::Command::new("powershell").args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", &script])
+            .creation_flags(0x0800_0000 | 0x0000_0008).spawn().map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 fn list_notes(app: State<App>) -> Result<Vec<Item>, String> {
     load(&app)?;
@@ -457,7 +483,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .invoke_handler(tauri::generate_handler![list_notes, read_note, save_note, resolve_link, read_config, write_config, create_note, create_folder, rename_entry, move_entry, delete_entry, list_dirs, note_info, search_text, read_embed, read_sidecar, save_attachment, vault_health, list_history, read_version, restore_version, get_vault_root, set_vault_root]);
+        .invoke_handler(tauri::generate_handler![list_notes, read_note, save_note, resolve_link, read_config, write_config, create_note, create_folder, rename_entry, move_entry, delete_entry, list_dirs, note_info, search_text, read_embed, read_sidecar, save_attachment, vault_health, list_history, read_version, restore_version, get_vault_root, set_vault_root, agendar_reabertura]);
     builder
         .setup(move |app| {
             let root = env_root.clone().or_else(|| saved_root(app.handle())).unwrap_or_else(|| {
