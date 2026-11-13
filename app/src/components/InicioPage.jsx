@@ -19,7 +19,7 @@ export function InicioPage({ items, onOpen, onRefresh, onCiclo, onCorrecao, modo
         {modo !== "hoje" && <CorrecoesEmCurso items={items} onAbrir={onCorrecao} />}
       </div>
       {modo === "hoje"
-        ? <HojePage items={items} onOpen={onOpen} onCorrecao={onCorrecao} onSemana={() => setModo("semana")} />
+        ? <HojePage items={items} onOpen={onOpen} onRefresh={onRefresh} onCorrecao={onCorrecao} onSemana={() => setModo("semana")} />
         : modo === "semana"
         ? <SemanaPage items={items} onOpen={onOpen} onRefresh={onRefresh} />
         : <AnoPage items={items} onOpen={onOpen} onRefresh={onRefresh} onCiclo={onCiclo} />}

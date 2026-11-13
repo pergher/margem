@@ -62,3 +62,54 @@ export function parseAula(text) {
 
 /** Código de um bloco ```mermaid dentro do Markdown da seção (ou `null`). */
 export const mermaidDe = (md) => /```mermaid\s*\n([\s\S]*?)```/.exec(md)?.[1]?.trim() ?? null;
+
+/** Modelo de uma aula nova do acervo (as seções que a visão personalizada reconhece). */
+export function modeloAula({ ano, titulo }) {
+  return `---
+tipo: aula
+ano: ${ano || ""}
+assuntos: []
+tags: []
+status: pendente
+---
+# ${titulo}
+
+## Objetivos
+
+- 
+
+## Habilidades
+
+- 
+
+## Conteúdo
+
+## Mindmap
+
+\`\`\`mermaid
+mindmap
+  root((${titulo.replace(/[()]/g, "")}))
+    Ideia 1
+    Ideia 2
+\`\`\`
+
+## Atividades
+
+- 
+`;
+}
+
+/** Cria `Acervo/Aulas/<titulo>.md` com o modelo e devolve o caminho; se já existir uma nota com o nome, só devolve o dela. */
+export async function criarAula(items, { titulo, turma }) {
+  const { invoke } = await import("@/lib/api");
+  const nome = titulo.replace(/\[\[|\]\]/g, "").replace(/[\\/:*?"<>|#^]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (!nome) throw new Error("A aula não tem título.");
+  const ja = items.find((i) => i.rel.startsWith("Acervo/Aulas/") && i.name.toLowerCase() === nome.toLowerCase());
+  if (ja) return ja.path;
+  const raiz = items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+  const dir = `${raiz}/Acervo/Aulas`;
+  if (!items.some((i) => i.rel.startsWith("Acervo/Aulas/"))) { try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: "Aulas" }); } catch { /* já existe */ } }
+  const path = await invoke("create_note", { dir, name: nome });
+  await invoke("save_note", { path, text: modeloAula({ ano: /^[6-9]/.test(turma ?? "") ? turma[0] : "", titulo: nome }) });
+  return path;
+}

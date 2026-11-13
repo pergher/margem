@@ -3,13 +3,19 @@ import { lerCiclos } from "@/lib/ciclos";
 import { lerSemanas, segundaDe, rotuloDe } from "@/lib/semana";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
 import { lerRecentes, haQuanto } from "@/lib/recentes";
-import { Estado, Carregando, Vazio, Erro } from "@/components/ui/estado";
+import { criarAula } from "@/lib/aula";
+import { Estado, Carregando, Vazio, Erro, useToast } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 
 const nomes = (r) => [...String(r ?? "").matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
 
 /** Hoje, sem horário: a próxima aula de cada turma na semana atual, a correção em curso e os arquivos abertos há pouco. */
-export function HojePage({ items, onOpen, onCorrecao, onSemana }) {
+export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
+  const toast = useToast();
+  const criar = async (aula, turma) => {
+    try { const p = await criarAula(items, { titulo: aula.texto, turma }); await onRefresh?.(); toast("Aula criada com o modelo.", { tipo: "ok" }); onOpen(p); }
+    catch (e) { toast(`Não deu para criar a aula: ${e.message ?? e}`, { tipo: "err" }); }
+  };
   const [semanas, setSemanas] = useState(undefined);
   const [lote, setLote] = useState(undefined); // undefined = lendo; null = nenhum em curso
   const [erro, setErro] = useState("");
@@ -62,10 +68,13 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana }) {
                         <div className="font-semibold">{t.turma}{t.cicloNome && <span className="ml-2 text-xs font-normal text-muted-foreground">{t.cicloNome}</span>}</div>
                         <div className={cn("truncate text-sm", aula ? "text-muted-foreground" : "text-ok")}>{aula ? aula.texto.replace(/\[\[|\]\]/g, "") : t.aulas.length ? "Todas as aulas da semana foram resolvidas." : "Sem aulas nesta semana."}</div>
                       </div>
-                      {aula && <Estado tipo={pronto ? "ok" : "warn"} inline className="text-xs font-semibold">{pronto ? "Plano pronto" : "Sem plano"}</Estado>}
+                      {aula && <Estado tipo={pronto ? "ok" : "warn"} inline className="text-xs font-semibold">{pronto ? "Aula pronta" : "Sem aula"}</Estado>}
                       {aula && (pronto
                         ? <button onClick={() => onOpen(prontos[0].path)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Abrir plano</button>
-                        : <button onClick={onSemana} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Preparar na Semana</button>)}
+                        : <>
+                          <button onClick={() => criar(aula, t.turma)} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Criar aula</button>
+                          <button onClick={onSemana} className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Preparar na Semana</button>
+                        </>)}
                     </div>
                   );
                 })}
