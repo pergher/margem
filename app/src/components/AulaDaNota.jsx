@@ -5,6 +5,26 @@ import { parseAula, mermaidDe } from "@/lib/aula";
 import { Carregando, Erro } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 
+/** Cores do Mermaid tiradas das variáveis CSS do tema ativo (`--primary`, `--chart-*`…), para o mapa combinar com a interface. */
+function variaveisMermaid() {
+  const cs = getComputedStyle(document.documentElement);
+  const c = (v, alt) => { const x = cs.getPropertyValue(v).trim(); return x ? `hsl(${x.replace(/\s+/g, ", ")})` : alt; };
+  const escuro = document.documentElement.classList.contains("dark");
+  // Os temas do shadcn trazem --chart-1..5; os demais caem em --primary, --ok, --warn, --err e --muted-foreground.
+  const ramos = [["--chart-1", "--primary"], ["--chart-2", "--ok"], ["--chart-3", "--warn"], ["--chart-4", "--err"], ["--chart-5", "--muted-foreground"]]
+    .map(([a, b]) => c(a, c(b, "#888")));
+  const v = {
+    darkMode: escuro, background: c("--background", "#fff"), fontFamily: cs.getPropertyValue("--font-sans").trim() || "inherit",
+    primaryColor: c("--card", "#fff"), primaryTextColor: c("--foreground", "#222"), primaryBorderColor: c("--primary", "#888"),
+    lineColor: c("--muted-foreground", "#888"), secondaryColor: c("--accent", "#eee"), tertiaryColor: c("--background", "#fff"),
+    textColor: c("--foreground", "#222"), mainBkg: c("--card", "#fff"), nodeBorder: c("--primary", "#888"),
+  };
+  // Mindmap: cada ramo principal numa cor do tema, com o texto na cor de fundo (contraste).
+  ramos.forEach((r, i) => { v[`cScale${i}`] = r; v[`cScaleLabel${i}`] = c("--background", "#fff"); });
+  ramos.forEach((r, i) => { v[`cScale${i + 5}`] = ramos[(i + 2) % 5]; v[`cScaleLabel${i + 5}`] = c("--background", "#fff"); });
+  return v;
+}
+
 const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 const LABEL = { tip: "Dica", professor: "Dica para o professor", note: "Nota", abstract: "Resumo", info: "Informação", warning: "Atenção", attention: "Atenção", example: "Exemplo", question: "Pergunta", important: "Importante" };
 marked.use({
@@ -31,7 +51,7 @@ function Mindmap({ codigo }) {
   useEffect(() => {
     let vivo = true; setSvg(null); setErro("");
     import("mermaid").then(async ({ default: mermaid }) => {
-      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: document.documentElement.classList.contains("dark") ? "dark" : "default" });
+      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", themeVariables: variaveisMermaid() });
       const r = await mermaid.render(id.current + Math.random().toString(36).slice(2, 6), codigo);
       if (vivo) setSvg(r.svg);
     }).catch((e) => { if (vivo) setErro(String(e?.message ?? e)); });
