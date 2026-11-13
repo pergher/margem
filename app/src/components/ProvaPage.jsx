@@ -6,7 +6,7 @@ import { AtividadeDialog } from "@/components/AtividadeDialog";
 import { useConfigProva } from "@/lib/useConfigProva";
 import { PADRAO } from "@/lib/configProva";
 import { listaBancos, lerBanco, verificar, provaEmMarkdown, sugerir, fonteDoTexto, paragrafos, gabarito, salvarProva, docxBlob, imprimir, definirLimite, LIMITE_PADRAO } from "@/lib/prova";
-import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
+import { Estado, Carregando, Erro, Vazio, useToast } from "@/components/ui/estado";
 
 export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto }) {
   const [wBanco, setWBanco] = useWidth("prova.banco", 440), [wVerif, setWVerif] = useWidth("prova.verificacao", 300);
@@ -15,7 +15,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
   const [b, setB] = useState(null);
   const [erro, setErro] = useState("");
   const [sel, setSel] = useState(new Set());
-  const [msg, setMsg] = useState("");
+  const toast = useToast();
   const [filtro, setFiltro] = useState("");
   const [ativ, setAtiv] = useState(false);
   useEffect(() => { if (textoInicial) setAtiv(true); }, [textoInicial]);
@@ -32,7 +32,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
   useEffect(() => {
     const it = bancos.find((x) => x.path === path);
     if (!it) return;
-    setB(null); setSel(new Set()); setMsg("");
+    setB(null); setSel(new Set());
     lerBanco(it).then(setB).catch((e) => setErro(String(e)));
   }, [path, items.length]);
 
@@ -53,12 +53,12 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
   const ps = () => paragrafos(b, sel, fontes, { turma: dados.turma });
   const baixar = (nome, blob) => { const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
   const nomeArq = (x) => `${x} ${dados.turma || b.nome}.docx`;
-  const dizer = (t) => { setMsg(t); setTimeout(() => setMsg(""), 3000); };
+  const dizer = (t, tipo = "ok") => toast(t, { tipo, ms: 3000 });
   const gravar = async () => {
-    if (!/^\d{2}$/.test(dados.turma)) return dizer("Informe a turma com 2 dígitos (ex.: 81)");
-    try { const p = await salvarProva(items, b, sel, { ...dados, valor: Number(dados.valor) || 10 }, fontes); dizer("Prova salva como arquivo"); onRefresh?.(); onOpen(p); } catch (e) { dizer("Erro: " + e); }
+    if (!/^\d{2}$/.test(dados.turma)) return dizer("Informe a turma com 2 dígitos (ex.: 81)", "warn");
+    try { const p = await salvarProva(items, b, sel, { ...dados, valor: Number(dados.valor) || 10 }, fontes); dizer("Prova salva como arquivo"); onRefresh?.(); onOpen(p); } catch (e) { dizer("Erro: " + e, "err"); }
   };
-  const copiar = async () => { try { await navigator.clipboard.writeText(provaEmMarkdown(b, sel)); setMsg("Prova copiada (Markdown)"); } catch { setMsg("Não deu para copiar"); } };
+  const copiar = async () => { try { await navigator.clipboard.writeText(provaEmMarkdown(b, sel)); dizer("Prova copiada (Markdown)"); } catch { dizer("Não deu para copiar", "err"); } };
   const Q = ({ q, rot }) => (
     <li className="flex gap-2.5 border-b py-2">
       <input type="checkbox" checked={sel.has(q.n)} onChange={() => toggle(q.n)} aria-label={`Questão ${q.rotulo ?? q.n}`} className="mt-1 h-4 w-4 accent-[hsl(var(--primary))]" />
@@ -79,7 +79,6 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
         </select>
         <span className="truncate text-muted-foreground">{b.titulo}</span>
         <div className="flex-1" />
-        {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
         <MenuAcoes itens={[
           { rotulo: "Abrir banco no editor", fn: () => onOpen(b.path) },
           { rotulo: "Atividade de um texto", fn: () => setAtiv(true), dica: "Monta o pedido para o Claude e insere as questões no banco" },

@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Sear
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { ERRO, listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, fmt, num, gravarNota, aprovarTranscricao } from "@/lib/correcao";
-import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
+import { Estado, Carregando, Erro, Vazio, useToast } from "@/components/ui/estado";
 import { handlers } from "@/lib/shortcuts";
 
 // Marcas da transcrição, erros do aluno e negrito/itálico simples.
@@ -92,7 +92,7 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
   const [ordem, setOrdem] = useState("original");
   const [ver, setVer] = useState({ orto: true, pont: true, corr: false });
   const [zoom, setZoom] = useState(1), [rot, setRot] = useState(0);
-  const [aviso, setAviso] = useState("");
+  const toast = useToast();
   const [lupa, setLupa] = useState(true);
   const [wLista, setWLista] = useWidth("correcao.lista", 208), [wFoto, setWFoto] = useWidth("correcao.foto", 300), [wAval, setWAval] = useWidth("correcao.avaliacao", 420);
 
@@ -132,7 +132,7 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
     mudarNota(c, num(c.nota) === v ? min : v);
   };
   const [titulo, ...par] = a.texto.split(/\n\s*\n/);
-  const dizer = (t) => { setAviso(t); setTimeout(() => setAviso(""), 2500); };
+  const dizer = (t) => toast(t, { tipo: "ok", ms: 2500 });
   const mudarNota = (c, v) => gravarNota(d.path, a.nome, c.nome, v).then(carregar).then(() => dizer("Nota gravada")).catch((e) => setErro(String(e)));
   const aprovar = () => aprovarTranscricao(d.path).then(carregar).then(() => dizer("Transcrição aprovada")).catch((e) => setErro(String(e)));
   const copiar = (t) => navigator.clipboard?.writeText(t).then(() => dizer("Devolutiva copiada"));
@@ -150,7 +150,6 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
           {d.transcricao === "aprovada" ? "Transcrição aprovada ✓" : "Aprovar transcrição"}
         </button>
         <button onClick={() => setVista(vista === "aluno" ? "turma" : "aluno")} className="rounded-md border px-3 py-1 hover:bg-accent">{vista === "aluno" ? "Visão da turma" : "Voltar ao aluno"}</button>
-        <span className="text-xs text-muted-foreground">{aviso}</span>
         <div className="flex-1" />
         {vista === "aluno" && <>
           <button aria-label="Aluno anterior" onClick={() => go(-1)} className="rounded-md border p-1 hover:bg-accent"><ChevronLeft className="h-4 w-4" /></button>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { setProp } from "@/lib/frontmatter";
-import { Estado, Erro } from "@/components/ui/estado";
+import { Estado, Erro, Vazio, useToast } from "@/components/ui/estado";
 
 const CODIGOS = {
   "sem-tipo": "Arquivos sem tipo", "tipo-desconhecido": "Tipo desconhecido", "campo-vazio": "Campos vazios ou ausentes", "campo-obsoleto": "Campos obsoletos",
@@ -28,7 +28,7 @@ function tipoSugerido(rel, name) {
 export function SaudePage({ items, onOpen, onRefresh }) {
   const [lista, setLista] = useState(null);
   const [erro, setErro] = useState("");
-  const [aviso, setAviso] = useState("");
+  const toast = useToast();
   const [filtro, setFiltro] = useState("");
   const [aberto, setAberto] = useState({});
   const [valores, setValores] = useState({});
@@ -48,7 +48,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
   if (erro) return <Erro>Erro: {erro}</Erro>;
   if (!lista) return <div className="p-8 text-sm text-muted-foreground">Verificando o vault…</div>;
 
-  const dizer = (t) => { setAviso(t); setTimeout(() => setAviso(""), 3000); };
+  const dizer = (t) => toast(t, { tipo: "ok", ms: 3000 });
   const editar = async (it, fn) => {
     try { const t = await invoke("read_note", { path: it.path }); await invoke("save_note", { path: it.path, text: fn(t) }); await carregar(); dizer("Corrigido"); }
     catch (e) { setErro(String(e)); }
@@ -86,13 +86,12 @@ export function SaudePage({ items, onOpen, onRefresh }) {
         <h1 className="font-serif text-3xl font-semibold">Saúde do vault</h1>
         <span className="text-xs text-muted-foreground">{total} aviso(s){erros ? `, ${erros} erro(s)` : ""} · {lista.length ? Object.keys(Object.fromEntries(lista.map((x) => [x.code, 1]))).length : 0} tipos de problema</span>
         <div className="flex-1" />
-        <span className="text-xs text-muted-foreground">{aviso}</span>
         <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por arquivo ou texto" aria-label="Filtrar avisos" className="w-56 rounded border bg-background px-2 py-1 text-sm" />
         <button onClick={() => { setLista(null); carregar(); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Verificar de novo</button>
       </div>
       <div className="mb-5 text-xs text-muted-foreground">Cada grupo é um tipo de problema; clique no nome do arquivo para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias (reversível pela lixeira .lixeira).</div>
 
-      {grupos.length === 0 && <div className="rounded-xl bg-muted p-4 text-sm">Nenhum aviso{filtro ? " para este filtro" : ""}. 🎉</div>}
+      {grupos.length === 0 && <Vazio titulo={filtro ? "Nenhum aviso para este filtro" : "Nenhum aviso"}>{filtro ? "Tente outro trecho do nome do arquivo ou do texto." : "O vault não tem problemas a corrigir."}</Vazio>}
       <div className="flex flex-col gap-3">
         {grupos.map(([code, xs]) => (
           <div key={code} className="rounded-xl border">
