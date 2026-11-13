@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { FolderOpen } from "lucide-react";
 import { invoke } from "@/lib/api";
+import { Logo } from "@/components/Logo";
 
 /** Abre o seletor de pastas do sistema e guarda a escolha. Devolve a pasta ou `null` se cancelou. */
 export async function escolherPastaDoVault() {
@@ -19,6 +20,7 @@ export function EscolherVault({ onDone }) {
   return (
     <div className="flex h-full items-center justify-center p-8">
       <div className="max-w-md text-center">
+        <Logo className="mx-auto mb-4 h-16 w-16" />
         <h1 className="text-xl font-semibold">Bem-vindo ao Margem</h1>
         <p className="mt-3 text-sm text-muted-foreground">Escolha a pasta do seu vault (a pasta <code>Escola</code>, com <code>_sistema</code>, <code>Acervo</code> e <code>Anos</code>). O app só lê e grava dentro dela. Dá para trocar depois em Configurações.</p>
         <button onClick={escolher} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
 import { BookOpen, HeartPulse, ArrowLeft, ArrowRight, House, CalendarDays, PenLine, FileCheck, ListTree, PanelLeft, Settings, Search, Sun, Moon, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Logo } from "@/components/Logo";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/FileTree";
 import { Editor } from "@/components/Editor";
@@ -347,6 +348,7 @@ export default function App() {
   return (
     <div className="flex h-full">
       {!foco && <nav aria-label="Navegação" className="flex w-14 shrink-0 flex-col items-center gap-1.5 border-r bg-muted py-3">
+        <button type="button" aria-label="Margem — ir para o início" title="Margem" onClick={() => setPage("semana")} className="mb-1 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"><Logo className="h-9 w-9" /></button>
         <RailButton label="Início — Esta semana" active={page === "semana"} onClick={() => setPage("semana")}><House className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Planejamento do ano" active={page === "ano" || page === "ciclo"} onClick={() => setPage(page === "ano" || page === "ciclo" ? "editor" : "ano")}><CalendarDays className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Diário e alunos" active={page === "diario"} onClick={() => setPage(page === "diario" ? "editor" : "diario")}><BookOpen className="h-5 w-5" strokeWidth={1.6} /></RailButton>

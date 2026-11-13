@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Keyboard, FileText, FolderOpen, Download, Palette, Sun, Moon } from "lucide-react";
 import { invoke, isTauri } from "@/lib/api";
 import { escolherPastaDoVault } from "@/components/VaultGate";
+import { Logo } from "@/components/Logo";
 import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atualizar";
 import { lerLogo } from "@/lib/configProva";
 import { useConfigProva } from "@/lib/useConfigProva";
@@ -112,7 +113,7 @@ function Atualizacoes() {
   };
   return (
     <div className="min-h-0 flex-1 overflow-auto"><div className="mx-auto max-w-[640px] px-6 py-10">
-      <h1 className="text-xl font-semibold">Atualizações</h1>
+      <div className="flex items-center gap-3"><Logo className="h-10 w-10" /><h1 className="text-xl font-semibold">Margem · Atualizações</h1></div>
       <p className="mt-1 text-sm text-muted-foreground">Versão instalada: <strong>{versao}</strong>. O app também procura sozinho ao abrir. Seus arquivos do vault não são tocados na atualização.</p>
       <button onClick={procurar} disabled={prog !== null} className="mt-6 rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">Procurar atualização</button>
       {msg && <p className="mt-3 text-sm text-muted-foreground">{msg}</p>}
