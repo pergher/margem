@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { SemanaPage } from "@/components/SemanaPage";
 import { AnoPage } from "@/components/AnoPage";
+import { HojePage } from "@/components/HojePage";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
 import { cn } from "@/lib/utils";
 
@@ -10,14 +11,16 @@ export function InicioPage({ items, onOpen, onRefresh, onCiclo, onCorrecao, modo
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-4 border-b px-6 py-2">
         <div role="tablist" aria-label="O que ver" className="inline-flex rounded-full border p-0.5 text-xs">
-          {[["semana", "Semana"], ["ano", "Ano e ciclos"]].map(([id, nome]) => (
+          {[["hoje", "Hoje"], ["semana", "Semana"], ["ano", "Ano e ciclos"]].map(([id, nome]) => (
             <button key={id} role="tab" aria-selected={modo === id} onClick={() => setModo(id)}
               className={cn("rounded-full px-4 py-1.5", modo === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}>{nome}</button>
           ))}
         </div>
-        <CorrecoesEmCurso items={items} onAbrir={onCorrecao} />
+        {modo !== "hoje" && <CorrecoesEmCurso items={items} onAbrir={onCorrecao} />}
       </div>
-      {modo === "semana"
+      {modo === "hoje"
+        ? <HojePage items={items} onOpen={onOpen} onCorrecao={onCorrecao} onSemana={() => setModo("semana")} />
+        : modo === "semana"
         ? <SemanaPage items={items} onOpen={onOpen} onRefresh={onRefresh} />
         : <AnoPage items={items} onOpen={onOpen} onRefresh={onRefresh} onCiclo={onCiclo} />}
     </div>

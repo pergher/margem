@@ -72,6 +72,8 @@ Criar componentes únicos (`Vazio`, `Carregando`, `Erro`, `Toast`) com o tom dos
 
 - **Vazio, Carregando, Erro e Toast (2026-11-13):** novos em `components/ui/estado.jsx`. `Carregando` (ícone girando, `role="status"`) substitui todos os "Lendo…" de página; `Erro` (borda e ícone do estado erro, ação opcional) substitui os erros de página; `Vazio` (título, texto e botão de primeiro passo) entrou em Ano, Prova, Correção e Diário; `ToastProvider`/`useToast()` em `main.jsx`, usado em Configurações → Turmas ("Turmas salvas."). Falta usar `Vazio`/`Toast` nas outras telas e o "Procurar o arquivo" no `Erro` do VaultGate. Testado só no navegador.
 
+- **Hoje (2026-11-13):** nova aba "Hoje" (padrão do Início; quem já tinha escolhido outra aba mantém a sua) em `HojePage.jsx`, **sem horário**: cabeçalho "Semana de …" com aulas dadas/por dar; por turma, a próxima aula sem situação da semana atual, com "Plano pronto" (todos os `[[recursos]]` da aula existem) ou "Sem plano" e o botão Abrir plano / Preparar na Semana; card "Para corrigir" (primeiro lote em curso, com barra); "Documentos recentes" (`lib/recentes.js`, guardados no app, não no vault). A faixa "Correções em curso" fica nas outras abas. Falta: "Na margem" (convenção de anotação no Markdown), "Criar plano" que gere o arquivo. Testado só no navegador, com vault sem aulas.
+
 ## Ordem sugerida
 1. Tokens (1) + foco/hover (4) — mexem pouco em lógica, ganho em todas as telas.
 2. Estados (2, 10) e nomes (5).

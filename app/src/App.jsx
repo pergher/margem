@@ -27,6 +27,7 @@ import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault } from "@/components/VaultGate";
 import { aplicarTema, aplicarEstiloCallout, lerTemas } from "@/lib/temas";
 import { aplicarFonte } from "@/lib/fontes";
+import { lembrarRecente } from "@/lib/recentes";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
@@ -78,7 +79,7 @@ export default function App() {
   const [overrides, setOverrides] = useState(loadOverrides);
   const [page, setPage] = useState("semana");
   const [ciclo, setCiclo] = useState(null);
-  const [inicioModo, setInicioModoState] = useState(() => store.get("inicioModo", "semana"));
+  const [inicioModo, setInicioModoState] = useState(() => store.get("inicioModo", "hoje"));
   const setInicioModo = (m) => { setInicioModoState(m); store.set("inicioModo", m); };
   const irAno = () => { setInicioModo("ano"); setPage("semana"); };
   const [correcaoFoco, setCorrecaoFoco] = useState(null);
@@ -187,6 +188,7 @@ export default function App() {
   };
   const open = async (path) => {
     setPage("editor");
+    lembrarRecente(path);
     if (path === cur.current) return;
     const h = hist.current;
     h.stack = [...h.stack.slice(0, h.idx + 1), path]; h.idx = h.stack.length - 1;
