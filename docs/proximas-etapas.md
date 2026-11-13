@@ -244,3 +244,8 @@ Falta: botão do Hoje "Criar plano" → "Criar aula" com modelo (Objetivos/Habil
 
 Feito (testado só no navegador): **Criar aula** no Hoje (`criarAula`/`modeloAula` em `lib/aula.js`; cria em `Acervo/Aulas` e abre); **cores do Mermaid** vindas das variáveis do tema (`variaveisMermaid` em `AulaDaNota.jsx`); **Toast/Vazio** em Correção, Prova e Saúde; **forma e densidade** como escolha em Configurações → Aparência (`lib/forma.js`: 5 presets do artefato "Forma e densidade" — só cantos e espaçamento; bordas e sombras do artefato não foram aplicadas; padrão = "Suave e confortável", igual ao visual anterior).
 Falta: o usuário escolher a forma preferida (o artefato guarda favoritos só na tela); "Preparar na Semana" levar à aula; conferir aulas reais com Mermaid; testar no Tauri/Windows; empurrar os commits ao GitHub (decisão do usuário).
+
+### Rodada de 2026-11-13 (noite)
+
+Feito (navegador; Windows só no CI/usuário): **Hoje** em largura total com lateral redimensionável e negrito/itálico/código nas aulas (`ui/Inline.jsx`, também na Semana); **colunas redimensionáveis** em Hoje, Aula (Na margem), Semana (largura das turmas) e menu das Configurações; **aula personalizada** com o editor ao vivo do Markdown por seção (`EditorSecao`, `secoesBrutas`/`trocarSecao` em `lib/aula.js`; grava na nota após 600 ms; "Outras seções" seguem só leitura); **atualização no Windows**: `download` + comando `agendar_reabertura` (vigia PowerShell que reabre o app depois do instalador) + `install`.
+Falta: testar a reabertura no Windows (v0.1.5+); tabela/colunas de outras telas só com largura fixa; Ciclo/Diário/Prova já tinham colunas.
