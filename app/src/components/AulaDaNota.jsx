@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import { invoke } from "@/lib/api";
-import { parseAula, mermaidDe } from "@/lib/aula";
+import { parseAula, mermaidDe, secoesBrutas, trocarSecao } from "@/lib/aula";
+import { ResizeHandle } from "@/components/ResizeHandle";
+import { useWidth } from "@/lib/useWidth";
+import { Editor } from "@/components/Editor";
 import { Carregando, Erro } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 
@@ -62,10 +65,31 @@ function Mindmap({ codigo }) {
   return <div className="overflow-auto rounded-xl border bg-background p-3 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
+/** Seção editável com o mesmo editor ao vivo do modo Markdown; `onChange(md)` recebe o corpo da seção. */
+function EditorSecao({ md, onChange, onSave, onLink }) {
+  const ref = useRef(null);
+  useEffect(() => { ref.current?.setText(md); }, []); // só ao abrir: depois, quem manda é o editor
+  return <div className="aula-ed"><Editor ref={ref} onChange={(doc) => onChange(doc.toString())} onSave={onSave} onLink={onLink} /></div>;
+}
+
 /** Visão de uma aula do acervo: abas (objetivos, habilidades, conteúdo, mindmap, atividades) e as anotações na margem. */
-export function AulaDaNota({ item, tick }) {
+export function AulaDaNota({ item, tick, onLink }) {
   const [t, setT] = useState(null), [erro, setErro] = useState(""), [aba, setAba] = useState(null);
-  useEffect(() => { setT(null); setErro(""); invoke("read_note", { path: item.path }).then(setT).catch((e) => setErro(String(e))); }, [item.path, tick]);
+  const [wMargem, setWMargem] = useWidth("aula.margem", 300);
+  const texto = useRef(null), pend = useRef(null), timer = useRef(null), caminho = useRef(item.path);
+  caminho.current = item.path;
+  const gravar = async () => {
+    clearTimeout(timer.current);
+    const p = pend.current; if (!p || texto.current == null) return;
+    pend.current = null;
+    const novo = trocarSecao(texto.current, p.id, p.md);
+    texto.current = novo; setT(novo);
+    try { await invoke("save_note", { path: p.path, text: novo }); } catch (e) { setErro(String(e)); }
+  };
+  const gravarRef = useRef(gravar); gravarRef.current = gravar;
+  useEffect(() => () => { gravarRef.current(); }, [item.path]); // ao sair da nota, grava o que faltar
+  useEffect(() => { setT(null); setErro(""); invoke("read_note", { path: item.path }).then((x) => { texto.current = x; setT(x); }).catch((e) => setErro(String(e))); }, [item.path, tick]);
+  const editar = (id, md) => { pend.current = { id, md, path: caminho.current }; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
   const a = useMemo(() => (t == null ? null : parseAula(t)), [t]);
   useEffect(() => { setAba(null); }, [item.path]);
   if (erro) return <Erro>{erro}</Erro>;
@@ -76,30 +100,37 @@ export function AulaDaNota({ item, tick }) {
   const chips = [a.meta.status, a.meta.ano && `${a.meta.ano}º ano`, a.meta.assuntos].filter(Boolean);
   return (
     <div className="min-h-0 flex-1 overflow-auto">
-      <div className="mx-auto flex max-w-[1100px] flex-wrap items-start gap-8 px-8 py-8">
-        <div className="min-w-0 flex-[999_1_520px]">
+      <div className="mx-auto flex max-w-[1400px] items-stretch gap-4 px-8 py-8">
+        <div className="min-w-0 flex-1">
           <div className="text-xs text-muted-foreground">Aula do acervo</div>
           <h1 className="mt-1 font-serif text-3xl font-semibold leading-tight">{item.name}</h1>
           {chips.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{chips.map((c) => <span key={c} className="rounded-full bg-accent px-2.5 py-0.5 text-xs">{c}</span>)}</div>}
           {abas.length > 1 && (
             <div role="tablist" aria-label="Partes da aula" className="mt-5 flex flex-wrap gap-1 border-b">
               {abas.map((x) => (
-                <button key={x.id} role="tab" aria-selected={atual === x} onClick={() => setAba(x.id)}
+                <button key={x.id} role="tab" aria-selected={atual === x} onClick={async () => { await gravar(); setAba(x.id); }}
                   className={cn("-mb-px border-b-2 px-3 py-2 text-sm", atual === x ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}>{x.nome}</button>
               ))}
             </div>
           )}
           <div className="mt-5">
-            {!atual ? <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>
-              : atual.id === "mindmap" && mermaidDe(atual.md)
-                ? <><Mindmap codigo={mermaidDe(atual.md)} />{atual.md.replace(/```mermaid[\s\S]*?```/, "").trim() && <Markdown md={atual.md.replace(/```mermaid[\s\S]*?```/, "")} />}</>
-                : <>
-                  {atual.id === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
-                  <Markdown md={atual.md || "_Seção vazia._"} />
-                </>}
+            {atual && secoesBrutas(t).some((x) => x.id === atual.id) && atual.id !== "mindmap" && (
+              <>
+                {atual.id === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
+                <EditorSecao key={`${item.path}:${atual.id}`} md={secoesBrutas(texto.current ?? t).find((x) => x.id === atual.id).md} onChange={(md) => editar(atual.id, md)} onSave={gravar} onLink={onLink} />
+              </>)}
+            {atual && atual.id === "mindmap" && secoesBrutas(t).some((x) => x.id === "mindmap") && (
+              <>
+                {mermaidDe(atual.md) && <div className="mb-4"><Mindmap codigo={mermaidDe(atual.md)} /></div>}
+                <EditorSecao key={`${item.path}:mindmap`} md={secoesBrutas(texto.current ?? t).find((x) => x.id === "mindmap").md} onChange={(md) => editar("mindmap", md)} onSave={gravar} onLink={onLink} />
+              </>)}
+            {atual && !secoesBrutas(t).some((x) => x.id === atual.id) && atual.id !== "outras" && <Markdown md={atual.md || "_Seção vazia._"} />}
+            {atual && atual.id === "outras" && <><p className="mb-2 text-xs text-muted-foreground">Estas seções se editam no modo Markdown.</p><Markdown md={atual.md} /></>}
+            {!atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
           </div>
         </div>
-        <aside className="min-w-0 max-w-[380px] flex-[1_1_280px]">
+        <ResizeHandle width={wMargem} setWidth={setWMargem} min={200} max={560} side="right" />
+        <aside style={{ width: wMargem, maxWidth: "45%" }} className="shrink-0">
           <section className="flex flex-col gap-3 border-l-2 border-err pl-4">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Na margem</h2>
             {a.notas.length === 0

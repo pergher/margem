@@ -113,3 +113,33 @@ export async function criarAula(items, { titulo, turma }) {
   await invoke("save_note", { path, text: modeloAula({ ano: /^[6-9]/.test(turma ?? "") ? turma[0] : "", titulo: nome }) });
   return path;
 }
+
+/** Seções do texto bruto (com os callouts [!margem] no lugar): por título `##`, o intervalo de linhas do corpo. */
+export function secoesBrutas(text) {
+  const linhas = text.split("\n"), cab = [];
+  let fence = false;
+  linhas.forEach((l, i) => {
+    if (/^\s*```/.test(l)) fence = !fence;
+    const h = !fence && /^##\s+(.*)$/.exec(l);
+    if (h) cab.push({ i, titulo: h[1].trim() });
+  });
+  const vistos = new Set(), out = [];
+  cab.forEach((c, k) => {
+    const def = SECOES.find((s) => s.casa.test(sem(c.titulo.replace(/^[^\p{L}\p{N}(]+/u, ""))));
+    if (!def || vistos.has(def.id)) return; // as demais ficam em "Outras seções" (só leitura)
+    vistos.add(def.id);
+    const fim = k + 1 < cab.length ? cab[k + 1].i : linhas.length;
+    out.push({ id: def.id, ini: c.i, fim, md: linhas.slice(c.i + 1, fim).join("\n").replace(/^\n+/, "").replace(/\s+$/, "") });
+  });
+  return out;
+}
+
+/** Troca o corpo da seção `id` no texto bruto, mantendo o título e o resto da nota como estavam. */
+export function trocarSecao(text, id, md) {
+  const s = secoesBrutas(text).find((x) => x.id === id);
+  if (!s) return text;
+  const linhas = text.split("\n");
+  const corpo = md.replace(/\s+$/, "");
+  const novo = ["", ...(corpo ? corpo.split("\n") : []), ...(s.fim < linhas.length ? [""] : [])];
+  return [...linhas.slice(0, s.ini + 1), ...novo, ...linhas.slice(s.fim)].join("\n");
+}
