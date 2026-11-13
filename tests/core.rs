@@ -293,3 +293,16 @@ fn reorganizar_nao_move_colisoes() {
     assert!(p.moves.is_empty());
     std::fs::remove_dir_all(dir).ok();
 }
+
+#[test]
+fn professor_vira_margem() {
+    use vault_core::migrate::professor_para_margem;
+    let t = "> [!tip] Dica para o professor: **6º ano:** foque no básico.\n> mais uma linha\n\n> [!tip] Para o professor\n> texto\n\n> [!tip] Dica\n> geral\n\n```\n> [!tip] Dica para o professor: no código\n```\n";
+    let (n, c) = professor_para_margem(t);
+    assert_eq!(c, 2);
+    assert!(n.starts_with("> [!margem] **6º ano:** foque no básico.\n> mais uma linha"));
+    assert!(n.contains("\n> [!margem]\n> texto"));
+    assert!(n.contains("> [!tip] Dica\n> geral"));
+    assert!(n.contains("```\n> [!tip] Dica para o professor: no código"));
+    assert_eq!(professor_para_margem(&n).1, 0);
+}

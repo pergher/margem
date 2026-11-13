@@ -313,3 +313,41 @@ pub fn migrate_named(name: &str, text: &str) -> Result<Migration, String> {
     mig.text = new_text;
     Ok(mig)
 }
+
+/// Troca os callouts `> [!tip] Dica para o professor: …` (e `Para o professor`) por `> [!margem] …`, a anotação que a visão
+/// da aula mostra na coluna "Na margem". Só mexe na primeira linha do callout e fora de blocos de código; devolve o texto novo
+/// e quantos callouts mudaram. O resto do texto fica idêntico.
+pub fn professor_para_margem(text: &str) -> (String, usize) {
+    let (mut fence, mut n) = (false, 0);
+    let mut out: Vec<String> = Vec::new();
+    for l in text.split('\n') {
+        if l.trim_start().starts_with("```") {
+            fence = !fence;
+        }
+        match (!fence).then(|| margem_da_linha(l)).flatten() {
+            Some(nova) => {
+                n += 1;
+                out.push(nova);
+            }
+            None => out.push(l.to_string()),
+        }
+    }
+    (out.join("\n"), n)
+}
+
+fn margem_da_linha(l: &str) -> Option<String> {
+    let t = l.trim_start();
+    let depois = t.strip_prefix('>')?.trim_start();
+    let corpo = depois.strip_prefix("[!")?;
+    let (tipo, resto) = corpo.split_once(']')?;
+    if !matches!(tipo.to_lowercase().as_str(), "tip" | "professor") {
+        return None;
+    }
+    let resto = resto.trim_start_matches(['+', '-']).trim_start();
+    let baixo = resto.to_lowercase();
+    let tira = ["dica para o professor", "para o professor"].iter().find(|p| baixo.starts_with(**p))?;
+    let sobra: String = resto.chars().skip(tira.chars().count()).collect();
+    let sobra = sobra.trim_start_matches([':', '-', '–', ' ', '\t']).trim_end();
+    let recuo = &l[..l.len() - t.len()];
+    Some(if sobra.is_empty() { format!("{recuo}> [!margem]") } else { format!("{recuo}> [!margem] {sobra}") })
+}

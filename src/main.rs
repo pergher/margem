@@ -9,7 +9,7 @@ use vault_core::validate::{validate, Severity};
 use vault_core::vault::Vault;
 
 fn usage() -> ExitCode {
-    eprintln!("uso:\n  vault validate <pasta>\n  vault reorganizar <pasta> [--ano 2026] [--raiz Escola] [--aplicar] [--detalhes]\n  vault migrar <pasta> [--aplicar]   (sem --aplicar só mostra o que mudaria)\n  vault edit-cell <arquivo> <tabela> <linha> <coluna> <texto>   (índices a partir de 0)\n  vault historico <pasta> [--dias 30] [--limpar]   (históricos de notas excluídas; sem --limpar só lista)");
+    eprintln!("uso:\n  vault validate <pasta>\n  vault reorganizar <pasta> [--ano 2026] [--raiz Escola] [--aplicar] [--detalhes]\n  vault migrar <pasta> [--aplicar]   (sem --aplicar só mostra o que mudaria)\n  vault margem <pasta> [--aplicar]   (aulas: [!tip] Dica para o professor vira [!margem]; sem --aplicar só mostra)\n  vault edit-cell <arquivo> <tabela> <linha> <coluna> <texto>   (índices a partir de 0)\n  vault historico <pasta> [--dias 30] [--limpar]   (históricos de notas excluídas; sem --limpar só lista)");
     ExitCode::from(2)
 }
 
@@ -119,6 +119,33 @@ fn main() -> ExitCode {
             }
             println!("\n{} notas; {} {}; {} pedem decisão manual; {} erros", v.notes.len(), mudou, if aplicar { "migradas" } else { "seriam migradas (simulação)" }, manual, erros);
             if erros > 0 { ExitCode::from(1) } else { ExitCode::SUCCESS }
+        }
+        Some("margem") if args.len() >= 2 => {
+            // Troca "[!tip] Dica para o professor" por "[!margem]" nas aulas do acervo (simulação por padrão).
+            let aplicar = args.iter().any(|a| a == "--aplicar");
+            let v = match Vault::open(&PathBuf::from(&args[1])) {
+                Ok(v) => v,
+                Err(e) => {
+                    eprintln!("erro: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            let (mut arquivos, mut total) = (0, 0);
+            for n in &v.notes {
+                let rel = n.path.strip_prefix(&v.root).unwrap_or(&n.path).display().to_string().replace('\\', "/");
+                if !rel.starts_with("Acervo/Aulas/") { continue; }
+                let (novo, c) = vault_core::migrate::professor_para_margem(&n.text);
+                if c == 0 { continue; }
+                arquivos += 1;
+                total += c;
+                println!("{rel}: {c}");
+                if aplicar {
+                    let _ = historico::snapshot(&v.root, &n.path, true);
+                    std::fs::write(&n.path, novo).expect("escrita");
+                }
+            }
+            println!("\n{total} anotações em {arquivos} aulas {}", if aplicar { "convertidas em [!margem]" } else { "seriam convertidas em [!margem] (simulação; use --aplicar)" });
+            ExitCode::SUCCESS
         }
         Some("edit-cell") if args.len() == 6 => {
             let (Ok(t), Ok(r), Ok(c)) = (args[2].parse::<usize>(), args[3].parse::<usize>(), args[4].parse::<usize>()) else { return usage() };
