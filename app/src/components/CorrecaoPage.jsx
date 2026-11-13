@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Sear
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { ERRO, listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, fmt, num, gravarNota, aprovarTranscricao } from "@/lib/correcao";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
 import { handlers } from "@/lib/shortcuts";
 
 // Marcas da transcrição, erros do aluno e negrito/itálico simples.
@@ -110,9 +110,9 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
   useEffect(() => { setD(null); setSel(0); carregar(); }, [lote, items.length]);
   useEffect(() => { setZoom(1); setRot(0); setCrit(0); }, [sel, lote]);
 
-  if (!lotes.length) return <div className="p-8 text-sm text-muted-foreground">Nenhuma correção com “Transcrições e devolutivas” em Anos/AAAA/Correcoes.</div>;
-  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
-  if (!d) return <div className="p-8 text-sm text-muted-foreground">Lendo a correção…</div>;
+  if (!lotes.length) return <Vazio titulo="Nenhuma correção ainda">Os lotes ficam em Anos/AAAA/Correcoes, com a seção “Transcrições e devolutivas”.</Vazio>;
+  if (erro) return <Erro>Erro: {erro}</Erro>;
+  if (!d) return <Carregando>Lendo a correção…</Carregando>;
 
   const est = estatisticas(d);
   const a = d.alunos[sel];

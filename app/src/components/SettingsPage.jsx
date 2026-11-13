@@ -12,7 +12,7 @@ import { useConfigProva } from "@/lib/useConfigProva";
 import { ShortcutsPage } from "@/components/ShortcutsPage";
 import { CLAROS, ESCUROS, ESTILOS_CALLOUT } from "@/lib/temas";
 import { cn } from "@/lib/utils";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Carregando, useToast } from "@/components/ui/estado";
 
 // Seções da página; novas (cabeçalho das avaliações, escola, logo…) entram aqui.
 const SECOES = [
@@ -49,12 +49,13 @@ export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefr
 
 function TurmasDoAno({ items, onRefresh }) {
   const ano = items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean).sort().pop() ?? String(new Date().getFullYear());
+  const toast = useToast();
   const [txt, setTxt] = useState(null), [aulas, setAulas] = useState(AULAS_PADRAO), [msg, setMsg] = useState("");
   useEffect(() => { lerTurmas(items, ano).then((c) => { setTxt(c.turmas.join(", ")); setAulas(c.aulas); }); }, [ano]);
-  if (txt === null) return <div className="flex-1 p-10 text-sm text-muted-foreground">Lendo…</div>;
+  if (txt === null) return <Carregando>Lendo…</Carregando>;
   const lista = turmasDeTexto(txt);
   const salvar = async () => {
-    try { await gravarTurmas(items, ano, { turmas: lista, aulas }); setMsg("Salvo."); await onRefresh?.(); } catch (e) { setMsg("Erro: " + (e?.message ?? e)); }
+    try { await gravarTurmas(items, ano, { turmas: lista, aulas }); toast("Turmas salvas."); await onRefresh?.(); } catch (e) { toast("Erro: " + (e?.message ?? e), { tipo: "err" }); }
   };
   return (
     <div className="min-h-0 flex-1 overflow-auto"><div className="mx-auto max-w-[640px] px-6 py-10">
@@ -71,7 +72,7 @@ function TurmasDoAno({ items, onRefresh }) {
 
 function CabecalhoProvas({ items, onRefresh }) {
   const { cfg: c, mudar, erro, setErro } = useConfigProva(items, onRefresh);
-  if (!c) return <div className="flex-1 p-10 text-sm text-muted-foreground">Lendo a configuração…</div>;
+  if (!c) return <Carregando>Lendo a configuração…</Carregando>;
   const escolher = (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) lerLogo(f).then((logo) => { setErro(""); mudar({ ...c, logo, logoNova: true }); }).catch((x) => setErro(x.message)); };
   const campo = "mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm";
   return (

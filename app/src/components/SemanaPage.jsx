@@ -4,7 +4,7 @@ import { FASES, lerCiclos } from "@/lib/ciclos";
 import { SITUACOES, situacaoAula, lerSemana, lerSemanas, semanaNova, importarLegado, cicloDaTurma, proximasDoCiclo, criarSemana, proximaSegunda, segundaDe, rotuloDe, nomeSemana, removerAulaSemana, adicionarAvulsa, promoverAvulsa, adicionarDoCiclo } from "@/lib/semana";
 import { lerTurmas, gravarTurmas, turmasDeTexto } from "@/lib/turmas";
 import { invoke } from "@/lib/api";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Carregando } from "@/components/ui/estado";
 
 const fase = Object.fromEntries(FASES.map((f) => [f.id, f]));
 const limpa = (t) => t.replace(/\*\*/g, "");
@@ -27,7 +27,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
   const falha = (e) => setErro(String(e?.message ?? e));
 
   if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro} <button className="ml-2 underline" onClick={() => { setErro(""); carregar(false); }}>tentar de novo</button></Estado>;
-  if (dados === undefined) return <div className="p-8 text-sm text-muted-foreground">Lendo a semana…</div>;
+  if (dados === undefined) return <Carregando>Lendo a semana…</Carregando>;
 
   const { semanas, legado, ciclos, ano, cfg } = dados;
   // Turmas: as do arquivo do ano; sem ele, as que já aparecem nas semanas.

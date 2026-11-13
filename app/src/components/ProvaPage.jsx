@@ -6,7 +6,7 @@ import { AtividadeDialog } from "@/components/AtividadeDialog";
 import { useConfigProva } from "@/lib/useConfigProva";
 import { PADRAO } from "@/lib/configProva";
 import { listaBancos, lerBanco, verificar, provaEmMarkdown, sugerir, fonteDoTexto, paragrafos, gabarito, salvarProva, docxBlob, imprimir, definirLimite, LIMITE_PADRAO } from "@/lib/prova";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
 
 export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto }) {
   const [wBanco, setWBanco] = useWidth("prova.banco", 440), [wVerif, setWVerif] = useWidth("prova.verificacao", 300);
@@ -41,9 +41,9 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
     Promise.all(b.textos.map(async (t) => [t.n, await fonteDoTexto(items, t.titulo).catch(() => null)])).then((l) => setFontes(Object.fromEntries(l.filter((x) => x[1]))));
   }, [b, fonte]);
 
-  if (!bancos.length) return <div className="p-8 text-sm text-muted-foreground">Nenhum banco em Acervo/Questoes.</div>;
-  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
-  if (!b) return <div className="p-8 text-sm text-muted-foreground">Lendo o banco…</div>;
+  if (!bancos.length) return <Vazio titulo="Nenhum banco de questões">Os bancos ficam em Acervo/Questoes. Quando houver um, você monta a prova aqui.</Vazio>;
+  if (erro) return <Erro>Erro: {erro}</Erro>;
+  if (!b) return <Carregando>Lendo o banco…</Carregando>;
 
   const toggle = (n) => setSel((s) => { const x = new Set(s); x.has(n) ? x.delete(n) : x.add(n); return x; });
   const v = verificar(b, sel);

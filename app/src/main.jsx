@@ -18,10 +18,11 @@ import "@fontsource/ibm-plex-mono/500.css";
 import "./index.css";
 import "./themes.css";
 import App from "./App";
+import { ToastProvider } from "@/components/ui/estado";
 import { aplicarTema, aplicarEstiloCallout, lerTemas } from "./lib/temas";
 import { aplicarFonte } from "./lib/fontes";
 // Evita o "flash" do tema errado antes do React montar.
 try { const t = lerTemas(); aplicarTema(t.claro, t.escuro, JSON.parse(localStorage.getItem("tema") || '"light"') === "dark"); } catch { /* tema padrão */ }
 try { aplicarFonte(JSON.parse(localStorage.getItem("fonte") || '"sobrio"'), JSON.parse(localStorage.getItem("tamanhoTexto") || "17")); } catch { /* padrão */ }
 try { aplicarEstiloCallout(JSON.parse(localStorage.getItem("estiloCallout") || '"preenchido"')); } catch { /* padrão */ }
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(<ToastProvider><App /></ToastProvider>);

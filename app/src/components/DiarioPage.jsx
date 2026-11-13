@@ -5,7 +5,7 @@ import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { lerSemanas } from "@/lib/semana";
 import { ESTADOS, listarDiarios, listarAlunos, lerMeta, criarDiario, criarAluno, inserirOcorrencia, mudarEstado, ocorrenciasDoDiario, aulasDoDiario, turmasDe } from "@/lib/diario";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Vazio } from "@/components/ui/estado";
 
 // "Paulo Pergher" -> "Pa. Pe." (duas letras do primeiro e do último nome)
 const abreviar = (nome) => { const p = nome.trim().split(/\s+/); return (p.length > 1 ? [p[0], p[p.length - 1]] : p).map((x) => x.slice(0, 2) + ".").join(" "); };
@@ -44,7 +44,7 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath }) {
       </div>
       <div className="mb-4 text-xs text-muted-foreground">Dados sensíveis: estas pastas ficam bloqueadas no MCP (o Claude não lê o diário nem as arquivos de aluno).</div>
       {erro && <Estado tipo="err" className="mb-3 text-sm">Erro: {erro} <button className="underline" onClick={() => setErro("")}>ok</button></Estado>}
-      {!turma ? <div className="text-sm text-muted-foreground">Nenhuma turma encontrada ainda. Crie uma semana ou um aluno.</div>
+      {!turma ? <Vazio titulo="Nenhuma turma encontrada ainda">Crie uma semana ou um aluno e a turma aparece aqui.</Vazio>
         : aba === "diario"
           ? <Diarios items={items} turma={turma} ano={ano} diarios={diarios.filter((d) => d.turma === turma)} semanas={semanas} onRefresh={onRefresh} onEditar={onMarkdown ?? onOpen} falha={falha} />
           : <Alunos items={items} turma={turma} ano={ano} alunos={alunos.filter((a) => a.turma === turma)} diarios={diarios.filter((d) => d.turma === turma)} ocultar={ocultar} onOpen={onOpen} onRefresh={onRefresh} falha={falha} focoSel={focoPath} />}

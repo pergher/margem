@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { PlanejarCicloDialog } from "@/components/PlanejarCicloDialog";
 import { FASES, lerCiclos } from "@/lib/ciclos";
 import { lerSemanas } from "@/lib/semana";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
 
 const cor = Object.fromEntries(FASES.map((f) => [f.id, f.cor]));
 
@@ -22,11 +22,11 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
   const [erro, setErro] = useState("");
   useEffect(() => { setDados(null); Promise.all([lerCiclos(items), lerSemanas(items).catch(() => [])]).then(([c, semanas]) => setDados({ ...c, semanas })).catch((e) => setErro(String(e))); }, [items]);
 
-  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
-  if (!dados) return <div className="p-8 text-sm text-muted-foreground">Lendo os planos…</div>;
+  if (erro) return <Erro>Erro: {erro}</Erro>;
+  if (!dados) return <Carregando>Lendo os planos…</Carregando>;
   const { anoLetivo, ciclos } = dados;
   const dialogo = plan && <PlanejarCicloDialog items={items} onClose={() => setPlan(false)} onCriado={(p) => { setPlan(false); onRefresh?.(); onOpen?.(p); }} />;
-  if (!ciclos.length) return <div className="p-8 text-sm text-muted-foreground">Nenhum plano de ciclo em Anos/AAAA/Planejamento. <button onClick={() => setPlan(true)} className="ml-2 rounded-md border px-3 py-1 hover:bg-accent">Planejar ciclo</button>{dialogo}</div>;
+  if (!ciclos.length) return <><Vazio titulo="Nenhum plano de ciclo ainda" acao={{ rotulo: "Planejar ciclo", onClick: () => setPlan(true) }}>Os planos ficam em Anos/AAAA/Planejamento. Crie o primeiro para ver o ano aqui.</Vazio>{dialogo}</>;
   const anos = [...new Set(ciclos.map((c) => c.ano))];
   // Progresso vem das notas de semana (✓ = aula dada); só ciclos ligados a uma turma têm situação.
   const progresso = (c) => {

@@ -6,7 +6,7 @@ import { lerBanco, verificar, paragrafos, gabarito, docxBlob, imprimir, fonteDoT
 import { useConfigProva } from "@/lib/useConfigProva";
 import { useWidth } from "@/lib/useWidth";
 import { ResizeHandle } from "@/components/ResizeHandle";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Carregando, Erro } from "@/components/ui/estado";
 
 /** Visão de uma nota `tipo: prova` (Anos/AAAA/Provas): a prova montada a partir do banco citado, com exportação e edição de turma/data/valor. */
 export function ProvaDaNota({ item, items, onOpen, tick }) {
@@ -39,10 +39,10 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
     Promise.all(b.textos.map(async (t) => [t.n, await fonteDoTexto(items, t.titulo).catch(() => null)])).then((l) => setFontes(Object.fromEntries(l.filter((x) => x[1]))));
   }, [b, fonte]);
 
-  if (erro) return <Estado tipo="err" className="p-8 text-sm">{erro}</Estado>;
-  if (!texto) return <div className="p-8 text-sm text-muted-foreground">Lendo a prova…</div>;
+  if (erro) return <Erro>{erro}</Erro>;
+  if (!texto) return <Carregando>Lendo a prova…</Carregando>;
   if (!nomeBanco || !bancoItem) return <div className="p-8 text-sm text-muted-foreground">Este arquivo não cita um banco de questões existente (linha <code>Banco: [[nome]]</code>). Use “Markdown” para ver o texto.</div>;
-  if (!b) return <div className="p-8 text-sm text-muted-foreground">Lendo o banco…</div>;
+  if (!b) return <Carregando>Lendo o banco…</Carregando>;
 
   const sel = new Set((get("questoes")?.items ?? []).map(Number).filter(Number.isFinite));
   const dados = { turma: get("turma")?.value ?? "", data: get("data")?.value ?? "", valor: get("valor")?.value ?? "" };

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@/lib/api";
 import { parseFm } from "@/lib/frontmatter";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Carregando, Erro } from "@/components/ui/estado";
 
 function Img({ alvo }) {
   const [src, setSrc] = useState(null);
@@ -24,8 +24,8 @@ export function TextoDaNota({ item, onOpen, onAtividade, tick }) {
   const [t, setT] = useState(null);
   const [erro, setErro] = useState("");
   useEffect(() => { setT(null); setErro(""); invoke("read_note", { path: item.path }).then(setT).catch((e) => setErro(String(e))); }, [item.path, tick]);
-  if (erro) return <Estado tipo="err" className="p-8 text-sm">{erro}</Estado>;
-  if (t == null) return <div className="p-8 text-sm text-muted-foreground">Lendo o texto…</div>;
+  if (erro) return <Erro>{erro}</Erro>;
+  if (t == null) return <Carregando>Lendo o texto…</Carregando>;
   const fm = parseFm(t);
   const g = (k) => fm.entries.find((e) => e.key === k);
   const val = (k) => g(k)?.value || (g(k)?.items ?? []).join(", ");

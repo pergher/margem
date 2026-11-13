@@ -70,6 +70,8 @@ Criar componentes únicos (`Vazio`, `Carregando`, `Erro`, `Toast`) com o tom dos
 
 - **Início = página de trabalho diário (2026-11-13):** a Semana virou a página inicial, com seletor "Semana | Ano e ciclos" (o Planejamento saiu do menu; Ctrl+P ainda leva ao Ano) e a faixa "Correções em curso" (lotes não finalizados/arquivados, um clique abre o lote). Semana: 4 espaços por turma (turmas e número em `Turmas AAAA.md`, Configurações → Turmas do ano); espaço vazio → sugestões do ciclo ou texto livre; "Preencher" completa a turma com as próximas aulas do ciclo; a tela "Semana nova"/rascunho foi removida (semana nova traz só as aulas não dadas). Testado só no navegador; faltam Tauri e o "agora" (horário).
 
+- **Vazio, Carregando, Erro e Toast (2026-11-13):** novos em `components/ui/estado.jsx`. `Carregando` (ícone girando, `role="status"`) substitui todos os "Lendo…" de página; `Erro` (borda e ícone do estado erro, ação opcional) substitui os erros de página; `Vazio` (título, texto e botão de primeiro passo) entrou em Ano, Prova, Correção e Diário; `ToastProvider`/`useToast()` em `main.jsx`, usado em Configurações → Turmas ("Turmas salvas."). Falta usar `Vazio`/`Toast` nas outras telas e o "Procurar o arquivo" no `Erro` do VaultGate. Testado só no navegador.
+
 ## Ordem sugerida
 1. Tokens (1) + foco/hover (4) — mexem pouco em lógica, ganho em todas as telas.
 2. Estados (2, 10) e nomes (5).

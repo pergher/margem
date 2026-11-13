@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { setProp } from "@/lib/frontmatter";
-import { Estado } from "@/components/ui/estado";
+import { Estado, Erro } from "@/components/ui/estado";
 
 const CODIGOS = {
   "sem-tipo": "Arquivos sem tipo", "tipo-desconhecido": "Tipo desconhecido", "campo-vazio": "Campos vazios ou ausentes", "campo-obsoleto": "Campos obsoletos",
@@ -45,7 +45,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
     return Object.entries(g).sort((a, b) => b[1].length - a[1].length);
   }, [lista, filtro]);
 
-  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
+  if (erro) return <Erro>Erro: {erro}</Erro>;
   if (!lista) return <div className="p-8 text-sm text-muted-foreground">Verificando o vault…</div>;
 
   const dizer = (t) => { setAviso(t); setTimeout(() => setAviso(""), 3000); };
