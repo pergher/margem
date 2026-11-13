@@ -28,6 +28,7 @@ import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault } from "@/components/VaultGate";
 import { aplicarTema, aplicarEstiloCallout, lerTemas } from "@/lib/temas";
 import { aplicarFonte } from "@/lib/fontes";
+import { aplicarForma } from "@/lib/forma";
 import { lembrarRecente } from "@/lib/recentes";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
@@ -74,6 +75,7 @@ export default function App() {
   const [estiloCallout, setEstiloCallout] = useState(() => store.get("estiloCallout", "preenchido"));
   const [fonte, setFonte] = useState(() => store.get("fonte", "sobrio"));
   const [tamanhoTexto, setTamanhoTexto] = useState(() => store.get("tamanhoTexto", 17));
+  const [forma, setForma] = useState(() => store.get("forma", "padrao"));
   const [zoom, setZoom] = useState(() => store.get("zoom", 1));
   const [sideW, setSideW] = useState(() => store.get("sideW", 288));
   const [outlineW, setOutlineW] = useState(() => store.get("outlineW", 240));
@@ -96,6 +98,7 @@ export default function App() {
 
   useEffect(() => { aplicarTema(temaClaro, temaEscuro, dark); store.set("tema", dark ? "dark" : "light"); store.set("temaClaro", temaClaro); store.set("temaEscuro", temaEscuro); }, [dark, temaClaro, temaEscuro]);
   useEffect(() => { aplicarFonte(fonte, tamanhoTexto); store.set("fonte", fonte); store.set("tamanhoTexto", tamanhoTexto); }, [fonte, tamanhoTexto]);
+  useEffect(() => { aplicarForma(forma); store.set("forma", forma); }, [forma]);
   useEffect(() => { aplicarEstiloCallout(estiloCallout); store.set("estiloCallout", estiloCallout); }, [estiloCallout]);
   useEffect(() => { store.set("sideW", sideW); }, [sideW]);
   useEffect(() => { store.set("outlineW", outlineW); }, [outlineW]);
@@ -430,7 +433,7 @@ export default function App() {
           <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>
         </header>}
 
-        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
+        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
                 {page === "prova" && <ProvaPage items={items} onOpen={open} onRefresh={refresh} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
         {page === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={correcaoFoco} />}
         {page === "semana" && <InicioPage items={items} onOpen={open} onRefresh={refresh} modo={inicioModo} setModo={setInicioModo} onCorrecao={(p) => { setCorrecaoFoco(p); setPage("correcao"); }} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}

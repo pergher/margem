@@ -16,8 +16,8 @@ export default {
         muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
         accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
       },
-      // Raios: só 8, 12 e pílula (rounded-full). sm/md = 8, lg/xl = 12.
-      borderRadius: { sm: "0.5rem", md: "0.5rem", lg: "0.75rem", xl: "0.75rem" },
+      // Raios: sm/md = --r-md, lg/xl = --r-lg (Configurações → Aparência → Forma); padrão 8 e 12.
+      borderRadius: { sm: "var(--r-md, 0.5rem)", md: "var(--r-md, 0.5rem)", lg: "var(--r-lg, 0.75rem)", xl: "var(--r-lg, 0.75rem)" },
     },
   },
   plugins: [animate],

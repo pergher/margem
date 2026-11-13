@@ -5,6 +5,7 @@ import { invoke, isTauri } from "@/lib/api";
 import { escolherPastaDoVault } from "@/components/VaultGate";
 import { Logo } from "@/components/Logo";
 import { FONTES, TAMANHOS_TEXTO } from "@/lib/fontes";
+import { FORMAS } from "@/lib/forma";
 import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atualizar";
 import { lerLogo } from "@/lib/configProva";
 import { lerTurmas, gravarTurmas, turmasDeTexto, AULAS_PADRAO } from "@/lib/turmas";
@@ -159,7 +160,7 @@ function Atualizacoes() {
   );
 }
 
-function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto } }) {
+function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma } }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto"><div className="mx-auto max-w-[720px] px-6 py-10">
       <h1 className="text-xl font-semibold">Aparência</h1>
@@ -196,6 +197,20 @@ function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro,
         ))}
       </div>
       <p className="mt-1 text-xs text-muted-foreground">Tamanho do texto no editor.</p>
+      <h2 className="mt-10 text-base font-semibold">Forma e densidade</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Cantos dos botões e cartões e espaço entre os elementos da interface. Vale para qualquer tema.</p>
+      <div role="radiogroup" aria-label="Forma e densidade" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {Object.entries(FORMAS).map(([id, f]) => (
+          <button key={id} role="radio" aria-checked={forma === id} onClick={() => setForma(id)}
+            className={cn("overflow-hidden rounded-xl border text-left", forma === id ? "ring-2 ring-primary" : "hover:border-primary/60")}>
+            <div className="flex items-center gap-2 bg-background p-3">
+              <span className="h-8 w-14 border bg-muted" style={{ borderRadius: f.lg }} />
+              <span className="inline-flex h-8 items-center bg-primary px-3 text-xs text-primary-foreground" style={{ borderRadius: f.md }}>Salvar</span>
+            </div>
+            <div className="border-t bg-background px-3 py-1.5"><div className="text-xs font-medium">{f.nome}</div><div className="text-xs text-muted-foreground">{f.spec}</div></div>
+          </button>
+        ))}
+      </div>
       <h2 className="mt-10 text-base font-semibold">Callouts</h2>
       <p className="mt-1 text-sm text-muted-foreground">Como aparecem os blocos <code>&gt; [!note]</code>, <code>[!tip]</code> e <code>[!warning]</code> no editor. As cores seguem o tema.</p>
       <div role="radiogroup" aria-label="Estilo dos callouts" className="mt-4 grid grid-cols-2 gap-3">
