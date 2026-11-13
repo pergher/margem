@@ -9,6 +9,7 @@ import { lerLogo } from "@/lib/configProva";
 import { useConfigProva } from "@/lib/useConfigProva";
 import { ShortcutsPage } from "@/components/ShortcutsPage";
 import { CLAROS, ESCUROS, ESTILOS_CALLOUT } from "@/lib/temas";
+import { FONTES, TAMANHOS_TEXTO } from "@/lib/fontes";
 import { cn } from "@/lib/utils";
 
 // Seções da página; novas (cabeçalho das avaliações, escola, logo…) entram aqui.
@@ -131,7 +132,7 @@ function Atualizacoes() {
   );
 }
 
-function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout } }) {
+function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto } }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto"><div className="mx-auto max-w-[720px] px-6 py-10">
       <h1 className="text-xl font-semibold">Aparência</h1>
@@ -146,6 +147,28 @@ function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro,
       </div>
       <GradeTemas titulo="Tema claro" lista={CLAROS} atual={temaClaro} onPick={setTemaClaro} emUso={!dark} />
       <GradeTemas titulo="Tema escuro" lista={ESCUROS} atual={temaEscuro} onPick={setTemaEscuro} emUso={dark} />
+      <h2 className="mt-10 text-base font-semibold">Fontes</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Cada par define a fonte da interface, do texto das notas, dos títulos e do código. Vale para qualquer tema.</p>
+      <div role="radiogroup" aria-label="Par de fontes" className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {Object.entries(FONTES).map(([id, f]) => (
+          <button key={id} role="radio" aria-checked={fonte === id} onClick={() => setFonte(id)}
+            className={cn("overflow-hidden rounded-xl border text-left", fonte === id ? "ring-2 ring-primary" : "hover:border-primary/60")}>
+            <div className="space-y-1.5 bg-background p-3">
+              <div style={{ fontFamily: f.h1, fontWeight: 600, fontSize: "1.2rem", lineHeight: 1.2 }}>Os gêneros narrativos</div>
+              <div style={{ fontFamily: f.texto, fontSize: "0.9rem", lineHeight: 1.5 }}>Narrador, personagens e conflito. “— Já chegou?”, perguntou Ana.</div>
+              <div className="rounded-md bg-muted px-2 py-1 text-xs" style={{ fontFamily: f.mono }}>- [ ] Identificar o narrador</div>
+            </div>
+            <div className="border-t bg-background px-3 py-1.5"><div className="text-xs font-medium">{f.nome}</div><div className="text-xs text-muted-foreground">{f.roles}</div></div>
+          </button>
+        ))}
+      </div>
+      <div role="radiogroup" aria-label="Tamanho do texto" className="mt-4 inline-flex rounded-lg border p-0.5 text-sm">
+        {Object.entries(TAMANHOS_TEXTO).map(([px, nome]) => (
+          <button key={px} role="radio" aria-checked={tamanhoTexto === Number(px)} onClick={() => setTamanhoTexto(Number(px))}
+            className={cn("rounded-md px-3 py-1", tamanhoTexto === Number(px) ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60")}>{nome}</button>
+        ))}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">Tamanho do texto no editor.</p>
       <h2 className="mt-10 text-base font-semibold">Callouts</h2>
       <p className="mt-1 text-sm text-muted-foreground">Como aparecem os blocos <code>&gt; [!note]</code>, <code>[!tip]</code> e <code>[!warning]</code> no editor. As cores seguem o tema.</p>
       <div role="radiogroup" aria-label="Estilo dos callouts" className="mt-4 grid grid-cols-2 gap-3">

@@ -26,6 +26,7 @@ import { capturing } from "@/components/ShortcutsPage";
 import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault } from "@/components/VaultGate";
 import { aplicarTema, aplicarEstiloCallout, lerTemas } from "@/lib/temas";
+import { aplicarFonte } from "@/lib/fontes";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
@@ -69,6 +70,8 @@ export default function App() {
   const [temaClaro, setTemaClaro] = useState(() => lerTemas().claro);
   const [temaEscuro, setTemaEscuro] = useState(() => lerTemas().escuro);
   const [estiloCallout, setEstiloCallout] = useState(() => store.get("estiloCallout", "preenchido"));
+  const [fonte, setFonte] = useState(() => store.get("fonte", "sobrio"));
+  const [tamanhoTexto, setTamanhoTexto] = useState(() => store.get("tamanhoTexto", 17));
   const [zoom, setZoom] = useState(() => store.get("zoom", 1));
   const [sideW, setSideW] = useState(() => store.get("sideW", 288));
   const [outlineW, setOutlineW] = useState(() => store.get("outlineW", 240));
@@ -86,6 +89,7 @@ export default function App() {
   const hist = useRef({ stack: [], idx: -1 });
 
   useEffect(() => { aplicarTema(temaClaro, temaEscuro, dark); store.set("tema", dark ? "dark" : "light"); store.set("temaClaro", temaClaro); store.set("temaEscuro", temaEscuro); }, [dark, temaClaro, temaEscuro]);
+  useEffect(() => { aplicarFonte(fonte, tamanhoTexto); store.set("fonte", fonte); store.set("tamanhoTexto", tamanhoTexto); }, [fonte, tamanhoTexto]);
   useEffect(() => { aplicarEstiloCallout(estiloCallout); store.set("estiloCallout", estiloCallout); }, [estiloCallout]);
   useEffect(() => { store.set("sideW", sideW); }, [sideW]);
   useEffect(() => { store.set("outlineW", outlineW); }, [outlineW]);
@@ -412,7 +416,7 @@ export default function App() {
           <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>
         </header>}
 
-        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
+        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
         {page === "ano" && <AnoPage items={items} onOpen={open} onRefresh={refresh} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
         {page === "prova" && <ProvaPage items={items} onOpen={open} onRefresh={refresh} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
         {page === "correcao" && <CorrecaoPage items={items} onOpen={open} />}
