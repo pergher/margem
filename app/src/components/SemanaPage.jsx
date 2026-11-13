@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, X, ArrowUpToLine } from "lucide-react";
 import { FASES, lerCiclos } from "@/lib/ciclos";
 import { SITUACOES, situacaoAula, lerSemana, lerSemanas, semanaNova, importarLegado, cicloDaTurma, proximasDoCiclo, criarSemana, proximaSegunda, segundaDe, rotuloDe, nomeSemana, removerAulaSemana, adicionarAvulsa, promoverAvulsa, adicionarDoCiclo } from "@/lib/semana";
@@ -7,6 +7,9 @@ import { invoke } from "@/lib/api";
 import { Estado, Carregando } from "@/components/ui/estado";
 
 const fase = Object.fromEntries(FASES.map((f) => [f.id, f]));
+import { ResizeHandle } from "@/components/ResizeHandle";
+import { useWidth } from "@/lib/useWidth";
+import { Inline } from "@/components/ui/Inline";
 const limpa = (t) => t.replace(/\*\*/g, "");
 const nomes = (r) => [...r.matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
 
@@ -14,6 +17,7 @@ const nomes = (r) => [...r.matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
 export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
   const [dados, setDados] = useState(undefined); // { semanas, legado, ciclos, ano, cfg }
   const [idx, setIdx] = useState(-1);
+  const [wCol, setWCol] = useWidth("semana.coluna", 380);
   const [erro, setErro] = useState("");
   const [preparo, setPreparo] = useState(null); // { turma, aula } aberto no painel "Preparar aula"
   const carregar = (irParaUltima) => lerCiclos(items).then(async (c) => {
@@ -82,13 +86,15 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
         </div>
       )}
 
-      <div className="mt-4 grid items-start gap-4 pb-2" style={{ gridTemplateColumns: `repeat(${Math.min(colunas.length, 3)}, minmax(0, 1fr))` }}>
-        {colunas.map((t) => {
+      <div className="mt-4 flex items-start overflow-x-auto pb-2">
+        {colunas.map((t, ci) => {
           const ciclo0 = t.cicloNome ?? cicloDaTurma(semanas, t.turma);
           const vazios = Math.max(0, cfg.aulas - t.aulas.length);
           const sugestoes = proximasDoCiclo({ ciclos, semanas, turma: t.turma, nomeCiclo: ciclo0, qtd: vazios });
           return (
-          <div key={t.turma} className="min-w-0 rounded-xl border bg-background p-4">
+          <Fragment key={t.turma}>
+          {ci > 0 && <ResizeHandle width={wCol} setWidth={setWCol} min={260} max={720} side="left" />}
+          <div style={{ width: wCol }} className="mx-2 shrink-0 rounded-xl border bg-background p-4">
             <div className="mb-3 flex items-baseline justify-between gap-2"><span className="font-serif text-xl font-semibold">Turma {t.turma}</span>
               <span className="flex items-center gap-1.5">
                 {vazios > 0 && sugestoes.length > 0 && <button title={`Preencher os espaços vazios com as próximas aulas de ${ciclo0}`} onClick={() => mexer(async () => { for (const a of sugestoes) await adicionarDoCiclo(s.path, t.turma, a); })} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent">Preencher</button>}
@@ -104,7 +110,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
                       {!a.dada && <button title="Esvaziar este espaço" onClick={() => mexer(() => removerAulaSemana(s.path, t.turma, a.n))} className="hover:text-err"><X className="h-4 w-4" /></button>}
                     </span>
                   </div>
-                  <div className="text-sm font-medium leading-snug">{a.cicloNome && <><span style={{ color: fase[a.fase].cor }}>{fase[a.fase].nome}</span> · </>}{limpa(a.texto)}</div>
+                  <div className="text-sm font-medium leading-snug">{a.cicloNome && <><span style={{ color: fase[a.fase].cor }}>{fase[a.fase].nome}</span> · </>}<Inline texto={a.texto} /></div>
                   {a.recurso && <div className="mt-1 text-xs">{nomes(a.recurso).length ? nomes(a.recurso).map((n) => existe(n)
                     ? <button key={n} onClick={() => onOpen(existe(n).path)} className="mr-2 text-primary hover:underline">{n}</button>
                     : <span key={n} className="mr-2 text-warn">{n} (a criar)</span>) : <span className="text-muted-foreground">{a.recurso}</span>}</div>}
@@ -124,6 +130,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
               ))}
             </div>
           </div>
+          </Fragment>
         ); })}
       </div>
       {preparo && <PrepararAula turma={preparo.turma} aula={preparo.aula} semana={s} ciclo={ciclos.find((c) => c.name.toLowerCase() === (preparo.aula.cicloNome ?? "").toLowerCase()) ?? null} existe={existe} onOpen={(p) => { setPreparo(null); onOpen(p); }} onClose={() => setPreparo(null)} />}
@@ -163,7 +170,7 @@ function PrepararAula({ turma, aula, semana, ciclo, existe, onOpen, onClose }) {
       <div className="w-full max-w-2xl rounded-xl border bg-background p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-baseline justify-between"><span className="text-xs text-muted-foreground">Turma {turma} · {aula.cicloNome ? `${aula.cicloNome} · aula ${aula.cicloN ?? "?"}` : "aula avulsa"}</span>
           <button onClick={onClose} className="text-xs text-muted-foreground hover:underline">fechar</button></div>
-        <h2 className="font-serif text-2xl font-semibold"><span style={{ color: fase[aula.fase].cor }}>{fase[aula.fase].nome}</span> · {limpa(aula.texto)}</h2>
+        <h2 className="font-serif text-2xl font-semibold"><span style={{ color: fase[aula.fase].cor }}>{fase[aula.fase].nome}</span> · <Inline texto={aula.texto} /></h2>
         {alvos.length > 0 && <div className="mt-3 text-sm"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Recursos e textos</div>{alvos.map((n) => <Nota key={n} n={n} />)}
           {aula.recurso && !nomes(aula.recurso).length && <span className="text-muted-foreground">{aula.recurso}</span>}</div>}
         {!alvos.length && aula.recurso && <div className="mt-3 text-sm"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Recurso</div>{aula.recurso}</div>}

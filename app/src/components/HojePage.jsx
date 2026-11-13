@@ -4,6 +4,9 @@ import { lerSemanas, segundaDe, rotuloDe } from "@/lib/semana";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
 import { lerRecentes, haQuanto } from "@/lib/recentes";
 import { criarAula } from "@/lib/aula";
+import { ResizeHandle } from "@/components/ResizeHandle";
+import { useWidth } from "@/lib/useWidth";
+import { Inline } from "@/components/ui/Inline";
 import { Estado, Carregando, Vazio, Erro, useToast } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +15,7 @@ const nomes = (r) => [...String(r ?? "").matchAll(/\[\[([^\]|#]+)/g)].map((m) =>
 /** Hoje, sem horário: a próxima aula de cada turma na semana atual, a correção em curso e os arquivos abertos há pouco. */
 export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
   const toast = useToast();
+  const [wAside, setWAside] = useWidth("hoje.lateral", 340);
   const criar = async (aula, turma) => {
     try { const p = await criarAula(items, { titulo: aula.texto, turma }); await onRefresh?.(); toast("Aula criada com o modelo.", { tipo: "ok" }); onOpen(p); }
     catch (e) { toast(`Não deu para criar a aula: ${e.message ?? e}`, { tipo: "err" }); }
@@ -43,15 +47,15 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
   const recentes = lerRecentes().map((r) => ({ ...r, it: items.find((i) => i.path === r.path) })).filter((r) => r.it).slice(0, 5);
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto"><div className="mx-auto flex max-w-[1100px] flex-col gap-8 px-8 py-8">
+    <div className="min-h-0 flex-1 overflow-auto"><div className="flex w-full flex-col gap-8 px-8 py-8">
       <header>
         <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
         <h1 className="mt-1 font-serif text-3xl font-semibold leading-tight">{semana ? `Semana de ${semana.rotulo || rotuloDe(seg)}` : "Hoje"}</h1>
         {semana && <p className="mt-1 text-sm text-muted-foreground">{dadas} {dadas === 1 ? "aula dada" : "aulas dadas"} · {porDar} por dar</p>}
       </header>
 
-      <div className="flex flex-wrap items-start gap-8">
-        <div className="flex min-w-0 flex-[999_1_460px] flex-col gap-8">
+      <div className="flex items-stretch gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
           <section>
             <h2 className="mb-2 text-lg font-semibold">Próximas aulas</h2>
             {!semana
@@ -66,7 +70,7 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
                     <div key={t.turma} className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border p-4">
                       <div className="min-w-0 flex-1 basis-52">
                         <div className="font-semibold">{t.turma}{t.cicloNome && <span className="ml-2 text-xs font-normal text-muted-foreground">{t.cicloNome}</span>}</div>
-                        <div className={cn("truncate text-sm", aula ? "text-muted-foreground" : "text-ok")}>{aula ? aula.texto.replace(/\[\[|\]\]/g, "") : t.aulas.length ? "Todas as aulas da semana foram resolvidas." : "Sem aulas nesta semana."}</div>
+                        <div className={cn("truncate text-sm", aula ? "text-muted-foreground" : "text-ok")}>{aula ? <Inline texto={aula.texto} /> : t.aulas.length ? "Todas as aulas da semana foram resolvidas." : "Sem aulas nesta semana."}</div>
                       </div>
                       {aula && <Estado tipo={pronto ? "ok" : "warn"} inline className="text-xs font-semibold">{pronto ? "Aula pronta" : "Sem aula"}</Estado>}
                       {aula && (pronto
@@ -93,7 +97,8 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
           </section>
         </div>
 
-        <aside className="flex min-w-0 max-w-[400px] flex-[1_1_300px] flex-col gap-4">
+        <ResizeHandle width={wAside} setWidth={setWAside} min={240} max={640} side="right" />
+        <aside style={{ width: wAside, maxWidth: "45%" }} className="flex shrink-0 flex-col gap-4 self-start">
           <section className="flex flex-col gap-3 rounded-xl border p-4">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Para corrigir</h2>
             {lote === undefined ? <span className="text-sm text-muted-foreground">Lendo…</span>

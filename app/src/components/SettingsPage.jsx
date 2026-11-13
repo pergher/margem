@@ -5,6 +5,8 @@ import { invoke, isTauri } from "@/lib/api";
 import { escolherPastaDoVault } from "@/components/VaultGate";
 import { Logo } from "@/components/Logo";
 import { FONTES, TAMANHOS_TEXTO } from "@/lib/fontes";
+import { ResizeHandle } from "@/components/ResizeHandle";
+import { useWidth } from "@/lib/useWidth";
 import { FORMAS } from "@/lib/forma";
 import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atualizar";
 import { lerLogo } from "@/lib/configProva";
@@ -27,9 +29,10 @@ const SECOES = [
 
 export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh }) {
   const [secao, setSecao] = useState("aparencia");
+  const [wNav, setWNav] = useWidth("config.menu", 208);
   return (
     <div className="flex min-h-0 flex-1">
-      <nav aria-label="Seções das configurações" className="w-52 shrink-0 border-r p-3">
+      <nav aria-label="Seções das configurações" style={{ width: wNav }} className="shrink-0 overflow-auto p-3">
         <h1 className="px-2 pb-3 pt-2 text-sm font-semibold">Configurações</h1>
         {SECOES.filter((s) => isTauri || !s.soApp).map((s) => (
           <button key={s.id} onClick={() => setSecao(s.id)}
@@ -146,7 +149,7 @@ function Atualizacoes() {
       <p className="mt-1 text-sm text-muted-foreground">Versão instalada: <strong>{versao}</strong>. O app também procura sozinho ao abrir. Seus arquivos do vault não são tocados na atualização.</p>
       <button onClick={procurar} disabled={prog !== null} className="mt-6 rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">Procurar atualização</button>
       {msg && <p className="mt-3 text-sm text-muted-foreground">{msg}</p>}
-      {prog !== null && prog >= 1 && <p className="mt-3 text-sm text-muted-foreground">Instalando… o Margem vai fechar agora e o instalador roda por alguns segundos. Quando a janelinha do instalador sumir, abra o Margem pelo menu Iniciar se ele não voltar sozinho. Sua nota já foi salva e você volta de onde estava.</p>}
+      {prog !== null && prog >= 1 && <p className="mt-3 text-sm text-muted-foreground">Instalando… o Margem vai fechar agora e o instalador roda por alguns segundos; em seguida o Margem abre sozinho. Se não abrir em cerca de 30 segundos, abra pelo menu Iniciar. Sua nota já foi salva e você volta de onde estava.</p>}
       {achada && (
         <div className="mt-5 rounded-xl border p-4">
           <div className="text-sm font-medium">Versão {achada.version} disponível</div>
