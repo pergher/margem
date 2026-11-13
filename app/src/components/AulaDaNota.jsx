@@ -1,0 +1,93 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { marked } from "marked";
+import { invoke } from "@/lib/api";
+import { parseAula, mermaidDe } from "@/lib/aula";
+import { Carregando, Erro } from "@/components/ui/estado";
+import { cn } from "@/lib/utils";
+
+const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const LABEL = { tip: "Dica", professor: "Dica para o professor", note: "Nota", abstract: "Resumo", info: "Informação", warning: "Atenção", attention: "Atenção", example: "Exemplo", question: "Pergunta", important: "Importante" };
+marked.use({
+  gfm: true,
+  renderer: {
+    html: ({ text }) => esc(text), // sem HTML cru vindo do arquivo
+    blockquote(token) {
+      const inner = this.parser.parse(token.tokens), m = /^<p>\[!([\w-]+)\][+-]?\s*/.exec(inner);
+      return m ? `<div class="aula-callout aula-callout-${m[1].toLowerCase()}"><div class="aula-callout-t">${LABEL[m[1].toLowerCase()] ?? m[1]}</div>${inner.replace(m[0], "<p>")}</div>` : `<blockquote>${inner}</blockquote>`;
+    },
+  },
+});
+const html = (md) => marked.parse(md.replace(/!?\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2").replace(/!?\[\[([^\]]+)\]\]/g, "$1"));
+
+function Markdown({ md }) {
+  const h = useMemo(() => html(md), [md]);
+  return <div className="aula-md" dangerouslySetInnerHTML={{ __html: h }} />;
+}
+
+/** Mapa mental em Mermaid (carregado só quando a aba é aberta). Se o código falhar, mostra o texto-fonte. */
+function Mindmap({ codigo }) {
+  const [svg, setSvg] = useState(null), [erro, setErro] = useState("");
+  const id = useRef("mm" + Math.random().toString(36).slice(2));
+  useEffect(() => {
+    let vivo = true; setSvg(null); setErro("");
+    import("mermaid").then(async ({ default: mermaid }) => {
+      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: document.documentElement.classList.contains("dark") ? "dark" : "default" });
+      const r = await mermaid.render(id.current + Math.random().toString(36).slice(2, 6), codigo);
+      if (vivo) setSvg(r.svg);
+    }).catch((e) => { if (vivo) setErro(String(e?.message ?? e)); });
+    return () => { vivo = false; };
+  }, [codigo]);
+  if (erro) return <div><div className="mb-2 text-sm text-warn">Não deu para desenhar o mapa: {erro.split("\n")[0]}</div><pre className="overflow-auto rounded-lg bg-muted p-3 text-xs">{codigo}</pre></div>;
+  if (svg == null) return <Carregando className="p-0">Desenhando o mapa…</Carregando>;
+  return <div className="overflow-auto rounded-xl border bg-background p-3 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
+
+/** Visão de uma aula do acervo: abas (objetivos, habilidades, conteúdo, mindmap, atividades) e as anotações na margem. */
+export function AulaDaNota({ item, tick }) {
+  const [t, setT] = useState(null), [erro, setErro] = useState(""), [aba, setAba] = useState(null);
+  useEffect(() => { setT(null); setErro(""); invoke("read_note", { path: item.path }).then(setT).catch((e) => setErro(String(e))); }, [item.path, tick]);
+  const a = useMemo(() => (t == null ? null : parseAula(t)), [t]);
+  useEffect(() => { setAba(null); }, [item.path]);
+  if (erro) return <Erro>{erro}</Erro>;
+  if (!a) return <Carregando>Lendo a aula…</Carregando>;
+
+  const abas = [...a.secoes, ...(a.outras.length ? [{ id: "outras", nome: a.secoes.length ? "Outras seções" : "Texto", md: a.outras.map((o) => `## ${o.nome}\n\n${o.md}`).join("\n\n") }] : [])];
+  const atual = abas.find((x) => x.id === aba) ?? abas.find((x) => x.id === "conteudo") ?? abas[0];
+  const chips = [a.meta.status, a.meta.ano && `${a.meta.ano}º ano`, a.meta.assuntos].filter(Boolean);
+  return (
+    <div className="min-h-0 flex-1 overflow-auto">
+      <div className="mx-auto flex max-w-[1100px] flex-wrap items-start gap-8 px-8 py-8">
+        <div className="min-w-0 flex-[999_1_520px]">
+          <div className="text-xs text-muted-foreground">Aula do acervo</div>
+          <h1 className="mt-1 font-serif text-3xl font-semibold leading-tight">{item.name}</h1>
+          {chips.length > 0 && <div className="mt-2 flex flex-wrap gap-1.5">{chips.map((c) => <span key={c} className="rounded-full bg-accent px-2.5 py-0.5 text-xs">{c}</span>)}</div>}
+          {abas.length > 1 && (
+            <div role="tablist" aria-label="Partes da aula" className="mt-5 flex flex-wrap gap-1 border-b">
+              {abas.map((x) => (
+                <button key={x.id} role="tab" aria-selected={atual === x} onClick={() => setAba(x.id)}
+                  className={cn("-mb-px border-b-2 px-3 py-2 text-sm", atual === x ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground")}>{x.nome}</button>
+              ))}
+            </div>
+          )}
+          <div className="mt-5">
+            {!atual ? <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>
+              : atual.id === "mindmap" && mermaidDe(atual.md)
+                ? <><Mindmap codigo={mermaidDe(atual.md)} />{atual.md.replace(/```mermaid[\s\S]*?```/, "").trim() && <Markdown md={atual.md.replace(/```mermaid[\s\S]*?```/, "")} />}</>
+                : <>
+                  {atual.id === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
+                  <Markdown md={atual.md || "_Seção vazia._"} />
+                </>}
+          </div>
+        </div>
+        <aside className="min-w-0 max-w-[380px] flex-[1_1_280px]">
+          <section className="flex flex-col gap-3 border-l-2 border-err pl-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Na margem</h2>
+            {a.notas.length === 0
+              ? <p className="text-sm text-muted-foreground">Sem anotações. Escreva uma em Markdown com <code>&gt; [!margem]</code>.</p>
+              : a.notas.map((n, i) => <div key={i} className="whitespace-pre-line text-sm">{n}</div>)}
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}

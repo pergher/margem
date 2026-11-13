@@ -17,6 +17,7 @@ import { InicioPage } from "@/components/InicioPage";
 import { ProvaPage } from "@/components/ProvaPage";
 import { ProvaDaNota } from "@/components/ProvaDaNota";
 import { TextoDaNota } from "@/components/TextoDaNota";
+import { AulaDaNota } from "@/components/AulaDaNota";
 import { CorrecaoPage } from "@/components/CorrecaoPage";
 import { SemanaPage } from "@/components/SemanaPage";
 import { SaudePage } from "@/components/SaudePage";
@@ -440,6 +441,7 @@ export default function App() {
         {personalizada && visao.id === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "prova" && <ProvaDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} />}
         {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} focoPath={current} />}
+        {personalizada && visao.id === "aula" && <AulaDaNota item={items.find((i) => i.path === current)} tick={verTick} />}
         {personalizada && visao.id === "texto" && <TextoDaNota item={items.find((i) => i.path === current)} onOpen={open} tick={verTick} onAtividade={() => { setTextoAtiv(current); setPage("prova"); }} />}
         {personalizada && visao.id === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={current} />}
         <main className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>

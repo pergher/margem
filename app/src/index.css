@@ -103,6 +103,7 @@
 .cm-callout-first.cm-callout-last { border-radius: 10px; }
 .cm-callout-tip, .cm-callout-professor, .cm-callout-example { --c-fg: var(--chart-3); }
 .cm-callout-warning, .cm-callout-attention, .cm-callout-important { --c-fg: var(--chart-4); }
+.cm-callout-margem { --c-fg: var(--err); }
 .cm-callout-title { font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: .9rem; font-weight: 600; color: hsl(var(--c-fg)); display: inline-flex; align-items: center; gap: .6rem; }
 .cm-callout-badge { font-weight: 500; font-size: .75rem; background: hsl(var(--c-fg) / .14); border-radius: 999px; padding: .05rem .5rem; }
 
@@ -141,3 +142,26 @@
 .cm-table-bar button { white-space: nowrap; flex-shrink: 0; font-size: .78rem; padding: 0 .5rem; border-radius: 6px; border: 1px solid hsl(var(--border)); background: hsl(var(--background)); color: hsl(var(--muted-foreground)); }
 .cm-table-bar button:hover { background: hsl(var(--accent)); color: hsl(var(--foreground)); }
 .cm-table-wrap th, .cm-table-wrap td { min-width: 3rem; height: 2.2rem; }
+
+/* Visão personalizada da aula (AulaDaNota): leitura do Markdown e callouts */
+.aula-md { font-family: var(--f-texto, 'Source Serif 4 Variable', Georgia, serif); font-size: var(--tamanho-texto, 1.0625rem); line-height: 1.7; }
+.aula-md > * + * { margin-top: .9rem; }
+.aula-md h3 { font-size: 1.3rem; font-weight: 600; margin-top: 1.6rem; font-family: var(--f-h1, inherit); }
+.aula-md h4, .aula-md h5 { font-size: 1.05rem; font-weight: 650; margin-top: 1.2rem; font-family: var(--f-h, inherit); }
+.aula-md h2 { font-size: 1.5rem; font-weight: 600; margin-top: 1.8rem; font-family: var(--f-h1, inherit); }
+.aula-md ul { list-style: disc; padding-left: 1.5rem; } .aula-md ol { list-style: decimal; padding-left: 1.5rem; }
+.aula-md li + li { margin-top: .25rem; }
+.aula-md a { color: hsl(var(--primary)); text-decoration: underline; }
+.aula-md code { font-family: var(--f-mono, monospace); font-size: .85em; background: hsl(var(--muted)); padding: .05em .3em; border-radius: 4px; }
+.aula-md pre { background: hsl(var(--muted)); padding: .75rem 1rem; border-radius: 10px; overflow: auto; } .aula-md pre code { background: none; padding: 0; }
+.aula-md blockquote { border-left: 3px solid hsl(var(--border)); padding-left: 1rem; color: hsl(var(--muted-foreground)); font-style: italic; }
+.aula-md table { width: 100%; border-collapse: collapse; font-size: .92em; }
+.aula-md th, .aula-md td { border-bottom: 1px solid hsl(var(--border)); padding: .45rem .7rem; text-align: left; }
+.aula-md th { font-family: var(--f-ui, sans-serif); font-size: .8em; font-weight: 600; color: hsl(var(--muted-foreground)); }
+.aula-md img { max-width: 100%; border-radius: 8px; }
+.aula-callout { --c-fg: var(--chart-1); border: 1px solid hsl(var(--c-fg) / .35); border-left-width: 4px; background: hsl(var(--c-fg) / .08); border-radius: 10px; padding: .7rem 1rem; font-style: normal; color: hsl(var(--foreground)); }
+.aula-callout > * + * { margin-top: .4rem; }
+.aula-callout-t { font-family: var(--f-ui, sans-serif); font-size: .85rem; font-weight: 600; color: hsl(var(--c-fg)); }
+.aula-callout-tip, .aula-callout-professor, .aula-callout-example { --c-fg: var(--chart-3); }
+.aula-callout-margem { --c-fg: var(--err); }
+.aula-callout-warning, .aula-callout-attention, .aula-callout-important { --c-fg: var(--chart-4); }

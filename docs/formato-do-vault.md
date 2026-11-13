@@ -144,3 +144,11 @@ Escola/
 - Arquivos `.base` ficam em `_sistema/bases/`; notas soltas de trabalho (ex.: ajustes de skill) em `_sistema/notas/`. O `create_note` do MCP grava na pasta do tipo (aula→Acervo/Aulas, texto→Acervo/Textos, banco→Acervo/Questoes, plano/ciclo→Anos/AAAA/Planejamento, prova→Provas, semana→Semanas, correcao→Correcoes, demais→_sistema).
 - O servidor MCP bloqueia `Anos/*/Correcoes`, `Relatorios`, `Diarios` e `Alunos` por pasta, além do bloqueio por `tipo: correcao`, `diario` e `aluno` (decisão: o Claude não lê o diário nem as notas de aluno pelo MCP).
 - `vault reorganizar <pasta> --ano 2026` move para essa estrutura (simulação por padrão; `--aplicar` grava). Só muda de pasta, nunca renomeia, e troca links por caminho (`[[Escola/Aulas/X]]`, `![[Recursos/imagens/y.png]]`) por links por nome.
+
+
+## Aula do acervo: seções e Margem (2026-11-13)
+
+A aula (`tipo: aula`, `Acervo/Aulas/…`) não tem "plano de aula" separado. A visão personalizada reconhece seções `##` pelo título (sem diferença de acento ou maiúscula): **Objetivos**, **Habilidades** (códigos `EF69LP…`), **Conteúdo**, **Mindmap** (também `Esquema`) e **Atividades**. Seções com outros nomes aparecem em "Outras seções". Nenhuma é obrigatória.
+
+- **Mindmap** é um bloco Mermaid (```` ```mermaid ```` com `mindmap`); se o código falhar, a visão mostra o texto-fonte.
+- **Na margem:** anotações do professor são callouts `> [!margem] texto`; a visão as tira do corpo e as mostra na coluna lateral "Na margem". Os `> [!tip] Dica para o professor` antigos **não** são migrados automaticamente (ficam no corpo).
