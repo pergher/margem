@@ -6,6 +6,7 @@ import { AtividadeDialog } from "@/components/AtividadeDialog";
 import { useConfigProva } from "@/lib/useConfigProva";
 import { PADRAO } from "@/lib/configProva";
 import { listaBancos, lerBanco, verificar, provaEmMarkdown, sugerir, fonteDoTexto, paragrafos, gabarito, salvarProva, docxBlob, imprimir, definirLimite, LIMITE_PADRAO } from "@/lib/prova";
+import { Estado } from "@/components/ui/estado";
 
 export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto }) {
   const [wBanco, setWBanco] = useWidth("prova.banco", 440), [wVerif, setWVerif] = useWidth("prova.verificacao", 300);
@@ -41,7 +42,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
   }, [b, fonte]);
 
   if (!bancos.length) return <div className="p-8 text-sm text-muted-foreground">Nenhum banco em Acervo/Questoes.</div>;
-  if (erro) return <div className="p-8 text-sm text-destructive">Erro: {erro}</div>;
+  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
   if (!b) return <div className="p-8 text-sm text-muted-foreground">Lendo o banco…</div>;
 
   const toggle = (n) => setSel((s) => { const x = new Set(s); x.has(n) ? x.delete(n) : x.add(n); return x; });
@@ -55,7 +56,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
   const dizer = (t) => { setMsg(t); setTimeout(() => setMsg(""), 3000); };
   const gravar = async () => {
     if (!/^\d{2}$/.test(dados.turma)) return dizer("Informe a turma com 2 dígitos (ex.: 81)");
-    try { const p = await salvarProva(items, b, sel, { ...dados, valor: Number(dados.valor) || 10 }, fontes); dizer("Prova salva como nota"); onRefresh?.(); onOpen(p); } catch (e) { dizer("Erro: " + e); }
+    try { const p = await salvarProva(items, b, sel, { ...dados, valor: Number(dados.valor) || 10 }, fontes); dizer("Prova salva como arquivo"); onRefresh?.(); onOpen(p); } catch (e) { dizer("Erro: " + e); }
   };
   const copiar = async () => { try { await navigator.clipboard.writeText(provaEmMarkdown(b, sel)); setMsg("Prova copiada (Markdown)"); } catch { setMsg("Não deu para copiar"); } };
   const Q = ({ q, rot }) => (
@@ -80,7 +81,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
         <div className="flex-1" />
         {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
         <MenuAcoes itens={[
-          { rotulo: "Abrir banco como nota", fn: () => onOpen(b.path) },
+          { rotulo: "Abrir banco no editor", fn: () => onOpen(b.path) },
           { rotulo: "Atividade de um texto", fn: () => setAtiv(true), dica: "Monta o pedido para o Claude e insere as questões no banco" },
           { rotulo: "Sugerir questões", fn: () => setSel(sugerir(b)), dica: "2 de interpretação, 2 de conteúdo e 6 independentes, sem conteúdos excluídos" },
           { rotulo: "Limpar seleção", fn: () => setSel(new Set()), off: !sel.size },
@@ -89,7 +90,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
           { rotulo: "PDF / imprimir", fn: () => imprimir(ps(), "Prova", opcExport()), off: !sel.size },
           { rotulo: "Baixar gabarito", fn: async () => baixar(nomeArq("Gabarito"), await docxBlob(gabarito(b, sel))), off: !sel.size },
         ]} />
-        <button onClick={gravar} disabled={!sel.size} className="rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground disabled:opacity-40">Salvar como nota</button>
+        <button onClick={gravar} disabled={!sel.size} className="rounded-md bg-primary px-3 py-1 font-medium text-primary-foreground disabled:opacity-40">Salvar como arquivo</button>
       </div>
 
       <div className="flex min-h-0 flex-1">
@@ -98,7 +99,7 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
             <div className="mb-2 text-xs font-medium">Banco de questões · {b.ano}º ano</div>
             <div className="mb-1.5 text-xs text-muted-foreground">Conteúdos excluídos</div>
             <div className="flex flex-wrap gap-1.5 text-xs">
-              {b.excluidos.length ? b.excluidos.map((e) => <span key={e} className="rounded-full bg-red-100 px-2.5 py-0.5 text-red-800 dark:bg-red-950 dark:text-red-200">{e} ✕</span>) : <span className="text-muted-foreground">nenhum</span>}
+              {b.excluidos.length ? b.excluidos.map((e) => <span key={e} className="rounded-full bg-err/15 px-2.5 py-0.5 text-err">{e} ✕</span>) : <span className="text-muted-foreground">nenhum</span>}
             </div>
           </div>
           <div className="border-b px-5 py-2"><input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por conteúdo (ex.: crase, sujeito)" aria-label="Filtrar questões" className="w-full rounded border bg-background px-2 py-1 text-xs outline-none" /></div>
@@ -143,13 +144,13 @@ export function ProvaPage({ items, onOpen, onRefresh, textoInicial, onUsouTexto 
           <ul className="px-5 py-2 text-xs">
             {v.itens.map((i) => (
               <li key={i.rotulo} className="flex items-baseline gap-2.5 border-b py-2.5">
-                {i.ok ? <Check className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-green-700" /> : <X className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-amber-600" />}
+                {i.ok ? <Check className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-ok" /> : <X className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-warn" />}
                 <span className="flex-1">{i.rotulo}</span><span className="text-muted-foreground">{i.info}</span>
               </li>
             ))}
           </ul>
           {v.textosUsados.filter((t) => t.aviso).map((t) => (
-            <div key={t.n} className="mx-5 mt-2 rounded-lg bg-amber-100 p-3 text-xs leading-relaxed text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+            <div key={t.n} className="mx-5 mt-2 rounded-lg bg-warn/15 p-3 text-xs leading-relaxed">
               <div className="mb-0.5 font-semibold">Atenção · Texto {t.n}</div>{t.aviso}
             </div>
           ))}

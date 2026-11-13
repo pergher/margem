@@ -1,7 +1,9 @@
+import { CircleCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PlanejarCicloDialog } from "@/components/PlanejarCicloDialog";
 import { FASES, lerCiclos } from "@/lib/ciclos";
 import { lerSemanas } from "@/lib/semana";
+import { Estado } from "@/components/ui/estado";
 
 const cor = Object.fromEntries(FASES.map((f) => [f.id, f.cor]));
 
@@ -20,7 +22,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
   const [erro, setErro] = useState("");
   useEffect(() => { setDados(null); Promise.all([lerCiclos(items), lerSemanas(items).catch(() => [])]).then(([c, semanas]) => setDados({ ...c, semanas })).catch((e) => setErro(String(e))); }, [items]);
 
-  if (erro) return <div className="p-8 text-sm text-destructive">Erro: {erro}</div>;
+  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
   if (!dados) return <div className="p-8 text-sm text-muted-foreground">Lendo os planos…</div>;
   const { anoLetivo, ciclos } = dados;
   const dialogo = plan && <PlanejarCicloDialog items={items} onClose={() => setPlan(false)} onCriado={(p) => { setPlan(false); onRefresh?.(); onOpen?.(p); }} />;
@@ -68,7 +70,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
                     <Barra aulas={c.aulas} />
                     {situacao(progresso(c)) && (
                       <div className="mt-2 text-xs">
-                        <span className={"rounded-full px-2 py-0.5 text-white " + (situacao(progresso(c)) === "Concluído" ? "bg-emerald-700" : "bg-primary")}>{situacao(progresso(c))}</span>
+                        <span className={"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-white " + (situacao(progresso(c)) === "Concluído" ? "bg-ok" : "bg-primary")}>{situacao(progresso(c)) === "Concluído" && <CircleCheck aria-hidden className="h-3 w-3" />}{situacao(progresso(c))}</span>
                         <span className="ml-2 text-muted-foreground">{progresso(c).map((x) => `turma ${x.turma}: ${x.dadas} de ${x.total}`).join(" · ")}</span>
                       </div>
                     )}

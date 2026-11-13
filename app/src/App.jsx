@@ -13,7 +13,7 @@ import { setProp, lineStart } from "@/lib/frontmatter";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SearchModal } from "@/components/SearchModal";
 import { EntryDialog } from "@/components/EntryDialog";
-import { AnoPage } from "@/components/AnoPage";
+import { InicioPage } from "@/components/InicioPage";
 import { ProvaPage } from "@/components/ProvaPage";
 import { ProvaDaNota } from "@/components/ProvaDaNota";
 import { TextoDaNota } from "@/components/TextoDaNota";
@@ -30,7 +30,7 @@ import { aplicarFonte } from "@/lib/fontes";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
-import { loadFromDisk, loadOverrides, effective, comboOf, pretty } from "@/lib/shortcuts";
+import { loadFromDisk, loadOverrides, effective, comboOf, pretty, handlers, ACTIONS } from "@/lib/shortcuts";
 
 function RailButton({ label, active, onClick, disabled, size = "lg", children }) {
   return (
@@ -78,6 +78,10 @@ export default function App() {
   const [overrides, setOverrides] = useState(loadOverrides);
   const [page, setPage] = useState("semana");
   const [ciclo, setCiclo] = useState(null);
+  const [inicioModo, setInicioModoState] = useState(() => store.get("inicioModo", "semana"));
+  const setInicioModo = (m) => { setInicioModoState(m); store.set("inicioModo", m); };
+  const irAno = () => { setInicioModo("ano"); setPage("semana"); };
+  const [correcaoFoco, setCorrecaoFoco] = useState(null);
   const [textoAtiv, setTextoAtiv] = useState(null);
   const [showSide, setShowSide] = useState(() => store.get("side", true));
   const [foco, setFoco] = useState(false);
@@ -209,14 +213,14 @@ export default function App() {
     if (cur.current) { cur.current = sub(cur.current); setCurrent(cur.current); }
   };
   const fail = (e) => setStatus("Erro: " + e);
-  const createNote = (dir) => setDialog({ title: "Nova nota", input: true, okLabel: "Criar", onOk: async (name) => {
+  const createNote = (dir) => setDialog({ title: "Novo arquivo", input: true, okLabel: "Criar", onOk: async (name) => {
     const p = await invoke("create_note", { dir, name }); await refresh(); open(p);
   } });
   const createFolder = (dir) => setDialog({ title: "Nova pasta", input: true, okLabel: "Criar", onOk: async (name) => {
     await invoke("create_folder", { dir, name }); await refresh();
     setReveal({ key: (dir ? dir.slice(items[0]?.path.length - items[0]?.rel.length) + "/" : "") .replace(/^\//, "") + name + "/", n: Date.now() });
   } });
-  const renameEntry = (t) => setDialog({ title: t.kind === "dir" ? "Renomear pasta" : "Renomear nota", input: true, initial: t.name, okLabel: "Renomear", onOk: async (name) => {
+  const renameEntry = (t) => setDialog({ title: t.kind === "dir" ? "Renomear pasta" : "Renomear arquivo", input: true, initial: t.name, okLabel: "Renomear", onOk: async (name) => {
     if (name === t.name) return;
     await save();
     const r = await invoke("rename_entry", { path: t.path, name }); remap(t.path, r.path); await refresh();
@@ -284,6 +288,14 @@ export default function App() {
       if (!c) return;
       const id = Object.keys(kb.current.map).find((k) => kb.current.map[k] === c);
       if (!id) return;
+      if (ACTIONS.find((a) => a.id === id)?.plain) { // tecla simples: só fora de campos de texto e com a tela registrada
+        const t = e.target;
+        if (t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName)) return;
+        if (!handlers[id]) return;
+        e.preventDefault(); e.stopPropagation();
+        handlers[id]();
+        return;
+      }
       e.preventDefault(); e.stopPropagation();
       run[id]();
     };
@@ -302,17 +314,17 @@ export default function App() {
   const keys = effective(overrides);
   const commands = [
     { id: "p-editor", label: "Ir para o editor", run: () => setPage("editor") },
-    { id: "p-semana", label: "Ir para Esta semana", hint: "aula dar aula turma", run: () => setPage("semana") },
-    { id: "p-ano", label: "Ir para Planejamento do ano", hint: "ciclo", run: () => setPage("ano") },
+    { id: "p-semana", label: "Ir para o Início (Semana)", hint: "aula dar aula turma hoje", run: () => { setInicioModo("semana"); setPage("semana"); } },
+    { id: "p-ano", label: "Ir para o Ano e seus ciclos", hint: "ciclo", run: irAno },
     { id: "p-diario", label: "Ir para Diário e alunos", hint: "ocorrência conselho", run: () => setPage("diario") },
     { id: "p-saude", label: "Ir para Saúde do vault", hint: "avisos validar problemas", run: () => setPage("saude") },
     { id: "p-correcao", label: "Ir para Correções", hint: "redações produções", run: () => setPage("correcao") },
     { id: "p-prova", label: "Ir para Montar prova", run: () => setPage("prova") },
     { id: "p-config", label: "Ir para Configurações", run: () => setPage("config") },
-    { id: "buscar", label: "Buscar nota", keys: pretty(keys.search), run: () => setSearchOpen(true) },
+    { id: "buscar", label: "Buscar arquivo", keys: pretty(keys.search), run: () => setSearchOpen(true) },
     { id: "salvar", label: "Salvar agora", keys: pretty(keys.save), run: () => save() },
     { id: "tabela", label: "Inserir tabela", keys: pretty(keys.insertTable), run: () => { if (cur.current) { setPage("editor"); setTimeout(() => ed.current?.insertTable(), 50); } } },
-    { id: "nota", label: "Nova nota", hint: "criar", run: () => createNote(items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length - 1) : "") },
+    { id: "nota", label: "Novo arquivo", hint: "criar", run: () => createNote(items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length - 1) : "") },
     { id: "foco", label: "Modo foco (esconde menus e barras)", keys: pretty(keys.focus), run: () => setFoco((v) => !v) },
     { id: "lado", label: "Ocultar/mostrar arquivos (coluna 1)", keys: pretty(keys.toggleSide), run: () => setShowSide((v) => !v) },
     { id: "painel", label: "Ocultar/mostrar painel lateral", run: () => setShowOutline((v) => !v) },
@@ -353,8 +365,7 @@ export default function App() {
     <div className="flex h-full">
       {!foco && <nav aria-label="Navegação" className="flex w-14 shrink-0 flex-col items-center gap-1.5 border-r bg-muted py-3">
         <button type="button" aria-label="Margem — ir para o início" title="Margem" onClick={() => setPage("semana")} className="mb-1 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"><Logo className="h-9 w-9" /></button>
-        <RailButton label="Início — Esta semana" active={page === "semana"} onClick={() => setPage("semana")}><House className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label="Planejamento do ano" active={page === "ano" || page === "ciclo"} onClick={() => setPage(page === "ano" || page === "ciclo" ? "editor" : "ano")}><CalendarDays className="h-5 w-5" strokeWidth={1.6} /></RailButton>
+        <RailButton label="Início — Semana e Ano" active={page === "semana" || page === "ciclo"} onClick={() => setPage("semana")}><House className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Diário e alunos" active={page === "diario"} onClick={() => setPage(page === "diario" ? "editor" : "diario")}><BookOpen className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Correções" active={page === "correcao"} onClick={() => setPage(page === "correcao" ? "editor" : "correcao")}><PenLine className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Montar prova" active={page === "prova"} onClick={() => setPage(page === "prova" ? "editor" : "prova")}><FileCheck className="h-5 w-5" strokeWidth={1.6} /></RailButton>
@@ -371,7 +382,7 @@ export default function App() {
           <button onClick={() => setSearchOpen(true)}
             className="flex h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-left text-sm text-muted-foreground hover:border-primary/40">
             <Search className="h-4 w-4 shrink-0" />
-            <span className="flex-1 truncate">Buscar nota…</span>
+            <span className="flex-1 truncate">Buscar arquivo…</span>
             <kbd className="text-xs">{pretty(keys.search).replace(/ /g, "")}</kbd>
           </button>
         </div>
@@ -389,7 +400,7 @@ export default function App() {
           <RailButton size="sm" label={`Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
           <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
-            {crumbs.length === 0 && <span>Selecione uma nota</span>}
+            {crumbs.length === 0 && <span>Selecione um arquivo</span>}
             {crumbs.map((c, i) => {
               const last = i === crumbs.length - 1;
               return (
@@ -417,14 +428,13 @@ export default function App() {
         </header>}
 
         {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
-        {page === "ano" && <AnoPage items={items} onOpen={open} onRefresh={refresh} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
-        {page === "prova" && <ProvaPage items={items} onOpen={open} onRefresh={refresh} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
-        {page === "correcao" && <CorrecaoPage items={items} onOpen={open} />}
-        {page === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} />}
+                {page === "prova" && <ProvaPage items={items} onOpen={open} onRefresh={refresh} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
+        {page === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={correcaoFoco} />}
+        {page === "semana" && <InicioPage items={items} onOpen={open} onRefresh={refresh} modo={inicioModo} setModo={setInicioModo} onCorrecao={(p) => { setCorrecaoFoco(p); setPage("correcao"); }} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
         {page === "diario" && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} />}
         {page === "saude" && <SaudePage items={items} onOpen={open} onRefresh={refresh} />}
-        {page === "ciclo" && ciclo && <CicloPage ciclo={ciclo} items={items} onOpen={open} onAno={() => setPage("ano")} onChange={setCiclo} onRename={renomearNota} />}
-        {personalizada && visao.id === "ciclo" && <CicloDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} onAno={() => setPage("ano")} onRename={renomearNota} />}
+        {page === "ciclo" && ciclo && <CicloPage ciclo={ciclo} items={items} onOpen={open} onAno={irAno} onChange={setCiclo} onRename={renomearNota} />}
+        {personalizada && visao.id === "ciclo" && <CicloDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} onAno={irAno} onRename={renomearNota} />}
         {personalizada && visao.id === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "prova" && <ProvaDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} />}
         {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} focoPath={current} />}
@@ -435,10 +445,10 @@ export default function App() {
         </main>
 
         {!foco && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
-          <span>{status}</span>
+          <span className={/^Erro/.test(status) ? "font-medium text-err" : undefined}>{status}</span>
           {undo && <button onClick={undoMove} className="text-primary hover:underline">Desfazer movimento</button>}
           <span className="flex-1" />
-          {current && info?.issues.length > 0 && <button onClick={() => { setShowOutline(true); setPanelTab("links"); }} className="text-amber-600 hover:underline">{info.issues.length} aviso{info.issues.length > 1 ? "s" : ""}</button>}
+          {current && info?.issues.length > 0 && <button onClick={() => { setShowOutline(true); setPanelTab("links"); }} className="text-warn hover:underline">{info.issues.length} aviso{info.issues.length > 1 ? "s" : ""}</button>}
           {current && <span>{words} palavras</span>}
           {zoom !== 1 && <button onClick={() => setZoom(1)} title={`Restaurar (${pretty(keys.zoomReset)})`} className="hover:text-foreground">{Math.round(zoom * 100)}%</button>}
           <span>Salva sozinho</span>

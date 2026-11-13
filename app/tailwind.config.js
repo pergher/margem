@@ -10,12 +10,14 @@ export default {
       colors: {
         border: "hsl(var(--border))", input: "hsl(var(--input))", ring: "hsl(var(--ring))",
         background: "hsl(var(--background))", foreground: "hsl(var(--foreground))",
+        ok: "hsl(var(--ok))", warn: "hsl(var(--warn))", err: "hsl(var(--err))",
         primary: { DEFAULT: "hsl(var(--primary))", foreground: "hsl(var(--primary-foreground))" },
         secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
         muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
         accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
       },
-      borderRadius: { lg: "var(--radius)", md: "calc(var(--radius) - 2px)", sm: "calc(var(--radius) - 4px)" },
+      // Raios: só 8, 12 e pílula (rounded-full). sm/md = 8, lg/xl = 12.
+      borderRadius: { sm: "0.5rem", md: "0.5rem", lg: "0.75rem", xl: "0.75rem" },
     },
   },
   plugins: [animate],

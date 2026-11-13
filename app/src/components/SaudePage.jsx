@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { setProp } from "@/lib/frontmatter";
+import { Estado } from "@/components/ui/estado";
 
 const CODIGOS = {
-  "sem-tipo": "Notas sem tipo", "tipo-desconhecido": "Tipo desconhecido", "campo-vazio": "Campos vazios ou ausentes", "campo-obsoleto": "Campos obsoletos",
+  "sem-tipo": "Arquivos sem tipo", "tipo-desconhecido": "Tipo desconhecido", "campo-vazio": "Campos vazios ou ausentes", "campo-obsoleto": "Campos obsoletos",
   "link-quebrado": "Links quebrados", "ancora-quebrada": "Âncoras quebradas", "marca-pendente": "Marcas de transcrição pendentes", "valor-invalido": "Valores inválidos",
   "conteudo-desconhecido": "Conteúdos fora do vocabulário", "aguardando-revisao": "Transcrições aguardando revisão", "total-diverge": "Total diverge da soma",
   "nota-fora-da-rubrica": "Nota fora da rubrica", "sem-recuperacao": "Ciclo sem recuperação", "data-invalida": "Datas inválidas", "aula-sem-recurso": "Aulas sem recurso", yaml: "Frontmatter inválido",
 };
-const COR = { erro: "text-red-700", aviso: "text-amber-700", info: "text-muted-foreground" };
+const COR = { erro: "text-err", aviso: "text-warn", info: "text-muted-foreground" };
 
 function tipoSugerido(rel, name) {
   if (/^Acervo\/Aulas\//.test(rel)) return "aula";
@@ -44,7 +45,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
     return Object.entries(g).sort((a, b) => b[1].length - a[1].length);
   }, [lista, filtro]);
 
-  if (erro) return <div className="p-8 text-sm text-destructive">Erro: {erro}</div>;
+  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
   if (!lista) return <div className="p-8 text-sm text-muted-foreground">Verificando o vault…</div>;
 
   const dizer = (t) => { setAviso(t); setTimeout(() => setAviso(""), 3000); };
@@ -73,7 +74,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
     }
     if (x.code === "link-quebrado") {
       const alvo = /\[\[([^\]|#]+)/.exec(x.msg)?.[1]?.trim();
-      return alvo ? <button onClick={() => criarLink(it, alvo)} className="text-primary hover:underline">criar a nota</button> : null;
+      return alvo ? <button onClick={() => criarLink(it, alvo)} className="text-primary hover:underline">criar o arquivo</button> : null;
     }
     return null;
   }
@@ -86,10 +87,10 @@ export function SaudePage({ items, onOpen, onRefresh }) {
         <span className="text-xs text-muted-foreground">{total} aviso(s){erros ? `, ${erros} erro(s)` : ""} · {lista.length ? Object.keys(Object.fromEntries(lista.map((x) => [x.code, 1]))).length : 0} tipos de problema</span>
         <div className="flex-1" />
         <span className="text-xs text-muted-foreground">{aviso}</span>
-        <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por nota ou texto" aria-label="Filtrar avisos" className="w-56 rounded border bg-background px-2 py-1 text-sm" />
+        <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por arquivo ou texto" aria-label="Filtrar avisos" className="w-56 rounded border bg-background px-2 py-1 text-sm" />
         <button onClick={() => { setLista(null); carregar(); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Verificar de novo</button>
       </div>
-      <div className="mb-5 text-xs text-muted-foreground">Cada grupo é um tipo de problema; clique no nome da nota para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias (reversível pela lixeira .lixeira).</div>
+      <div className="mb-5 text-xs text-muted-foreground">Cada grupo é um tipo de problema; clique no nome do arquivo para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias (reversível pela lixeira .lixeira).</div>
 
       {grupos.length === 0 && <div className="rounded-xl bg-muted p-4 text-sm">Nenhum aviso{filtro ? " para este filtro" : ""}. 🎉</div>}
       <div className="flex flex-col gap-3">

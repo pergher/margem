@@ -4,6 +4,7 @@ import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { FASES, inserirAula, removerAula, salvarAulas, editarCelula, salvarConteudos, salvarHabilidades, nomeComTitulo, parseCiclo } from "@/lib/ciclos";
 import { ajustarSemanasAoCiclo } from "@/lib/semana";
+import { Estado } from "@/components/ui/estado";
 
 const fase = Object.fromEntries(FASES.map((f) => [f.id, f]));
 const norm = (s) => s.toLowerCase();
@@ -17,7 +18,7 @@ function Recurso({ texto, nomes, onOpen, items }) {
     const alvo = m[1].trim(), item = items.find((x) => norm(x.name) === norm(alvo));
     return item
       ? <button key={i} onClick={() => onOpen(item.path)} className="text-primary hover:underline">{alvo}</button>
-      : <span key={i} title="Nota ainda não existe" className="text-amber-700">{alvo} (a criar)</span>;
+      : <span key={i} title="Arquivo ainda não existe" className="text-warn">{alvo} (a criar)</span>;
   });
 }
 
@@ -92,7 +93,7 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }
           {contagem.map(({ f, n }) => <span key={f.id} className="rounded-full border px-2 py-0.5"><span aria-hidden className="mr-1 inline-block h-2 w-2" style={{ background: f.cor }} />{f.nome} · {n}</span>)}
         </div>
 
-        <button onClick={() => onOpen(c.path)} className="mt-6 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Abrir como nota</button>
+        <button onClick={() => onOpen(c.path)} className="mt-6 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Abrir no editor</button>
       </aside>
       <ResizeHandle width={wDados} setWidth={setWDados} min={240} max={560} side="left" />
 
@@ -100,7 +101,7 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }
         <div className="shrink-0 px-6 pb-3 pt-4">
           <div className="mb-2 flex items-center gap-3 text-xs font-medium">Sequência do ciclo <span className="font-normal text-muted-foreground">· {c.aulas.length} aulas</span>
             <button onClick={() => setNovo({ pos: c.aulas.length + 1, texto: "" })} className="rounded-md border px-2 py-0.5 text-xs font-normal hover:bg-accent">+ Aula</button>
-            {erro && <span className="text-xs font-normal text-destructive">{erro}</span>}
+            {erro && <Estado tipo="err" inline className="text-xs font-normal">{erro}</Estado>}
           </div>
           <div className="flex h-1.5 max-w-xl gap-0.5">{c.aulas.map((a) => <span key={a.n} style={{ flex: 1, background: fase[a.fase].cor }} />)}</div>
         </div>
@@ -118,7 +119,7 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }
               <span><Editavel multi label={`Recurso da aula ${a.n}`} valor={a.recurso} placeholder="" className="block min-h-[1.25rem]" render={(t) => <Recurso texto={t} items={items} onOpen={onOpen} />} onSave={(t) => aplicar((tx) => editarCelula(tx, a.n, 3, t))} /></span>
               <span className="flex justify-end gap-1 opacity-0 focus-within:opacity-100 group-hover:opacity-100">
                 <button title={`Inserir uma aula antes da ${a.n} (as seguintes deslocam)`} aria-label={`Inserir antes da aula ${a.n}`} onClick={() => setNovo({ pos: a.n, texto: "" })} className="rounded px-1.5 text-muted-foreground hover:bg-accent">↧</button>
-                <button title={`Remover a aula ${a.n} (as seguintes sobem)`} aria-label={`Remover a aula ${a.n}`} onClick={() => { if (window.confirm(`Remover a aula ${a.n}?\n\n${resumo(a.texto)}`)) aplicar((t) => removerAula(t, a.n), { removida: a.n }); }} className="rounded px-1.5 text-muted-foreground hover:bg-accent hover:text-destructive">✕</button>
+                <button title={`Remover a aula ${a.n} (as seguintes sobem)`} aria-label={`Remover a aula ${a.n}`} onClick={() => { if (window.confirm(`Remover a aula ${a.n}?\n\n${resumo(a.texto)}`)) aplicar((t) => removerAula(t, a.n), { removida: a.n }); }} className="rounded px-1.5 text-muted-foreground hover:bg-accent hover:text-err">✕</button>
               </span>
             </div>
             </div>

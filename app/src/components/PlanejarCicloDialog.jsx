@@ -46,7 +46,7 @@ export function PlanejarCicloDialog({ items, onClose, onCriado }) {
               {prop.aulas.map((a, i) => <label key={"a" + i} className={"flex gap-2 " + (a.ok ? "" : "opacity-50 line-through")}><input type="checkbox" checked={a.ok} onChange={() => marca("aulas", i)} />
                 <span className="w-6 text-right text-xs text-muted-foreground">{prop.aulas.slice(0, i + 1).filter((x) => x.ok).length}</span>
                 <span className="min-w-0 flex-1">{a.conteudo}</span>
-                {a.recurso && <span className={"text-xs " + (a.recursoExiste ? "text-muted-foreground" : "text-amber-700")}>{a.recurso}{a.recursoExiste ? "" : " (não existe no vault: vira texto)"}</span>}</label>)}
+                {a.recurso && <span className={"text-xs " + (a.recursoExiste ? "text-muted-foreground" : "text-warn")}>{a.recurso}{a.recursoExiste ? "" : " (não existe no vault: vira texto)"}</span>}</label>)}
             </div>
             <button onClick={criar} className="mt-3 rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground">Criar ciclo {nomeCiclo(d)}</button>
           </div>

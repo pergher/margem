@@ -5,6 +5,7 @@ import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { lerSemanas } from "@/lib/semana";
 import { ESTADOS, listarDiarios, listarAlunos, lerMeta, criarDiario, criarAluno, inserirOcorrencia, mudarEstado, ocorrenciasDoDiario, aulasDoDiario, turmasDe } from "@/lib/diario";
+import { Estado } from "@/components/ui/estado";
 
 // "Paulo Pergher" -> "Pa. Pe." (duas letras do primeiro e do último nome)
 const abreviar = (nome) => { const p = nome.trim().split(/\s+/); return (p.length > 1 ? [p[0], p[p.length - 1]] : p).map((x) => x.slice(0, 2) + ".").join(" "); };
@@ -41,8 +42,8 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath }) {
         <div className="flex-1" />
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={ocultar} onChange={(e) => setOcultar(e.target.checked)} />ocultar nomes</label>
       </div>
-      <div className="mb-4 text-xs text-muted-foreground">Dados sensíveis: estas pastas ficam bloqueadas no MCP (o Claude não lê o diário nem as notas de aluno).</div>
-      {erro && <div className="mb-3 text-sm text-destructive">Erro: {erro} <button className="underline" onClick={() => setErro("")}>ok</button></div>}
+      <div className="mb-4 text-xs text-muted-foreground">Dados sensíveis: estas pastas ficam bloqueadas no MCP (o Claude não lê o diário nem as arquivos de aluno).</div>
+      {erro && <Estado tipo="err" className="mb-3 text-sm">Erro: {erro} <button className="underline" onClick={() => setErro("")}>ok</button></Estado>}
       {!turma ? <div className="text-sm text-muted-foreground">Nenhuma turma encontrada ainda. Crie uma semana ou um aluno.</div>
         : aba === "diario"
           ? <Diarios items={items} turma={turma} ano={ano} diarios={diarios.filter((d) => d.turma === turma)} semanas={semanas} onRefresh={onRefresh} onEditar={onMarkdown ?? onOpen} falha={falha} />
@@ -113,7 +114,7 @@ function NovoDiario({ turma, semanas, diarios, onOk, onCancel }) {
           <label className="mb-3 flex items-center gap-2">Foto do caderno (opcional)
             <input value={foto} onChange={(e) => setFoto(e.target.value)} placeholder="nome-do-arquivo.jpg" className="w-64 rounded border bg-background px-2 py-1" />
           </label>
-          {ja && <div className="mb-2 text-xs text-amber-700">já existe um diário desta turma para esta semana</div>}
+          {ja && <Estado tipo="warn" className="mb-2 text-xs">já existe um diário desta turma para esta semana</Estado>}
         </>
       )}
       <div className="flex gap-3">
@@ -127,6 +128,7 @@ function NovoDiario({ turma, semanas, diarios, onOk, onCancel }) {
 function Alunos({ items, turma, ano, alunos, diarios, ocultar, onOpen, onRefresh, falha, focoSel }) {
   const [wLista, setWLista] = useWidth("alunos.lista", 260);
   const [nome, setNome] = useState("");
+  const [busca, setBusca] = useState("");
   const [sel, setSel] = useState(focoSel ?? null);
   useEffect(() => { if (focoSel) setSel(focoSel); }, [focoSel]);
   const [ocs, setOcs] = useState([]);
@@ -148,8 +150,9 @@ function Alunos({ items, turma, ano, alunos, diarios, ocultar, onOpen, onRefresh
           <input value={nome} onChange={(e) => setNome(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} placeholder="Novo aluno" className="min-w-0 flex-1 rounded border bg-background px-2 py-1 text-sm" />
           <button onClick={add} className="rounded-md bg-primary px-3 text-sm text-primary-foreground">+</button>
         </div>
+        <input value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar aluno" placeholder="Buscar aluno…" className="mb-2 w-full rounded border bg-background px-2 py-1 text-sm" />
         <div className="flex flex-col gap-1">
-          {alunos.map((a) => (
+          {alunos.filter((a) => a.path === sel || (ocultar ? abreviar(a.name) : a.name).toLowerCase().includes(busca.trim().toLowerCase())).map((a) => (
             <button key={a.path} onClick={() => setSel(a.path)} className={cn("flex items-center justify-between rounded-lg px-3 py-1.5 text-left text-sm", a.path === sel ? "bg-accent" : "hover:bg-accent/50")}>
               <span>{ocultar ? abreviar(a.name) : a.name}</span>
               <span className="text-xs text-muted-foreground">{doAluno(a).length || ""}</span>
@@ -164,7 +167,7 @@ function Alunos({ items, turma, ano, alunos, diarios, ocultar, onOpen, onRefresh
           <>
             <div className="mb-2 flex items-center gap-3">
               <h2 className="font-serif text-2xl font-semibold">{ocultar ? abreviar(atual.name) : atual.name}</h2>
-              <button onClick={() => onOpen(atual.path)} className="text-xs text-primary hover:underline">abrir nota</button>
+              <button onClick={() => onOpen(atual.path)} className="text-xs text-primary hover:underline">abrir no editor</button>
               <button onClick={() => navigator.clipboard?.writeText(resumo(atual))} className="text-xs text-primary hover:underline">copiar resumo (Conselho de Classe)</button>
             </div>
             {doAluno(atual).length === 0 && <div className="text-sm text-muted-foreground">Nenhuma ocorrência nos diários.</div>}

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { parseFm } from "@/lib/frontmatter";
 import { invoke } from "@/lib/api";
 import { diffLinhas } from "@/lib/diff";
+import { Estado } from "@/components/ui/estado";
 
 export const TABS = [["sumario", "Sumário", ListTree], ["props", "Propriedades", SlidersHorizontal], ["links", "Links", Link2], ["hist", "Histórico", History]];
 
@@ -31,7 +32,7 @@ function Text({ value, onCommit, warn }) {
   const commit = () => { if (v.trim() !== value) onCommit(v.trim()); };
   return <input value={v} onChange={(e) => setV(e.target.value)} onBlur={commit} placeholder={warn ? "pendente" : ""}
     onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { setV(value); e.currentTarget.blur(); } }}
-    className={cn("h-7 w-full rounded-md border bg-background px-2 text-xs outline-none focus:border-primary", warn && "border-amber-400/70 placeholder:text-amber-600")} />;
+    className={cn("h-7 w-full rounded-md border bg-background px-2 text-xs outline-none focus:border-primary", warn && "border-warn/70 placeholder:text-warn")} />;
 }
 
 function Props({ text, info, onSet }) {
@@ -43,10 +44,10 @@ function Props({ text, info, onSet }) {
   const listy = (k) => ["turmas", "tags", "conteudos", "conteudos_excluidos", "foco", "alertas", "habilidades", "textos", "questoes", "feriados"].includes(k);
   return (
     <ScrollArea className="flex-1 px-3 py-2">
-      {rows.length === 0 && <p className="py-1 text-sm text-muted-foreground">Esta nota não tem propriedades.</p>}
+      {rows.length === 0 && <p className="py-1 text-sm text-muted-foreground">Este arquivo não tem propriedades.</p>}
       {rows.map((r) => (
         <div key={r.key} className="mb-2.5">
-          <div className={cn("mb-1 text-xs uppercase tracking-wide text-muted-foreground", r.missing && "text-amber-600")}>{r.key}{r.missing && " · obrigatório"}</div>
+          <div className={cn("mb-1 text-xs uppercase tracking-wide text-muted-foreground", r.missing && "text-warn")}>{r.key}{r.missing && " · obrigatório"}</div>
           {r.items || listy(r.key)
             ? <Chips items={r.items ?? []} onChange={(it) => onSet(r.key, it)} />
             : r.key === "status"
@@ -76,12 +77,12 @@ function Links({ info, onOpen, onGoLine }) {
       {info.issues.length === 0 && <p className="px-2 pb-2 text-sm text-muted-foreground">Nenhum aviso.</p>}
       {info.issues.map((i, k) => (
         <button key={k} onClick={() => onGoLine(i.line)} className="mb-0.5 flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent">
-          <AlertTriangle className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", i.severity === "erro" ? "text-red-600" : "text-amber-500")} />
+          <AlertTriangle className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", i.severity === "erro" ? "text-err" : "text-warn")} />
           <span><span className="text-muted-foreground">linha {i.line} · </span>{i.msg}</span>
         </button>
       ))}
       <h3 className="px-2 pb-1 pt-3 text-xs uppercase tracking-wide text-muted-foreground">Mencionada em ({info.backlinks.length})</h3>
-      {info.backlinks.length === 0 && <p className="px-2 text-sm text-muted-foreground">Nenhuma nota aponta para esta.</p>}
+      {info.backlinks.length === 0 && <p className="px-2 text-sm text-muted-foreground">Nenhum arquivo aponta para este.</p>}
       {info.backlinks.map((b) => (
         <button key={b.path} onClick={() => onOpen(b.path)} title={b.rel} className="flex w-full flex-col rounded-md px-2 py-1.5 text-left hover:bg-accent">
           <span className="truncate text-xs">{b.name}</span>
@@ -102,14 +103,14 @@ function Historico({ path, text, onRestore, tick }) {
   useEffect(() => { setSel(null); setErro(""); setVers(null); if (path) invoke("list_history", { path }).then(setVers).catch((e) => setErro(String(e))); }, [path, tick]);
   const abrir = (v) => invoke("read_version", { path, id: v.id }).then((t) => setSel({ id: v.id, ts: v.ts, texto: t })).catch((e) => setErro(String(e)));
   const restaurar = () => invoke("restore_version", { path, id: sel.id }).then((t) => { onRestore(t); setSel(null); }).catch((e) => setErro(String(e)));
-  if (!path) return <p className="px-4 py-3 text-sm text-muted-foreground">Abra uma nota.</p>;
+  if (!path) return <p className="px-4 py-3 text-sm text-muted-foreground">Abra um arquivo.</p>;
   const linhas = sel ? diffLinhas(sel.texto, text) : [];
   const mudou = linhas.some((l) => l.t !== " ");
   return (
     <ScrollArea className="flex-1 px-2 py-2">
-      {erro && <p className="px-2 pb-2 text-xs text-destructive">{erro}</p>}
+      {erro && <Estado tipo="err" className="px-2 pb-2 text-xs">{erro}</Estado>}
       {vers === null ? <p className="px-2 text-sm text-muted-foreground">Carregando…</p>
-        : vers.length === 0 ? <p className="px-2 text-sm text-muted-foreground">Ainda não há versões antigas. A primeira aparece quando esta nota for salva com alterações.</p>
+        : vers.length === 0 ? <p className="px-2 text-sm text-muted-foreground">Ainda não há versões antigas. A primeira aparece quando este arquivo for salvo com alterações.</p>
         : vers.map((v) => (
           <button key={v.id} onClick={() => abrir(v)} className={cn("flex w-full justify-between rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent", sel?.id === v.id && "bg-accent")}>
             <span>{quando(v.ts)}</span><span className="text-xs text-muted-foreground">{v.bytes} B</span>
@@ -123,7 +124,7 @@ function Historico({ path, text, onRestore, tick }) {
           <div className="overflow-hidden rounded-md border font-mono text-xs leading-snug">
             {linhas.map((l, i) => l.t === " " && !linhas.slice(Math.max(0, i - 2), i + 3).some((x) => x.t !== " ")
               ? (i === 0 || !(linhas[i - 1].t === " " && !linhas.slice(Math.max(0, i - 3), i + 2).some((x) => x.t !== " ")) ? <div key={i} className="px-2 text-muted-foreground">…</div> : null)
-              : <div key={i} className={cn("whitespace-pre-wrap break-words px-2", l.t === "+" && "bg-emerald-500/15", l.t === "-" && "bg-red-500/15 line-through decoration-red-500/40")}>{l.t === " " ? "  " : l.t + " "}{l.s || " "}</div>)}
+              : <div key={i} className={cn("whitespace-pre-wrap break-words px-2", l.t === "+" && "bg-ok/15", l.t === "-" && "bg-err/15 line-through decoration-err/40")}>{l.t === " " ? "  " : l.t + " "}{l.s || " "}</div>)}
           </div>
           <p className="mt-2 px-1 text-xs text-muted-foreground">Verde: está agora e não estava. Vermelho: estava na versão antiga.</p>
         </div>
@@ -142,7 +143,7 @@ export function RightPanel({ tab, setTab, info, text, onSet, onOpen, onGoLine, p
             className={cn("relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground", tab === id ? "flex-1 bg-accent text-foreground" : "shrink-0")}>
             <Icon className="h-4 w-4" strokeWidth={1.7} />
             {tab === id && <span className="truncate">{label}</span>}
-            {id === "links" && n > 0 && <span className="absolute right-1 top-0.5 rounded-full bg-amber-500 px-1 text-[10px] leading-4 text-white">{n}</span>}
+            {id === "links" && n > 0 && <span className="absolute right-1 top-0.5 rounded-full bg-warn px-1 text-[10px] leading-4 text-white">{n}</span>}
           </button>
         ))}
       </div>

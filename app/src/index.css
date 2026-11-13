@@ -11,6 +11,7 @@
     --accent: 42 20% 92%; --accent-foreground: 36 9% 11%;
     --border: 40 17% 88%; --input: 40 14% 86%; --ring: 186 35% 28%;
     --radius: 0.5rem;
+    --ok: 152 45% 28%; --warn: 30 85% 33%; --err: 4 65% 42%;
   }
   .dark {
     --background: 36 8% 10%; --foreground: 40 20% 94%;
@@ -19,10 +20,19 @@
     --muted: 36 8% 13%; --muted-foreground: 38 8% 62%;
     --accent: 36 6% 17%; --accent-foreground: 40 20% 94%;
     --border: 36 6% 20%; --input: 36 6% 22%; --ring: 186 40% 62%;
+    --ok: 152 40% 62%; --warn: 35 85% 65%; --err: 4 75% 70%;
   }
   * { @apply border-border; }
+  /* Tokens (rodada 2026-11-13): raios 8/12/pílula; espaçamento 4·8·12·16·24·32; controles 40px; texto 15px;
+     estados: --ok/--warn/--err (sempre com ícone ou texto). Ver docs/melhorias-de-interface.md. */
+  /* Foco visível em tudo que se clica ou foca por teclado (o editor e as células da tabela têm o seu próprio) */
+  :where(button, a[href], select, summary, [role="button"], [role="menuitem"], [role="option"], [tabindex]:not([tabindex="-1"])):focus-visible:not(.cm-content, .cm-content *) {
+    outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: .5rem;
+  }
+  /* Hover leve em botões de lista/linha que não definem fundo próprio */
+  button:not(:disabled):not([class*="bg-"]):not([class*="hover:bg"]):not([class*="hover:underline"]):not(.cm-table-bar button):hover { background-color: hsl(var(--accent) / .6); }
   html, body, #root { height: 100%; }
-  body { @apply bg-background text-foreground antialiased; font-family: var(--f-ui, 'Inter Variable', system-ui, sans-serif); }
+  body { @apply bg-background text-foreground antialiased; font-family: var(--f-ui, 'Inter Variable', system-ui, sans-serif); font-variant-numeric: tabular-nums; }
 }
 
 /* ---------- editor / live preview ---------- */

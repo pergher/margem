@@ -54,6 +54,12 @@ Uma tabela por turma (`### 61`), com `Ciclo: [[231 - Crase]]` logo abaixo do tí
 
 Se um ciclo ganhar ou perder aulas pela tela Ciclo (inserir, deslocar, remover), o app ajusta o número da aula nas linhas das semanas que apontam para ele.
 
+## Turmas do ano (`tipo: configuracao`)
+
+`Anos/AAAA/Turmas AAAA.md` guarda as turmas do ano e quantas aulas cada uma tem por semana: `turmas: ["61", "62"]` e `aulas_por_semana: 4`. A tela Início → Semana mostra esse número de espaços por turma (4 por padrão); no ano seguinte basta criar outra nota. Edita-se em Configurações → Turmas do ano. Sem a nota, a Semana usa as turmas que já aparecem nas notas de semana.
+
+Na Semana, cada espaço vazio recebe uma aula do ciclo (com sugestões: as próximas ainda sem semana) ou um texto livre (aula avulsa, ex.: aula atípica). A nota de semana nova traz só as aulas não dadas da anterior; os outros espaços ficam vazios.
+
 ## Configuração das provas (`tipo: configuracao`)
 
 O app guarda o cabeçalho das provas na nota `_sistema/Configuração das provas.md` (nada fica só no navegador): `escola` e `linha2` (texto do cabeçalho), `logo` (nome do arquivo PNG/JPG em `_sistema/anexos/`, ex.: `logo-escola.png`), `duas_colunas` (true/false) e `limite_linhas` (linhas por folha, calibrado com uma prova real). Edita-se em Configurações → Cabeçalho das provas ou direto na nota.
@@ -61,6 +67,26 @@ O app guarda o cabeçalho das provas na nota `_sistema/Configuração das provas
 ## Pesos da correção
 
 A nota de cada critério na tabela `### Avaliação` já é em pontos (ex.: Ortografia, de peso 2, vai de 0 a 2). O app lê o `_dados.json` da pasta da correção: o `peso` de cada critério é o seu máximo e `gradacao` (ex.: 0, 0,25 … 1) multiplicada pelo peso dá as notas que o menu oferece. Sem `_dados.json` (ou com `criterios` só em texto), todos os critérios valem o mesmo máximo, lido do texto da rubrica.
+
+## Citação e anotação na margem
+
+- `> texto` (sem colchetes) é **citação**: o editor mostra em itálico cinza com barra à esquerda. Nunca vira anotação.
+- `> [!tipo] Título` é **callout**: `note`, `tip`, `warning`, `example`, `question`, `important`, `abstract`, `info`, `professor`. Linhas seguintes com `>` fazem parte dele; `+`/`-` depois do tipo (`[!tip]-`) são aceitos.
+- `> [!margem] Título` é a **anotação na margem**: observação do professor sobre o trecho (ex.: um lembrete na transcrição de uma redação). Só `[!margem]` é anotação; um `>` puro, mesmo perto de uma, continua sendo citação.
+
+## Onde ficam os dados estruturados
+
+Regra: dado que o app lê e grava mora **na nota a que pertence**, em tabela ou lista; o frontmatter guarda só metadados da nota inteira; `_dados.json` só guarda configuração que o app lê e não grava.
+
+| dado | onde fica | formato |
+|---|---|---|
+| critérios e notas de uma redação | nota da correção, `### Avaliação` de cada aluno | tabela `Critério \| Nota \| Comentário`; "Nota final" é a última linha |
+| pesos e gradação dos critérios | `_dados.json` na pasta da correção | `peso`, `gradacao`, níveis dos descritores (só leitura para o app) |
+| ocorrências de aluno | diário da turma, seção `## Aula N — texto` | linha `- [[Nome]] — texto`; a nota do aluno não guarda cópia, o app junta lendo os diários |
+| situação da aula | nota de semana | marca no fim da célula *Aula* (ver acima) |
+| habilidades/códigos BNCC | nota do ciclo | texto da habilidade com o código no início (ex.: `EF69LP…`); sem campo próprio por ora |
+
+Proposta ainda **não** implementada, para decidir quando a tela de cobertura da BNCC existir: lista `habilidades: ["EF69LP32", …]` no frontmatter do ciclo, com os códigos conferidos contra `Recursos/_codigos.md`, para o app contar a cobertura sem ler o texto.
 
 ## Ferramentas
 

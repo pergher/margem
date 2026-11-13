@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { listarTextos, lerFicha, proximosNumeros, montarPedido, gravarNoBanco } from "@/lib/atividade";
+import { Estado } from "@/components/ui/estado";
 
 export function AtividadeDialog({ items, banco, textoInicial, onClose, onDone }) {
   const textos = useMemo(() => listarTextos(items), [items]);
@@ -39,8 +40,8 @@ export function AtividadeDialog({ items, banco, textoInicial, onClose, onDone })
               <>
                 <div className="font-serif text-lg font-semibold">{ficha.titulo}</div>
                 <div className="text-xs text-muted-foreground">{ficha.autor} · {ficha.genero}{ficha.foco.length ? ` · foco: ${ficha.foco.join(", ")}` : ""}</div>
-                {ficha.alertas.length > 0 && <div className="mt-1 text-xs text-amber-700">Alertas: {ficha.alertas.join(", ")}</div>}
-                {jaTem && <div className="mt-1 text-xs text-amber-700">Este texto já está no banco.</div>}
+                {ficha.alertas.length > 0 && <Estado tipo="warn" className="mt-1 text-xs">Alertas: {ficha.alertas.join(", ")}</Estado>}
+                {jaTem && <Estado tipo="warn" className="mt-1 text-xs">Este texto já está no banco.</Estado>}
                 <div className="mt-2 flex items-center gap-3 text-xs">
                   <label>Interpretação <input type="number" min={0} max={8} value={nInterp} onChange={(e) => setNI(Number(e.target.value))} className="w-14 rounded border bg-background px-1" /></label>
                   <label>Conteúdo <input type="number" min={0} max={8} value={nCont} onChange={(e) => setNC(Number(e.target.value))} className="w-14 rounded border bg-background px-1" /></label>

@@ -6,6 +6,7 @@ import { lerBanco, verificar, paragrafos, gabarito, docxBlob, imprimir, fonteDoT
 import { useConfigProva } from "@/lib/useConfigProva";
 import { useWidth } from "@/lib/useWidth";
 import { ResizeHandle } from "@/components/ResizeHandle";
+import { Estado } from "@/components/ui/estado";
 
 /** Visão de uma nota `tipo: prova` (Anos/AAAA/Provas): a prova montada a partir do banco citado, com exportação e edição de turma/data/valor. */
 export function ProvaDaNota({ item, items, onOpen, tick }) {
@@ -38,9 +39,9 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
     Promise.all(b.textos.map(async (t) => [t.n, await fonteDoTexto(items, t.titulo).catch(() => null)])).then((l) => setFontes(Object.fromEntries(l.filter((x) => x[1]))));
   }, [b, fonte]);
 
-  if (erro) return <div className="p-8 text-sm text-destructive">{erro}</div>;
+  if (erro) return <Estado tipo="err" className="p-8 text-sm">{erro}</Estado>;
   if (!texto) return <div className="p-8 text-sm text-muted-foreground">Lendo a prova…</div>;
-  if (!nomeBanco || !bancoItem) return <div className="p-8 text-sm text-muted-foreground">Esta nota não cita um banco de questões existente (linha <code>Banco: [[nome]]</code>). Use “Markdown” para ver o texto.</div>;
+  if (!nomeBanco || !bancoItem) return <div className="p-8 text-sm text-muted-foreground">Este arquivo não cita um banco de questões existente (linha <code>Banco: [[nome]]</code>). Use “Markdown” para ver o texto.</div>;
   if (!b) return <div className="p-8 text-sm text-muted-foreground">Lendo o banco…</div>;
 
   const sel = new Set((get("questoes")?.items ?? []).map(Number).filter(Number.isFinite));
@@ -91,7 +92,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
           <ul className="border-t px-5 py-2 text-xs">
             {v.itens.map((i) => (
               <li key={i.rotulo} className="flex items-baseline gap-2.5 border-b py-2.5">
-                {i.ok ? <Check className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-green-700" /> : <X className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-amber-600" />}
+                {i.ok ? <Check className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-ok" /> : <X className="h-3.5 w-3.5 shrink-0 translate-y-0.5 text-warn" />}
                 <span className="flex-1">{i.rotulo}</span><span className="text-muted-foreground">{i.info}</span>
               </li>
             ))}

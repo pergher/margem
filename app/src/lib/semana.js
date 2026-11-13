@@ -57,8 +57,6 @@ export async function marcarAula(path, turma, n, dada) {
 // Ciclo = "[[231 - Crase]] 3" (aula 3 do ciclo) ou vazio (aula avulsa). Só o rótulo é mostrado, sem datas de aula.
 import { inserirAula, parseCiclo } from "@/lib/ciclos";
 
-export const AULAS_POR_SEMANA = 4;
-
 /** Situação de uma aula da semana; a marca fica no fim da célula "Aula". Sem marca = ainda planejada. */
 export const SITUACOES = [
   { id: "dada", marca: "✓", nome: "Dada" },
@@ -152,26 +150,25 @@ export function proximasDoCiclo({ ciclos, semanas, turma, nomeCiclo, qtd, exclui
     .map((a) => ({ texto: a.texto.replace(/\s*✓\s*$/, ""), recurso: a.recurso ?? "", cicloNome: nomeCiclo, cicloN: a.n, dada: false, situacao: null, fase: a.fase }));
 }
 
+/** Segunda-feira da semana seguinte à última nota datada ("Semana AAAA-MM-DD"); sem nota datada, a desta semana. */
+export function proximaSegunda(semanas, hoje = new Date()) {
+  const atual = segundaDe(hoje);
+  const datas = semanas.map((s) => /Semana (\d{4})-(\d{2})-(\d{2})/.exec(s.name ?? "")).filter(Boolean).map((m) => new Date(+m[1], +m[2] - 1, +m[3]));
+  if (!datas.length) return atual;
+  const ult = new Date(Math.max(...datas)); ult.setDate(ult.getDate() + 7);
+  return ult > atual ? ult : atual;
+}
+
 /**
- * Rascunho da semana nova: por turma (as turmas das semanas já gravadas), as aulas não dadas da semana anterior
- * (o professor tira com ✕) e as próximas do ciclo atual até completar `qtd`.
+ * Semana nova: uma tabela por turma de `turmas`, com o ciclo atual e só as aulas não dadas da semana anterior
+ * (marcadas como trazidas). Os demais espaços ficam vazios para o professor preencher na tela.
  */
-export function sugerirSemana({ ciclos, semanas, qtd = AULAS_POR_SEMANA }) {
+export function semanaNova({ semanas, turmas }) {
   const ultima = semanas[semanas.length - 1];
-  const turmas = [...new Set(semanas.flatMap((s) => s.turmas.map((t) => t.turma)))].sort();
-  return turmas.map((turma) => {
-    const cicloNome = cicloDaTurma(semanas, turma);
-    const sobras = (ultima?.turmas.find((t) => t.turma === turma)?.aulas ?? []).filter((a) => !a.dada).map((a) => ({ ...a, dada: false, situacao: null, trazida: true }));
-    let nome = cicloNome;
-    let novas = proximasDoCiclo({ ciclos, semanas, turma, nomeCiclo: nome, qtd: qtd - sobras.length, excluir: sobras });
-    // Ciclo esgotado (todas as aulas já têm linha numa semana): propõe o ciclo seguinte do plano.
-    const k = ciclos.findIndex((c) => c.name.toLowerCase() === (nome ?? "").toLowerCase());
-    if (!novas.length && !sobras.length && k >= 0 && ciclos[k + 1]) {
-      nome = ciclos[k + 1].name;
-      novas = proximasDoCiclo({ ciclos, semanas, turma, nomeCiclo: nome, qtd, excluir: [] });
-    }
-    return { turma, cicloNome: nome, aulas: [...sobras, ...novas] };
-  });
+  return turmas.map((turma) => ({
+    turma, cicloNome: cicloDaTurma(semanas, turma),
+    aulas: (ultima?.turmas.find((t) => t.turma === turma)?.aulas ?? []).filter((a) => !a.dada).map((a) => ({ ...a, dada: false, situacao: null, trazida: true })),
+  }));
 }
 
 /**

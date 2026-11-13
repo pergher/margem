@@ -2,6 +2,7 @@ import { useState } from "react";
 import { FolderOpen } from "lucide-react";
 import { invoke } from "@/lib/api";
 import { Logo } from "@/components/Logo";
+import { Estado } from "@/components/ui/estado";
 
 /** Abre o seletor de pastas do sistema e guarda a escolha. Devolve a pasta ou `null` se cancelou. */
 export async function escolherPastaDoVault() {
@@ -26,7 +27,7 @@ export function EscolherVault({ onDone }) {
         <button onClick={escolher} className="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90">
           <FolderOpen className="h-4 w-4" strokeWidth={1.6} />Escolher pasta…
         </button>
-        {erro && <p className="mt-4 text-sm text-destructive">{erro}</p>}
+        {erro && <Estado tipo="err" className="mt-4 text-sm">{erro}</Estado>}
       </div>
     </div>
   );

@@ -42,7 +42,7 @@ export function SearchModal({ items, onPick, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-[12vh]" onMouseDown={onClose}>
-      <div role="dialog" aria-label="Buscar nota" className="w-[min(640px,92vw)] overflow-hidden rounded-xl border bg-background shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-label="Buscar arquivo" className="w-[min(640px,92vw)] overflow-hidden rounded-xl border bg-background shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b px-4">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={key} placeholder="Buscar pelo nome, pasta ou texto…"
@@ -50,11 +50,11 @@ export function SearchModal({ items, onPick, onClose }) {
           <kbd className="rounded border px-1.5 text-xs text-muted-foreground">Esc</kbd>
         </div>
         <div ref={list} className="max-h-[50vh] overflow-auto p-1.5">
-          {q.trim() && results.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nenhuma nota encontrada.</p>}
+          {q.trim() && results.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Nenhum arquivo encontrado.</p>}
           {!q.trim() && <p className="px-3 py-6 text-center text-sm text-muted-foreground">Digite para buscar no nome e no texto (3+ letras). ↑ ↓ navegam, Enter abre.</p>}
           {results.map(({ it, text }, i) => (
             <div key={(text ? "t:" : "n:") + it.path}>
-              {text && !results[i - 1]?.text && <div className="px-3 pb-1 pt-2 text-xs uppercase tracking-wide text-muted-foreground">No texto das notas</div>}
+              {text && !results[i - 1]?.text && <div className="px-3 pb-1 pt-2 text-xs uppercase tracking-wide text-muted-foreground">No texto dos arquivos</div>}
               <button onClick={() => onPick(it.path, text?.line)} onMouseMove={() => setIdx(i)}
                 className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left", i === idx && "bg-accent")}>
                 {text ? <TextSearch className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}

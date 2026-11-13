@@ -2,7 +2,7 @@
 import { invoke } from "@/lib/api";
 
 export const ACTIONS = [
-  { id: "search", label: "Buscar nota", def: "Ctrl+K" },
+  { id: "search", label: "Buscar arquivo", def: "Ctrl+K" },
   { id: "palette", label: "Paleta de comandos", def: "Ctrl+P" },
   { id: "save", label: "Salvar agora", def: "Ctrl+S" },
   { id: "toggleSide", label: "Ocultar/mostrar arquivos (coluna 1)", def: "Ctrl+B" },
@@ -13,7 +13,20 @@ export const ACTIONS = [
   { id: "zoomIn", label: "Aumentar zoom", def: "Ctrl+=" },
   { id: "zoomOut", label: "Diminuir zoom", def: "Ctrl+-" },
   { id: "zoomReset", label: "Restaurar zoom", def: "Ctrl+0" },
+  // Atalhos de tela (teclas simples, só valem na tela indicada e fora de campos de texto).
+  { id: "corrNext", label: "Correção: próximo aluno", def: "J", plain: true, tela: "Correção" },
+  { id: "corrPrev", label: "Correção: aluno anterior", def: "K", plain: true, tela: "Correção" },
+  { id: "corrCritNext", label: "Correção: próximo critério", def: "ArrowDown", plain: true, tela: "Correção" },
+  { id: "corrCritPrev", label: "Correção: critério anterior", def: "ArrowUp", plain: true, tela: "Correção" },
+  { id: "corrNivel1", label: "Correção: nível 1 no critério", def: "1", plain: true, tela: "Correção" },
+  { id: "corrNivel2", label: "Correção: nível 2 no critério", def: "2", plain: true, tela: "Correção" },
+  { id: "corrNivel3", label: "Correção: nível 3 no critério", def: "3", plain: true, tela: "Correção" },
+  { id: "corrNivel4", label: "Correção: nível 4 no critério", def: "4", plain: true, tela: "Correção" },
+  { id: "corrNivel0", label: "Correção: zerar o critério", def: "0", plain: true, tela: "Correção" },
 ];
+
+/** Ações de tela registradas pela página aberta (id → função). */
+export const handlers = {};
 
 const KEY = "atalhos";
 const MODS = ["Control", "Shift", "Alt", "Meta", "AltGraph"];

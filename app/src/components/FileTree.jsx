@@ -116,11 +116,11 @@ export function FileTree({ items, dirs = [], current, currentRel, reveal, onOpen
   const t = menuAt?.target;
   const dirOf = t ? (t.kind === "dir" ? t.path : t.path.slice(0, t.path.lastIndexOf("/"))) : root.replace(/\/$/, "");
   const entries = t ? [
-    ["Nova nota aqui", () => onCreate(dirOf)],
+    ["Novo arquivo aqui", () => onCreate(dirOf)],
     ["Nova pasta aqui", () => onCreateFolder(dirOf)],
     ["Renomear…", () => onRename(t)],
     ["Excluir", () => onDelete(t), true],
-  ] : [["Nova nota na raiz", () => onCreate(root.replace(/\/$/, ""))], ["Nova pasta na raiz", () => onCreateFolder(root.replace(/\/$/, ""))]];
+  ] : [["Novo arquivo na raiz", () => onCreate(root.replace(/\/$/, ""))], ["Nova pasta na raiz", () => onCreateFolder(root.replace(/\/$/, ""))]];
   return (
     <div className="min-h-[60vh]" onContextMenu={menu(null)}
       onDragOver={dnd.over("")} onDragLeave={dnd.leave} onDrop={dnd.drop(root.replace(/\/$/, ""))}>
@@ -130,7 +130,7 @@ export function FileTree({ items, dirs = [], current, currentRel, reveal, onOpen
           className="fixed z-50 min-w-44 rounded-md border bg-background p-1 text-sm shadow-lg">
           {entries.map(([label, fn, danger]) => (
             <button key={label} role="menuitem" onClick={() => { setMenuAt(null); fn(); }}
-              className={cn("block w-full rounded px-3 py-1.5 text-left hover:bg-accent", danger && "text-red-600")}>{label}</button>
+              className={cn("block w-full rounded px-3 py-1.5 text-left hover:bg-accent", danger && "text-err")}>{label}</button>
           ))}
         </div>
       )}

@@ -65,7 +65,7 @@ class CalloutTitle extends WidgetType {
   ignoreEvent() { return false; } // clique no título leva o cursor à linha e revela o código
 }
 
-const LABELS = { professor: "Dica para o professor", tip: "Dica", note: "Nota", abstract: "Resumo", info: "Informação", warning: "Atenção", attention: "Atenção", example: "Exemplo", question: "Pergunta", important: "Importante" };
+const LABELS = { margem: "Anotação na margem", professor: "Dica para o professor", tip: "Dica", note: "Nota", abstract: "Resumo", info: "Informação", warning: "Atenção", attention: "Atenção", example: "Exemplo", question: "Pergunta", important: "Importante" };
 const CALLOUT_RE = /^>\s*\[!(\w[\w-]*)\][+-]?\s*(.*)$/;
 
 function inlineMd(s) {

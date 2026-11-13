@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@/lib/api";
 import { parseFm } from "@/lib/frontmatter";
+import { Estado } from "@/components/ui/estado";
 
 function Img({ alvo }) {
   const [src, setSrc] = useState(null);
@@ -23,7 +24,7 @@ export function TextoDaNota({ item, onOpen, onAtividade, tick }) {
   const [t, setT] = useState(null);
   const [erro, setErro] = useState("");
   useEffect(() => { setT(null); setErro(""); invoke("read_note", { path: item.path }).then(setT).catch((e) => setErro(String(e))); }, [item.path, tick]);
-  if (erro) return <div className="p-8 text-sm text-destructive">{erro}</div>;
+  if (erro) return <Estado tipo="err" className="p-8 text-sm">{erro}</Estado>;
   if (t == null) return <div className="p-8 text-sm text-muted-foreground">Lendo o texto…</div>;
   const fm = parseFm(t);
   const g = (k) => fm.entries.find((e) => e.key === k);
@@ -38,7 +39,7 @@ export function TextoDaNota({ item, onOpen, onAtividade, tick }) {
         <div className="mb-1 flex items-center gap-3 text-xs">
           <span className="text-muted-foreground">Texto do acervo</span><div className="flex-1" />
           <button onClick={onAtividade} className="rounded-md border px-3 py-1 hover:bg-accent">Atividade a partir deste texto</button>
-          <button onClick={() => onOpen(item.path)} className="text-xs text-primary hover:underline">abrir como nota</button>
+          <button onClick={() => onOpen(item.path)} className="text-xs text-primary hover:underline">abrir no editor</button>
         </div>
         <h1 className="font-serif text-3xl font-semibold">{titulo}</h1>
         <dl className="mt-3 grid grid-cols-[110px_1fr] gap-x-3 gap-y-1 text-xs">
@@ -48,7 +49,7 @@ export function TextoDaNota({ item, onOpen, onAtividade, tick }) {
         {["foco", "conteudos"].map((k) => lista(k).length > 0 && (
           <div key={k} className="mt-3 flex flex-wrap items-center gap-1.5 text-xs"><span className="mr-1 text-muted-foreground">{k === "foco" ? "Foco" : "Conteúdos"}</span>
             {lista(k).map((x) => <span key={x} className="rounded-full bg-primary/10 px-2.5 py-0.5 text-primary">{x}</span>)}</div>))}
-        {lista("alertas").length > 0 && <div className="mt-3 rounded-lg bg-amber-100 p-3 text-xs leading-relaxed text-amber-950 dark:bg-amber-950 dark:text-amber-100"><div className="mb-0.5 font-semibold">Alertas</div>{lista("alertas").join(" · ")}</div>}
+        {lista("alertas").length > 0 && <div className="mt-3 rounded-lg bg-warn/15 p-3 text-xs leading-relaxed"><div className="mb-0.5 font-semibold">Alertas</div>{lista("alertas").join(" · ")}</div>}
         <div className="mt-6 border-t pt-5 font-serif text-base leading-relaxed"><Leitura texto={corpo.replace(/^#\s+.*\n+/, "")} /></div>
       </div>
     </div>

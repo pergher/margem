@@ -1,9 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@/lib/api";
-import { ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Search, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Search, Star, AlertTriangle, CircleCheck } from "lucide-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { ERRO, listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, fmt, num, gravarNota, aprovarTranscricao } from "@/lib/correcao";
+import { Estado } from "@/components/ui/estado";
+import { handlers } from "@/lib/shortcuts";
 
 // Marcas da transcrição, erros do aluno e negrito/itálico simples.
 // `ver` (só na transcrição) liga os erros: { orto, pont, corr } — sem ele as chaves ficam como texto.
@@ -15,15 +17,15 @@ function Inline({ s, ver }) {
       const pont = !!e[1], antes = e[2], certo = e[3];
       if (pont ? !ver.pont : !ver.orto) return <span key={i}>{antes}</span>;
       const dica = (pont ? "Pontuação" : "Ortografia") + (certo != null ? (certo ? ` → ${certo}` : " → remover") : "");
-      const corr = ver.corr && certo ? <span className="ml-0.5 rounded bg-green-100 px-1 text-xs text-green-800 dark:bg-green-950 dark:text-green-200">{certo}</span> : null;
+      const corr = ver.corr && certo ? <span className="ml-0.5 rounded bg-ok/15 px-1 text-xs text-ok">{certo}</span> : null;
       if (!pont) return <span key={i} title={dica} className="underline decoration-red-500 decoration-wavy decoration-2 underline-offset-4">{antes}{corr}</span>;
       if (!antes) return <span key={i} title={dica} className="mx-px rounded bg-sky-200 px-1 text-sky-900 dark:bg-sky-900 dark:text-sky-100">{certo ? (ver.corr ? certo : "▲") : "▲"}</span>;
       return <span key={i} title={dica} className="rounded bg-sky-100 text-sky-900 dark:bg-sky-950 dark:text-sky-100">{antes}{corr}</span>;
     }
     if (p.startsWith("~~")) return <s key={i} className="text-muted-foreground">{p.slice(2, -2)}</s>;
     if (p.startsWith("^")) return <sup key={i} className="rounded bg-primary/15 px-1 text-xs text-primary">{p.slice(1, -1)}</sup>;
-    if (p === "[ilegível]") return <span key={i} className="rounded bg-red-100 px-1.5 text-red-800 dark:bg-red-950 dark:text-red-200">{p}</span>;
-    if (/^\[.*\?\]$/.test(p)) return <span key={i} className="rounded bg-amber-100 px-1.5 text-amber-900 dark:bg-amber-950 dark:text-amber-200">{p}</span>;
+    if (p === "[ilegível]") return <span key={i} className="rounded bg-err/15 px-1.5 text-err">{p}</span>;
+    if (/^\[.*\?\]$/.test(p)) return <span key={i} className="rounded bg-warn/15 px-1.5 text-warn">{p}</span>;
     if (p.startsWith("**")) return <strong key={i}>{p.slice(2, -2)}</strong>;
     if (p.startsWith("*")) return <em key={i}>{p.slice(1, -1)}</em>;
     return <span key={i}>{p}</span>;
@@ -94,12 +96,22 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
   const [lupa, setLupa] = useState(true);
   const [wLista, setWLista] = useWidth("correcao.lista", 208), [wFoto, setWFoto] = useWidth("correcao.foto", 300), [wAval, setWAval] = useWidth("correcao.avaliacao", 420);
 
+  const [busca, setBusca] = useState("");
+  const [crit, setCrit] = useState(0);       // critério ativo (atalhos 1–4)
+  const ctl = useRef({});                     // ações atuais, lidas pelos atalhos de tela
+  useEffect(() => {
+    const ids = { corrNext: () => ctl.current.go?.(1), corrPrev: () => ctl.current.go?.(-1), corrCritNext: () => ctl.current.crit?.(1), corrCritPrev: () => ctl.current.crit?.(-1), corrNivel0: () => ctl.current.nivel?.(0) };
+    [1, 2, 3, 4].forEach((n) => { ids["corrNivel" + n] = () => ctl.current.nivel?.(n); });
+    Object.assign(handlers, ids);
+    return () => { Object.keys(ids).forEach((k) => delete handlers[k]); };
+  }, []);
+
   const carregar = () => { const it = lotes.find((l) => l.path === lote); return it ? lerCorrecao(it).then(setD).catch((e) => setErro(String(e))) : Promise.resolve(); };
   useEffect(() => { setD(null); setSel(0); carregar(); }, [lote, items.length]);
-  useEffect(() => { setZoom(1); setRot(0); }, [sel, lote]);
+  useEffect(() => { setZoom(1); setRot(0); setCrit(0); }, [sel, lote]);
 
   if (!lotes.length) return <div className="p-8 text-sm text-muted-foreground">Nenhuma correção com “Transcrições e devolutivas” em Anos/AAAA/Correcoes.</div>;
-  if (erro) return <div className="p-8 text-sm text-destructive">Erro: {erro}</div>;
+  if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro}</Estado>;
   if (!d) return <div className="p-8 text-sm text-muted-foreground">Lendo a correção…</div>;
 
   const est = estatisticas(d);
@@ -107,8 +119,18 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
   const rotulo = (x) => (nomes ? x.nome : `Aluno ${String(x.n).padStart(2, "0")}`);
   const pend = est.marcas;
   const lista = d.alunos.map((x, i) => ({ x, i })).sort((p, q) => ordem === "nota-" ? (q.x.total ?? -1) - (p.x.total ?? -1) : ordem === "nota+" ? (p.x.total ?? 99) - (q.x.total ?? 99) : ordem === "pendencia" ? q.x.marcas - p.x.marcas || p.i - q.i : p.i - q.i);
-  const pos = lista.findIndex((e) => e.i === sel);
-  const go = (k) => { const e = lista[Math.max(0, Math.min(lista.length - 1, pos + k))]; setSel(e.i); };
+  const q = busca.trim().toLowerCase();
+  const visiveis = q ? lista.filter(({ x, i }) => i === sel || rotulo(x).toLowerCase().includes(q)) : lista; // o aluno aberto fica sempre na lista
+  const pos = visiveis.findIndex((e) => e.i === sel);
+  const go = (k) => { const e = visiveis[Math.max(0, Math.min(visiveis.length - 1, pos + k))]; if (e) setSel(e.i); };
+  ctl.current.go = vista === "aluno" ? go : null;
+  ctl.current.crit = (k) => setCrit((c) => Math.max(0, Math.min(a.criterios.length - 1, c + k)));
+  ctl.current.nivel = (n) => {
+    const c = a.criterios[crit]; if (!c) return;
+    const ops = opcoesDe(d, c.nome), min = ops[0] ?? 0, v = n === 0 ? min : ops.filter((o) => o > min)[n - 1];
+    if (v == null) return;
+    mudarNota(c, num(c.nota) === v ? min : v);
+  };
   const [titulo, ...par] = a.texto.split(/\n\s*\n/);
   const dizer = (t) => { setAviso(t); setTimeout(() => setAviso(""), 2500); };
   const mudarNota = (c, v) => gravarNota(d.path, a.nome, c.nome, v).then(carregar).then(() => dizer("Nota gravada")).catch((e) => setErro(String(e)));
@@ -124,7 +146,7 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
         </select>
         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs text-primary">{d.status || "sem status"}</span>
         <button onClick={aprovar} disabled={d.transcricao === "aprovada" || est.marcas > 0} title={est.marcas > 0 ? `Ainda há ${est.marcas} marca(s) [?]/[ilegível] nos textos` : ""}
-          className={"rounded-full border px-2.5 py-0.5 text-xs " + (d.transcricao === "aprovada" ? "text-green-700" : "hover:bg-accent disabled:opacity-40")}>
+          className={"rounded-full border px-2.5 py-0.5 text-xs " + (d.transcricao === "aprovada" ? "inline-flex items-center gap-1 text-ok" : "hover:bg-accent disabled:opacity-40")}>{d.transcricao === "aprovada" && <CircleCheck aria-hidden className="h-3.5 w-3.5" />}
           {d.transcricao === "aprovada" ? "Transcrição aprovada ✓" : "Aprovar transcrição"}
         </button>
         <button onClick={() => setVista(vista === "aluno" ? "turma" : "aluno")} className="rounded-md border px-3 py-1 hover:bg-accent">{vista === "aluno" ? "Visão da turma" : "Voltar ao aluno"}</button>
@@ -132,10 +154,10 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
         <div className="flex-1" />
         {vista === "aluno" && <>
           <button aria-label="Aluno anterior" onClick={() => go(-1)} className="rounded-md border p-1 hover:bg-accent"><ChevronLeft className="h-4 w-4" /></button>
-          <span>{rotulo(a)} · {pos + 1} de {d.alunos.length}</span>
+          <span>{rotulo(a)} · {pos + 1} de {visiveis.length}</span>
           <button aria-label="Próximo aluno" onClick={() => go(1)} className="rounded-md border p-1 hover:bg-accent"><ChevronRight className="h-4 w-4" /></button>
         </>}
-        <button onClick={() => onOpen(d.path)} className="rounded-md border px-3 py-1 hover:bg-accent">Abrir como nota</button>
+        <button onClick={() => onOpen(d.path)} className="rounded-md border px-3 py-1 hover:bg-accent">Abrir no editor</button>
       </div>
 
       {vista === "turma" ? <Turma d={d} est={est} rotulo={rotulo} nomes={nomes} setNomes={setNomes} onAluno={(i) => { setSel(i); setVista("aluno"); }} onTodas={() => baixar(`Devolutivas ${d.turma} - ${d.atividade}.md`, d.alunos.map((x) => devolutiva(d, x, nomes)).join("\n---\n\n"))} /> : (
@@ -147,13 +169,15 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
           </div>
           <div className="px-4 pb-2"><select value={ordem} onChange={(e) => setOrdem(e.target.value)} aria-label="Ordenar" className="w-full rounded border bg-background px-1 py-0.5 text-xs">
             <option value="original">ordem da lista</option><option value="nota-">maior nota</option><option value="nota+">menor nota</option><option value="pendencia">mais marcas</option></select></div>
+          <div className="px-4 pb-2"><input value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar aluno" placeholder="Buscar aluno…" className="w-full rounded border bg-background px-2 py-1 text-xs" /></div>
           <ul className="px-2 text-xs">
-            {lista.map(({ x, i }) => (
+            {!visiveis.length && <li className="px-2 py-2 text-muted-foreground">Nenhum aluno encontrado.</li>}
+            {visiveis.map(({ x, i }) => (
               <li key={x.n}>
                 <button onClick={() => setSel(i)} className={"flex w-full items-center gap-2 rounded-lg p-2 text-left hover:bg-accent " + (i === sel ? "bg-accent font-medium" : "")}>
-                  <span aria-hidden className={"h-[7px] w-[7px] rounded-full " + (x.marcas ? "bg-amber-500" : "bg-green-600")} />
+                  {x.marcas ? <AlertTriangle aria-hidden className="h-3.5 w-3.5 shrink-0 text-warn" /> : <CircleCheck aria-hidden className="h-3.5 w-3.5 shrink-0 text-ok" />}
                   <span className="flex-1 truncate">{rotulo(x)}</span>
-                  <span className={x.marcas ? "text-amber-700" : ""}>{x.marcas ? `${x.marcas} marcas` : fmt(x.total)}</span>
+                  <span className={x.marcas ? "text-warn" : ""}>{x.marcas ? `${x.marcas} marcas` : fmt(x.total)}</span>
                 </button>
               </li>
             ))}
@@ -175,8 +199,8 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
         <section aria-label="Transcrição" className="min-w-0 flex-1 overflow-auto p-6">
           {/* largura definida pelas divisórias vizinhas */}
           <div className="mb-5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span><span className="rounded bg-amber-100 px-1.5 text-amber-900">[palavra?]</span> incerta</span>
-            <span><span className="rounded bg-red-100 px-1.5 text-red-800">[ilegível]</span></span>
+            <span><span className="rounded bg-warn/15 px-1.5 text-warn">[palavra?]</span> incerta</span>
+            <span><span className="rounded bg-err/15 px-1.5 text-err">[ilegível]</span></span>
             <span><s>riscado</s></span>
             <span><sup className="rounded bg-primary/15 px-1 text-primary">acrescentado</sup></span>
           </div>
@@ -199,8 +223,8 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
             <button onClick={() => copiar(devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">copiar devolutiva</button>
             <button onClick={() => baixar(nomeArq(a), devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">baixar</button></div>
           <ul className="min-h-0 flex-1 overflow-auto px-5">
-            {a.criterios.map((c) => (
-              <li key={c.nome} className="border-b py-2.5">
+            {a.criterios.map((c, ci) => (
+              <li key={c.nome} onClick={() => setCrit(ci)} className={"border-b py-2.5 " + (ci === crit ? "-mx-2 rounded-lg bg-accent/60 px-2" : "")}>
                 <div className="flex items-center gap-2 text-sm"><span className="flex-1 font-semibold">{c.nome}</span>
                   <Rating nome={c.nome} valor={num(c.nota)} opcoes={opcoesDe(d, c.nome)} onChange={(v) => mudarNota(c, v)} /></div>
                 <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground"><Inline s={c.comentario} /></div>
@@ -209,7 +233,7 @@ export function CorrecaoPage({ items, onOpen, focoPath }) {
           </ul>
           <div className="shrink-0 border-t bg-muted p-4">
             <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">Nota final</span><span className="font-serif text-2xl font-semibold">{fmt(a.total)} <span className="text-sm font-normal text-muted-foreground">de {fmt(est.maximo)}</span></span></div>
-            {est.divergentes.includes(a.n) && <div className="mt-1 text-xs text-amber-700">A “Nota final” do arquivo ({a.final}) difere da soma dos critérios.</div>}
+            {est.divergentes.includes(a.n) && <Estado tipo="warn" className="mt-1 text-xs">A “Nota final” do arquivo ({a.final}) difere da soma dos critérios.</Estado>}
           </div>
         </section>
       </div>)}
@@ -235,8 +259,8 @@ function Turma({ d, est, rotulo, nomes, setNomes, onAluno, onTodas }) {
           {est.porCriterio.map((c) => <div key={c.nome} className="mb-1.5 flex items-center gap-2 text-xs"><span className="w-48 truncate" title={c.nome}>{c.nome}</span><span className="h-3 rounded bg-primary/70" style={{ width: `${((c.media ?? 0) / (c.max || 1)) * 40}%`, minWidth: 4 }} /><span className="text-muted-foreground">{fmt(c.media)} / {fmt(c.max)}</span></div>)}</div>
       </div>
       <div className="mt-6"><div className="mb-2 text-xs font-semibold">Alunos</div>
-        <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">{d.alunos.map((x, i) => <button key={x.n} onClick={() => onAluno(i)} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-xs hover:bg-accent"><span>{rotulo(x)}</span><span className={x.total != null && x.total < d.media ? "text-red-700" : ""}>{fmt(x.total)}{x.marcas ? ` · ${x.marcas}?` : ""}</span></button>)}</div></div>
-      {est.divergentes.length > 0 && <div className="mt-4 text-xs text-amber-700">{est.divergentes.length} produção(ões) com “Nota final” diferente da soma dos critérios.</div>}
+        <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">{d.alunos.map((x, i) => <button key={x.n} onClick={() => onAluno(i)} className="flex items-center justify-between rounded-lg border px-3 py-1.5 text-left text-xs hover:bg-accent"><span>{rotulo(x)}</span><span className={x.total != null && x.total < d.media ? "text-err" : ""}>{fmt(x.total)}{x.marcas ? ` · ${x.marcas}?` : ""}</span></button>)}</div></div>
+      {est.divergentes.length > 0 && <Estado tipo="warn" className="mt-4 text-xs">{est.divergentes.length} produção(ões) com “Nota final” diferente da soma dos critérios.</Estado>}
     </div>
   );
 }
@@ -250,7 +274,7 @@ function Rating({ nome, valor, opcoes, onChange }) {
         const cheia = valor != null && o <= valor;
         return (
           <button key={o} role="radio" aria-checked={valor === o} title={fmt(o)} onClick={() => onChange(valor === o ? min : o)}
-            className={"rounded p-0.5 " + (cheia ? "text-amber-500" : "text-muted-foreground/40 hover:text-amber-400")}>
+            className={"rounded p-0.5 " + (cheia ? "text-warn" : "text-muted-foreground/40 hover:text-warn")}>
             <Star className="h-5 w-5" fill={cheia ? "currentColor" : "none"} strokeWidth={1.5} />
           </button>
         );

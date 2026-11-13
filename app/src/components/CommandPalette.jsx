@@ -41,7 +41,7 @@ export function CommandPalette({ commands, items, onOpenNote, onClose }) {
       <div role="dialog" aria-label="Paleta de comandos" className="w-[min(640px,92vw)] overflow-hidden rounded-xl border bg-background shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 border-b px-4">
           <Command className="h-4 w-4 shrink-0 text-muted-foreground" />
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={key} placeholder="Digite um comando ou nome de nota…"
+          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={key} placeholder="Digite um comando ou nome de arquivo…"
             className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
           <kbd className="rounded border px-1.5 text-xs text-muted-foreground">Esc</kbd>
         </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ACTIONS, comboOf, conflict, effective, hasModifier, pretty, saveOverrides } from "@/lib/shortcuts";
+import { Estado } from "@/components/ui/estado";
 
 export let capturing = false; // lido pelo tratador global de teclas, para não disparar ações durante a captura
 
@@ -26,7 +27,7 @@ export function ShortcutsPage({ overrides, setOverrides }) {
       if (e.key === "Escape") { setRec(null); setMsg(null); return; }
       const c = comboOf(e);
       if (!c) return;
-      if (!hasModifier(c)) { setMsg({ id: rec, text: "Use Ctrl ou Alt junto com a tecla." }); return; }
+      if (!hasModifier(c) && !ACTIONS.find((a) => a.id === rec).plain) { setMsg({ id: rec, text: "Use Ctrl ou Alt junto com a tecla." }); return; }
       const other = conflict(map, rec, c);
       if (other) { setMsg({ id: rec, text: `Já usado em “${other.label}”.` }); return; }
       setCombo(rec, c); setRec(null); setMsg(null);
@@ -53,7 +54,7 @@ export function ShortcutsPage({ overrides, setOverrides }) {
               <li key={a.id} className="flex items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="text-sm">{a.label}</div>
-                  {msg?.id === a.id && <div className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">{msg.text}</div>}
+                  {msg?.id === a.id && <Estado tipo="warn" className="mt-0.5 text-xs">{msg.text}</Estado>}
                 </div>
                 <button onClick={() => { setRec(rec === a.id ? null : a.id); setMsg(null); }}
                   className={cn("min-w-[9rem] rounded-md border px-3 py-1.5 text-center font-mono text-xs hover:border-primary/50", rec === a.id && "border-primary bg-accent")}>

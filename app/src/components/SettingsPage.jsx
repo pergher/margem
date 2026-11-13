@@ -1,21 +1,24 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { Keyboard, FileText, FolderOpen, Download, Palette, Sun, Moon } from "lucide-react";
+import { Keyboard, Users, FileText, FolderOpen, Download, Palette, Sun, Moon } from "lucide-react";
 import { invoke, isTauri } from "@/lib/api";
 import { escolherPastaDoVault } from "@/components/VaultGate";
 import { Logo } from "@/components/Logo";
+import { FONTES, TAMANHOS_TEXTO } from "@/lib/fontes";
 import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atualizar";
 import { lerLogo } from "@/lib/configProva";
+import { lerTurmas, gravarTurmas, turmasDeTexto, AULAS_PADRAO } from "@/lib/turmas";
 import { useConfigProva } from "@/lib/useConfigProva";
 import { ShortcutsPage } from "@/components/ShortcutsPage";
 import { CLAROS, ESCUROS, ESTILOS_CALLOUT } from "@/lib/temas";
-import { FONTES, TAMANHOS_TEXTO } from "@/lib/fontes";
 import { cn } from "@/lib/utils";
+import { Estado } from "@/components/ui/estado";
 
 // Seções da página; novas (cabeçalho das avaliações, escola, logo…) entram aqui.
 const SECOES = [
   { id: "aparencia", label: "Aparência", icon: Palette },
   { id: "atalhos", label: "Atalhos de teclado", icon: Keyboard },
+  { id: "turmas", label: "Turmas do ano", icon: Users },
   { id: "provas", label: "Cabeçalho das provas", icon: FileText },
   { id: "vault", label: "Pasta do vault", icon: FolderOpen, soApp: true },
   { id: "atualizacoes", label: "Atualizações", icon: Download, soApp: true },
@@ -35,11 +38,34 @@ export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefr
         ))}
       </nav>
       {secao === "aparencia" && <Aparencia tema={tema} />}
+      {secao === "turmas" && <TurmasDoAno items={items} onRefresh={onRefresh} />}
       {secao === "provas" && <CabecalhoProvas items={items} onRefresh={onRefresh} />}
       {secao === "vault" && <PastaDoVault />}
       {secao === "atualizacoes" && <Atualizacoes />}
       {secao === "atalhos" && <ShortcutsPage overrides={overrides} setOverrides={setOverrides} />}
     </div>
+  );
+}
+
+function TurmasDoAno({ items, onRefresh }) {
+  const ano = items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean).sort().pop() ?? String(new Date().getFullYear());
+  const [txt, setTxt] = useState(null), [aulas, setAulas] = useState(AULAS_PADRAO), [msg, setMsg] = useState("");
+  useEffect(() => { lerTurmas(items, ano).then((c) => { setTxt(c.turmas.join(", ")); setAulas(c.aulas); }); }, [ano]);
+  if (txt === null) return <div className="flex-1 p-10 text-sm text-muted-foreground">Lendo…</div>;
+  const lista = turmasDeTexto(txt);
+  const salvar = async () => {
+    try { await gravarTurmas(items, ano, { turmas: lista, aulas }); setMsg("Salvo."); await onRefresh?.(); } catch (e) { setMsg("Erro: " + (e?.message ?? e)); }
+  };
+  return (
+    <div className="min-h-0 flex-1 overflow-auto"><div className="mx-auto max-w-[640px] px-6 py-10">
+      <h1 className="text-xl font-semibold">Turmas de {ano}</h1>
+      <p className="mt-1 text-sm text-muted-foreground">As turmas que aparecem na Semana e quantas aulas cada uma tem por semana. Fica guardado em <code>Anos/{ano}/Turmas {ano}.md</code>; no ano seguinte basta criar outro.</p>
+      <label className="mt-6 block text-sm">Turmas (separadas por vírgula)
+        <input value={txt} onChange={(e) => { setTxt(e.target.value); setMsg(""); }} placeholder="61, 62, 71, 81" className="mt-1 w-full rounded-md border bg-background px-3 py-1.5 text-sm" /></label>
+      <label className="mt-4 block text-sm">Aulas por turma na semana
+        <input type="number" min={1} max={12} value={aulas} onChange={(e) => { setAulas(Math.max(1, Math.min(12, Number(e.target.value) || AULAS_PADRAO))); setMsg(""); }} className="mt-1 block w-24 rounded-md border bg-background px-3 py-1.5 text-sm" /></label>
+      <div className="mt-5 flex items-center gap-3"><button onClick={salvar} disabled={!lista.length} className="rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground disabled:opacity-40">Salvar</button><span className="text-sm text-muted-foreground">{msg}</span></div>
+    </div></div>
   );
 }
 
@@ -52,7 +78,7 @@ function CabecalhoProvas({ items, onRefresh }) {
     <div className="min-h-0 flex-1 overflow-auto">
       <div className="mx-auto max-w-[640px] px-6 py-10">
         <h1 className="text-xl font-semibold">Cabeçalho das provas</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Aparece no topo do DOCX e da impressão da prova, centralizado. Fica guardado na nota <code>_sistema/Configuração das provas.md</code> (a logo, em <code>_sistema/anexos</code>).</p>
+        <p className="mt-1 text-sm text-muted-foreground">Aparece no topo do DOCX e da impressão da prova, centralizado. Fica guardado no arquivo <code>_sistema/Configuração das provas.md</code> (a logo, em <code>_sistema/anexos</code>).</p>
         <label className="mt-6 block text-sm">Nome da escola
           <input value={c.escola} onChange={(e) => mudar({ ...c, escola: e.target.value })} placeholder="Escola de Educação Básica …" className={campo} /></label>
         <label className="mt-4 block text-sm">Segunda linha (opcional)
@@ -67,7 +93,7 @@ function CabecalhoProvas({ items, onRefresh }) {
         <label className="mt-4 block text-sm">Linhas por folha (limite da prova de uma folha; 0 = padrão)
           <input type="number" min="0" value={c.limiteLinhas || ""} onChange={(e) => mudar({ ...c, limiteLinhas: Number(e.target.value) || 0 })} placeholder="100" className={campo} /></label>
         <label className="mt-5 flex items-center gap-2 text-sm"><input type="checkbox" checked={c.duasColunas} onChange={(e) => mudar({ ...c, duasColunas: e.target.checked })} />Provas em duas colunas por padrão</label>
-        {erro && <p className="mt-3 text-sm text-destructive">{erro}</p>}
+        {erro && <Estado tipo="err" className="mt-3 text-sm">{erro}</Estado>}
         <div className="mt-8 rounded-xl border p-4 text-center text-sm">
           {c.logo && <img src={c.logo} alt="" className="mx-auto mb-1 h-12" />}
           <div className="font-semibold">{c.escola || "Nome da escola"}</div>
@@ -92,7 +118,7 @@ function PastaDoVault() {
       <p className="mt-1 text-sm text-muted-foreground">O app lê e grava só dentro desta pasta. Trocar recarrega o app.</p>
       <div className="mt-6 rounded-md border bg-muted px-3 py-2 font-mono text-xs break-all">{raiz || "nenhuma"}</div>
       <button onClick={trocar} className="mt-4 rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Trocar pasta…</button>
-      {erro && <p className="mt-3 text-sm text-destructive">{erro}</p>}
+      {erro && <Estado tipo="err" className="mt-3 text-sm">{erro}</Estado>}
     </div></div>
   );
 }
@@ -124,7 +150,7 @@ function Atualizacoes() {
           <div className="text-sm font-medium">Versão {achada.version} disponível</div>
           {achada.notes && <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{achada.notes}</pre>}
           <button onClick={instalar} disabled={prog !== null} className="mt-3 rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-50">
-            {prog === null ? "Baixar e instalar (salva sua nota antes)" : `Baixando… ${Math.round(prog * 100)}%`}
+            {prog === null ? "Baixar e instalar (salva seu arquivo antes)" : `Baixando… ${Math.round(prog * 100)}%`}
           </button>
         </div>
       )}
@@ -199,7 +225,7 @@ function GradeTemas({ titulo, lista, atual, onPick, emUso }) {
           <button key={classe} role="radio" aria-checked={atual === classe} onClick={() => onPick(classe)}
             className={cn("overflow-hidden rounded-xl border text-left", atual === classe ? "ring-2 ring-primary" : "hover:border-primary/60")}>
             <div className={cn(classe, "bg-background p-3 text-foreground")}>
-              <div className="text-xs font-semibold">Título da nota</div>
+              <div className="text-xs font-semibold">Título do arquivo</div>
               <div className="mt-1 text-xs text-muted-foreground">Texto de exemplo com <span className="text-primary underline">link</span></div>
               <div className="mt-2 flex gap-1.5">
                 <span className="h-3 w-8 rounded-full bg-primary" /><span className="h-3 w-5 rounded-full bg-accent" /><span className="h-3 w-5 rounded-full bg-muted-foreground" />
