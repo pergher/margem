@@ -239,3 +239,8 @@ Decisões do usuário: o "Plano de aula" do desenho NÃO existe; a aula é o arq
 Estado do vault: `vault margem --aplicar` rodado só na CÓPIA de teste (54 anotações, 16 aulas; backup `vault-antes-margem.tgz` no scratchpad da sessão). Vault REAL intocado: simular → cópia → aplicar.
 
 Falta: botão do Hoje "Criar plano" → "Criar aula" com modelo (Objetivos/Habilidades/Conteúdo/Mindmap/Atividades) e abrir direto na visão; "Preparar na Semana" levar à aula; cores do Mermaid combinando com o tema; `Vazio`/`Toast` nas demais telas; conferir a visão da aula com aulas reais; nada empurrado ao GitHub (sem release nova); forma/densidade do artefato "direções de design" ainda não aplicada; telas Aluno, Relatório, BNCC, Catálogo, Mapa de conteúdos não existem.
+
+### Fechamento da sessão de 2026-11-13 (continuação)
+
+Feito (testado só no navegador): **Criar aula** no Hoje (`criarAula`/`modeloAula` em `lib/aula.js`; cria em `Acervo/Aulas` e abre); **cores do Mermaid** vindas das variáveis do tema (`variaveisMermaid` em `AulaDaNota.jsx`); **Toast/Vazio** em Correção, Prova e Saúde; **forma e densidade** como escolha em Configurações → Aparência (`lib/forma.js`: 5 presets do artefato "Forma e densidade" — só cantos e espaçamento; bordas e sombras do artefato não foram aplicadas; padrão = "Suave e confortável", igual ao visual anterior).
+Falta: o usuário escolher a forma preferida (o artefato guarda favoritos só na tela); "Preparar na Semana" levar à aula; conferir aulas reais com Mermaid; testar no Tauri/Windows; empurrar os commits ao GitHub (decisão do usuário).
