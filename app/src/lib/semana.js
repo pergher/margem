@@ -2,6 +2,7 @@
 // Em cada tabela a linha marcada com ✓ já foi dada; a primeira sem ✓ é a aula de hoje.
 import { invoke } from "@/lib/api";
 import { faseDaAula } from "@/lib/ciclos";
+import { anoDeTurmas } from "@/lib/utils";
 
 export function parseSemana(text) {
   const t = text.replace(/\\\|/g, "\u0001");
@@ -88,12 +89,14 @@ export const nomeSemana = (seg) => `Semana ${seg.getFullYear()}-${pad(seg.getMon
 const celula = (s) => s.replace(/\|/g, "\\|");
 const refCiclo = (a) => (a.cicloNome ? `[[${a.cicloNome}]]${a.cicloN ? " " + a.cicloN : ""}` : "");
 
-export function renderSemana({ ano, rotulo, turmas }) {
+// `ano` na nota = série(s) das turmas (6 a 9), como o validador exige; o ano letivo vem da pasta Anos/AAAA.
+export function renderSemana({ rotulo, turmas }) {
+  const ano = anoDeTurmas(turmas.map((t) => t.turma));
   const blocos = turmas.map((t) => [
     `### ${t.turma}`, "", ...(t.cicloNome ? [`Ciclo: [[${t.cicloNome}]]`, ""] : []), "| Aula | Recurso | Ciclo |", "|---|---|---|",
     ...t.aulas.map((a) => `| ${celula(a.texto)}${marcaDe(a)} | ${celula(a.recurso ?? "")} | ${refCiclo(a)} |`),
   ].join("\n"));
-  return `---\ntipo: semana\nano: ${ano}\nrotulo: ${rotulo}\n---\n# Semana — ${rotulo}\n\n${blocos.join("\n\n")}\n`;
+  return `---\ntipo: semana\n${ano ? `ano: ${ano}\n` : ""}rotulo: ${rotulo}\n---\n# Semana — ${rotulo}\n\n${blocos.join("\n\n")}\n`;
 }
 
 export function parseSemanaNota(text) {
@@ -184,7 +187,7 @@ export async function importarLegado(items, legado, ano) {
   const dirAno = `${raiz}/Anos/${ano}`;
   try { await invoke("create_folder", { dir: dirAno, name: "Semanas" }); } catch { /* já existe */ }
   const path = await invoke("create_note", { dir: `${dirAno}/Semanas`, name: "Semana 0000 - Histórico importado" });
-  await invoke("save_note", { path, text: renderSemana({ ano, rotulo: "Histórico importado do Planejamento antigo", turmas }) });
+  await invoke("save_note", { path, text: renderSemana({ rotulo: "Histórico importado do Planejamento antigo", turmas }) });
   return path;
 }
 
@@ -193,7 +196,7 @@ export async function criarSemana(items, { ano, seg, rotulo, turmas }) {
   const dirAno = `${raiz}/Anos/${ano}`;
   try { await invoke("create_folder", { dir: dirAno, name: "Semanas" }); } catch { /* já existe */ }
   const path = await invoke("create_note", { dir: `${dirAno}/Semanas`, name: nomeSemana(seg) });
-  await invoke("save_note", { path, text: renderSemana({ ano, rotulo, turmas }) });
+  await invoke("save_note", { path, text: renderSemana({ rotulo, turmas }) });
   return path;
 }
 
@@ -201,7 +204,7 @@ async function editar(path, fn) {
   const text = await invoke("read_note", { path });
   await invoke("save_note", { path, text: fn(text) });
 }
-const reescrever = (text, fn) => { const s = parseSemanaNota(text); const nova = fn(s) ?? s; return text.replace(/^---\n[\s\S]*$/, renderSemana({ ano: /^ano:\s*(\d+)/m.exec(text)?.[1] ?? "", rotulo: s.rotulo, turmas: nova.turmas })); };
+const reescrever = (text, fn) => { const s = parseSemanaNota(text); const nova = fn(s) ?? s; return text.replace(/^---\n[\s\S]*$/, renderSemana({ rotulo: s.rotulo, turmas: nova.turmas })); };
 
 export const removerAulaSemana = (path, turma, n) => editar(path, (t) => reescrever(t, (s) => { const x = s.turmas.find((z) => z.turma === turma); x.aulas = x.aulas.filter((a) => a.n !== n); }));
 export const adicionarAvulsa = (path, turma, texto, recurso = "") => editar(path, (t) => reescrever(t, (s) => {

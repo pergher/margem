@@ -1,0 +1,778 @@
+/* Temas para shadcn/ui (Tailwind 3). Valores em HSL sem hsl(), como o shadcn espera.
+   Uso: <html class="t-mocha dark"> (escuros levem tambem a classe .dark). */
+
+/* Catppuccin Latte (claro) */
+.t-latte {
+  --background: 220 23% 95%; /* #eff1f5 */
+  --foreground: 234 16% 35%; /* #4c4f69 */
+  --card: 0 0% 100%; /* #ffffff */
+  --card-foreground: 234 16% 35%; /* #4c4f69 */
+  --popover: 0 0% 100%; /* #ffffff */
+  --popover-foreground: 234 16% 35%; /* #4c4f69 */
+  --primary: 266 85% 58%; /* #8839ef */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 0 0% 100%; /* #ffffff */
+  --secondary-foreground: 234 16% 35%; /* #4c4f69 */
+  --muted: 0 0% 100%; /* #ffffff */
+  --muted-foreground: 233 13% 41%; /* #5c5f77 */
+  --accent: 223 16% 83%; /* #ccd0da */
+  --accent-foreground: 234 16% 35%; /* #4c4f69 */
+  --destructive: 347 87% 44%; /* #d20f39 */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 223 16% 83%; /* #ccd0da */
+  --input: 223 16% 83%; /* #ccd0da */
+  --ring: 266 85% 58%; /* #8839ef */
+  --chart-1: 266 85% 58%; /* #8839ef */
+  --chart-2: 220 91% 54%; /* #1e66f5 */
+  --chart-3: 109 58% 40%; /* #40a02b */
+  --chart-4: 35 77% 49%; /* #df8e1d */
+  --chart-5: 347 87% 44%; /* #d20f39 */
+  --radius: 0.625rem;
+}
+
+/* Catppuccin Mocha (escuro) */
+.t-mocha {
+  --background: 240 21% 15%; /* #1e1e2e */
+  --foreground: 226 64% 88%; /* #cdd6f4 */
+  --card: 240 21% 12%; /* #181825 */
+  --card-foreground: 226 64% 88%; /* #cdd6f4 */
+  --popover: 240 21% 12%; /* #181825 */
+  --popover-foreground: 226 64% 88%; /* #cdd6f4 */
+  --primary: 267 84% 81%; /* #cba6f7 */
+  --primary-foreground: 240 21% 15%; /* #1e1e2e */
+  --secondary: 240 21% 12%; /* #181825 */
+  --secondary-foreground: 226 64% 88%; /* #cdd6f4 */
+  --muted: 240 21% 12%; /* #181825 */
+  --muted-foreground: 228 24% 72%; /* #a6adc8 */
+  --accent: 234 13% 31%; /* #45475a */
+  --accent-foreground: 226 64% 88%; /* #cdd6f4 */
+  --destructive: 343 81% 75%; /* #f38ba8 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 234 13% 31%; /* #45475a */
+  --input: 234 13% 31%; /* #45475a */
+  --ring: 267 84% 81%; /* #cba6f7 */
+  --chart-1: 267 84% 81%; /* #cba6f7 */
+  --chart-2: 217 92% 76%; /* #89b4fa */
+  --chart-3: 115 54% 76%; /* #a6e3a1 */
+  --chart-4: 41 86% 83%; /* #f9e2af */
+  --chart-5: 343 81% 75%; /* #f38ba8 */
+  --radius: 0.625rem;
+}
+
+/* Dracula (escuro) */
+.t-dracula {
+  --background: 231 15% 18%; /* #282a36 */
+  --foreground: 60 30% 96%; /* #f8f8f2 */
+  --card: 235 14% 15%; /* #21222c */
+  --card-foreground: 60 30% 96%; /* #f8f8f2 */
+  --popover: 235 14% 15%; /* #21222c */
+  --popover-foreground: 60 30% 96%; /* #f8f8f2 */
+  --primary: 265 89% 78%; /* #bd93f9 */
+  --primary-foreground: 231 15% 18%; /* #282a36 */
+  --secondary: 235 14% 15%; /* #21222c */
+  --secondary-foreground: 60 30% 96%; /* #f8f8f2 */
+  --muted: 235 14% 15%; /* #21222c */
+  --muted-foreground: 231 34% 77%; /* #b0b6d8 */
+  --accent: 232 14% 31%; /* #44475a */
+  --accent-foreground: 60 30% 96%; /* #f8f8f2 */
+  --destructive: 0 100% 67%; /* #ff5555 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 232 14% 31%; /* #44475a */
+  --input: 232 14% 31%; /* #44475a */
+  --ring: 265 89% 78%; /* #bd93f9 */
+  --chart-1: 265 89% 78%; /* #bd93f9 */
+  --chart-2: 191 97% 77%; /* #8be9fd */
+  --chart-3: 135 94% 65%; /* #50fa7b */
+  --chart-4: 65 92% 76%; /* #f1fa8c */
+  --chart-5: 0 100% 67%; /* #ff5555 */
+  --radius: 0.625rem;
+}
+
+/* Nord (escuro) */
+.t-nord {
+  --background: 220 16% 22%; /* #2e3440 */
+  --foreground: 218 27% 94%; /* #eceff4 */
+  --card: 222 16% 28%; /* #3b4252 */
+  --card-foreground: 218 27% 94%; /* #eceff4 */
+  --popover: 222 16% 28%; /* #3b4252 */
+  --popover-foreground: 218 27% 94%; /* #eceff4 */
+  --primary: 193 43% 67%; /* #88c0d0 */
+  --primary-foreground: 220 16% 22%; /* #2e3440 */
+  --secondary: 222 16% 28%; /* #3b4252 */
+  --secondary-foreground: 218 27% 94%; /* #eceff4 */
+  --muted: 222 16% 28%; /* #3b4252 */
+  --muted-foreground: 219 23% 81%; /* #c2cad9 */
+  --accent: 220 16% 36%; /* #4c566a */
+  --accent-foreground: 218 27% 94%; /* #eceff4 */
+  --destructive: 354 42% 56%; /* #bf616a */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 220 16% 36%; /* #4c566a */
+  --input: 220 16% 36%; /* #4c566a */
+  --ring: 193 43% 67%; /* #88c0d0 */
+  --chart-1: 193 43% 67%; /* #88c0d0 */
+  --chart-2: 213 32% 52%; /* #5e81ac */
+  --chart-3: 92 28% 65%; /* #a3be8c */
+  --chart-4: 40 71% 73%; /* #ebcb8b */
+  --chart-5: 354 42% 56%; /* #bf616a */
+  --radius: 0.625rem;
+}
+
+/* Rosé Pine (escuro) */
+.t-rose {
+  --background: 249 22% 12%; /* #191724 */
+  --foreground: 245 50% 91%; /* #e0def4 */
+  --card: 247 23% 15%; /* #1f1d2e */
+  --card-foreground: 245 50% 91%; /* #e0def4 */
+  --popover: 247 23% 15%; /* #1f1d2e */
+  --popover-foreground: 245 50% 91%; /* #e0def4 */
+  --primary: 267 57% 78%; /* #c4a7e7 */
+  --primary-foreground: 249 22% 12%; /* #191724 */
+  --secondary: 247 23% 15%; /* #1f1d2e */
+  --secondary-foreground: 245 50% 91%; /* #e0def4 */
+  --muted: 247 23% 15%; /* #1f1d2e */
+  --muted-foreground: 248 15% 61%; /* #908caa */
+  --accent: 249 15% 28%; /* #403d52 */
+  --accent-foreground: 245 50% 91%; /* #e0def4 */
+  --destructive: 343 76% 68%; /* #eb6f92 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 249 15% 28%; /* #403d52 */
+  --input: 249 15% 28%; /* #403d52 */
+  --ring: 267 57% 78%; /* #c4a7e7 */
+  --chart-1: 267 57% 78%; /* #c4a7e7 */
+  --chart-2: 189 43% 73%; /* #9ccfd8 */
+  --chart-3: 197 49% 38%; /* #31748f */
+  --chart-4: 35 88% 72%; /* #f6c177 */
+  --chart-5: 343 76% 68%; /* #eb6f92 */
+  --radius: 0.625rem;
+}
+
+/* Gruvbox Dark (escuro) */
+.t-gruvbox {
+  --background: 0 0% 16%; /* #282828 */
+  --foreground: 43 59% 81%; /* #ebdbb2 */
+  --card: 20 5% 22%; /* #3c3836 */
+  --card-foreground: 43 59% 81%; /* #ebdbb2 */
+  --popover: 20 5% 22%; /* #3c3836 */
+  --popover-foreground: 43 59% 81%; /* #ebdbb2 */
+  --primary: 42 95% 58%; /* #fabd2f */
+  --primary-foreground: 0 0% 16%; /* #282828 */
+  --secondary: 20 5% 22%; /* #3c3836 */
+  --secondary-foreground: 43 59% 81%; /* #ebdbb2 */
+  --muted: 20 5% 22%; /* #3c3836 */
+  --muted-foreground: 39 24% 66%; /* #bdae93 */
+  --accent: 22 7% 29%; /* #504945 */
+  --accent-foreground: 43 59% 81%; /* #ebdbb2 */
+  --destructive: 6 96% 59%; /* #fb4934 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 22 7% 29%; /* #504945 */
+  --input: 22 7% 29%; /* #504945 */
+  --ring: 42 95% 58%; /* #fabd2f */
+  --chart-1: 42 95% 58%; /* #fabd2f */
+  --chart-2: 157 16% 58%; /* #83a598 */
+  --chart-3: 61 66% 44%; /* #b8bb26 */
+  --chart-4: 27 99% 55%; /* #fe8019 */
+  --chart-5: 6 96% 59%; /* #fb4934 */
+  --radius: 0.625rem;
+}
+
+/* Tokyo Night (escuro) */
+.t-tokyo {
+  --background: 235 19% 13%; /* #1a1b26 */
+  --foreground: 229 73% 86%; /* #c0caf5 */
+  --card: 230 24% 19%; /* #24283b */
+  --card-foreground: 229 73% 86%; /* #c0caf5 */
+  --popover: 230 24% 19%; /* #24283b */
+  --popover-foreground: 229 73% 86%; /* #c0caf5 */
+  --primary: 221 89% 72%; /* #7aa2f7 */
+  --primary-foreground: 235 19% 13%; /* #1a1b26 */
+  --secondary: 230 24% 19%; /* #24283b */
+  --secondary-foreground: 229 73% 86%; /* #c0caf5 */
+  --muted: 230 24% 19%; /* #24283b */
+  --muted-foreground: 227 35% 71%; /* #9aa5ce */
+  --accent: 229 24% 31%; /* #3b4261 */
+  --accent-foreground: 229 73% 86%; /* #c0caf5 */
+  --destructive: 349 89% 72%; /* #f7768e */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 229 24% 31%; /* #3b4261 */
+  --input: 229 24% 31%; /* #3b4261 */
+  --ring: 221 89% 72%; /* #7aa2f7 */
+  --chart-1: 221 89% 72%; /* #7aa2f7 */
+  --chart-2: 202 100% 75%; /* #7dcfff */
+  --chart-3: 89 51% 61%; /* #9ece6a */
+  --chart-4: 36 66% 64%; /* #e0af68 */
+  --chart-5: 349 89% 72%; /* #f7768e */
+  --radius: 0.625rem;
+}
+
+/* Areia (claro) */
+.t-areia {
+  --background: 38 44% 96%; /* #faf7f2 */
+  --foreground: 33 15% 15%; /* #2b2620 */
+  --card: 0 0% 100%; /* #ffffff */
+  --card-foreground: 33 15% 15%; /* #2b2620 */
+  --popover: 0 0% 100%; /* #ffffff */
+  --popover-foreground: 33 15% 15%; /* #2b2620 */
+  --primary: 17 88% 40%; /* #c2410c */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 0 0% 100%; /* #ffffff */
+  --secondary-foreground: 33 15% 15%; /* #2b2620 */
+  --muted: 0 0% 100%; /* #ffffff */
+  --muted-foreground: 34 11% 38%; /* #6b6256 */
+  --accent: 38 28% 86%; /* #e6dfd3 */
+  --accent-foreground: 33 15% 15%; /* #2b2620 */
+  --destructive: 0 74% 42%; /* #b91c1c */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 38 28% 86%; /* #e6dfd3 */
+  --input: 38 28% 86%; /* #e6dfd3 */
+  --ring: 17 88% 40%; /* #c2410c */
+  --chart-1: 17 88% 40%; /* #c2410c */
+  --chart-2: 175 77% 26%; /* #0f766e */
+  --chart-3: 142 72% 29%; /* #15803d */
+  --chart-4: 26 90% 37%; /* #b45309 */
+  --chart-5: 0 74% 42%; /* #b91c1c */
+  --radius: 0.625rem;
+}
+
+/* One Dark (escuro) */
+.t-onedark {
+  --background: 220 13% 18%; /* #282c34 */
+  --foreground: 219 14% 71%; /* #abb2bf */
+  --card: 216 13% 15%; /* #21252b */
+  --card-foreground: 219 14% 71%; /* #abb2bf */
+  --popover: 216 13% 15%; /* #21252b */
+  --popover-foreground: 219 14% 71%; /* #abb2bf */
+  --primary: 207 82% 66%; /* #61afef */
+  --primary-foreground: 220 13% 18%; /* #282c34 */
+  --secondary: 216 13% 15%; /* #21252b */
+  --secondary-foreground: 219 14% 71%; /* #abb2bf */
+  --muted: 216 13% 15%; /* #21252b */
+  --muted-foreground: 219 13% 66%; /* #9da5b4 */
+  --accent: 221 13% 28%; /* #3e4451 */
+  --accent-foreground: 219 14% 71%; /* #abb2bf */
+  --destructive: 355 65% 65%; /* #e06c75 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 221 13% 28%; /* #3e4451 */
+  --input: 221 13% 28%; /* #3e4451 */
+  --ring: 207 82% 66%; /* #61afef */
+  --chart-1: 207 82% 66%; /* #61afef */
+  --chart-2: 187 47% 55%; /* #56b6c2 */
+  --chart-3: 95 38% 62%; /* #98c379 */
+  --chart-4: 39 67% 69%; /* #e5c07b */
+  --chart-5: 355 65% 65%; /* #e06c75 */
+  --radius: 0.625rem;
+}
+
+/* One Light (claro) */
+.t-onelight {
+  --background: 0 0% 98%; /* #fafafa */
+  --foreground: 228 8% 24%; /* #383a42 */
+  --card: 0 0% 100%; /* #ffffff */
+  --card-foreground: 228 8% 24%; /* #383a42 */
+  --popover: 0 0% 100%; /* #ffffff */
+  --popover-foreground: 228 8% 24%; /* #383a42 */
+  --primary: 221 73% 55%; /* #3a6fe0 */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 0 0% 100%; /* #ffffff */
+  --secondary-foreground: 228 8% 24%; /* #383a42 */
+  --muted: 0 0% 100%; /* #ffffff */
+  --muted-foreground: 227 6% 44%; /* #696c77 */
+  --accent: 240 1% 86%; /* #dbdbdc */
+  --accent-foreground: 228 8% 24%; /* #383a42 */
+  --destructive: 5 74% 59%; /* #e45649 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 240 1% 86%; /* #dbdbdc */
+  --input: 240 1% 86%; /* #dbdbdc */
+  --ring: 221 73% 55%; /* #3a6fe0 */
+  --chart-1: 221 87% 60%; /* #4078f2 */
+  --chart-2: 198 99% 37%; /* #0184bc */
+  --chart-3: 119 34% 47%; /* #50a14f */
+  --chart-4: 41 99% 38%; /* #c18401 */
+  --chart-5: 5 74% 59%; /* #e45649 */
+  --radius: 0.625rem;
+}
+
+/* Monokai (escuro) */
+.t-monokai {
+  --background: 70 8% 15%; /* #272822 */
+  --foreground: 60 30% 96%; /* #f8f8f2 */
+  --card: 80 5% 12%; /* #1e1f1c */
+  --card-foreground: 60 30% 96%; /* #f8f8f2 */
+  --popover: 80 5% 12%; /* #1e1f1c */
+  --popover-foreground: 60 30% 96%; /* #f8f8f2 */
+  --primary: 80 76% 53%; /* #a6e22e */
+  --primary-foreground: 70 8% 15%; /* #272822 */
+  --secondary: 80 5% 12%; /* #1e1f1c */
+  --secondary-foreground: 60 30% 96%; /* #f8f8f2 */
+  --muted: 80 5% 12%; /* #1e1f1c */
+  --muted-foreground: 60 7% 63%; /* #a6a699 */
+  --accent: 55 8% 26%; /* #49483e */
+  --accent-foreground: 60 30% 96%; /* #f8f8f2 */
+  --destructive: 338 95% 56%; /* #f92672 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 55 8% 26%; /* #49483e */
+  --input: 55 8% 26%; /* #49483e */
+  --ring: 80 76% 53%; /* #a6e22e */
+  --chart-1: 80 76% 53%; /* #a6e22e */
+  --chart-2: 190 81% 67%; /* #66d9ef */
+  --chart-3: 54 70% 68%; /* #e6db74 */
+  --chart-4: 32 98% 56%; /* #fd971f */
+  --chart-5: 338 95% 56%; /* #f92672 */
+  --radius: 0.625rem;
+}
+
+/* Solarized Dark (escuro) */
+.t-soldark {
+  --background: 192 100% 11%; /* #002b36 */
+  --foreground: 180 7% 60%; /* #93a1a1 */
+  --card: 192 81% 14%; /* #073642 */
+  --card-foreground: 180 7% 60%; /* #93a1a1 */
+  --popover: 192 81% 14%; /* #073642 */
+  --popover-foreground: 180 7% 60%; /* #93a1a1 */
+  --primary: 175 59% 40%; /* #2aa198 */
+  --primary-foreground: 192 100% 11%; /* #002b36 */
+  --secondary: 192 81% 14%; /* #073642 */
+  --secondary-foreground: 180 7% 60%; /* #93a1a1 */
+  --muted: 192 81% 14%; /* #073642 */
+  --muted-foreground: 186 8% 55%; /* #839496 */
+  --accent: 194 14% 40%; /* #586e75 */
+  --accent-foreground: 180 7% 60%; /* #93a1a1 */
+  --destructive: 1 71% 52%; /* #dc322f */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 194 14% 40%; /* #586e75 */
+  --input: 194 14% 40%; /* #586e75 */
+  --ring: 175 59% 40%; /* #2aa198 */
+  --chart-1: 205 69% 49%; /* #268bd2 */
+  --chart-2: 175 59% 40%; /* #2aa198 */
+  --chart-3: 68 100% 30%; /* #859900 */
+  --chart-4: 45 100% 35%; /* #b58900 */
+  --chart-5: 1 71% 52%; /* #dc322f */
+  --radius: 0.625rem;
+}
+
+/* Solarized Light (claro) */
+.t-sollight {
+  --background: 44 87% 94%; /* #fdf6e3 */
+  --foreground: 192 81% 14%; /* #073642 */
+  --card: 46 42% 88%; /* #eee8d5 */
+  --card-foreground: 192 81% 14%; /* #073642 */
+  --popover: 46 42% 88%; /* #eee8d5 */
+  --popover-foreground: 192 81% 14%; /* #073642 */
+  --primary: 204 70% 38%; /* #1d6fa5 */
+  --primary-foreground: 44 87% 94%; /* #fdf6e3 */
+  --secondary: 46 42% 88%; /* #eee8d5 */
+  --secondary-foreground: 192 81% 14%; /* #073642 */
+  --muted: 46 42% 88%; /* #eee8d5 */
+  --muted-foreground: 194 14% 40%; /* #586e75 */
+  --accent: 43 24% 77%; /* #d3cbb7 */
+  --accent-foreground: 192 81% 14%; /* #073642 */
+  --destructive: 1 71% 52%; /* #dc322f */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 43 24% 77%; /* #d3cbb7 */
+  --input: 43 24% 77%; /* #d3cbb7 */
+  --ring: 204 70% 38%; /* #1d6fa5 */
+  --chart-1: 205 69% 49%; /* #268bd2 */
+  --chart-2: 175 59% 40%; /* #2aa198 */
+  --chart-3: 68 100% 30%; /* #859900 */
+  --chart-4: 45 100% 35%; /* #b58900 */
+  --chart-5: 1 71% 52%; /* #dc322f */
+  --radius: 0.625rem;
+}
+
+/* Night Owl (escuro) */
+.t-nightowl {
+  --background: 207 95% 8%; /* #011627 */
+  --foreground: 217 34% 88%; /* #d6deeb */
+  --card: 207 71% 15%; /* #0b2942 */
+  --card-foreground: 217 34% 88%; /* #d6deeb */
+  --popover: 207 71% 15%; /* #0b2942 */
+  --popover-foreground: 217 34% 88%; /* #d6deeb */
+  --primary: 221 100% 75%; /* #82aaff */
+  --primary-foreground: 207 95% 8%; /* #011627 */
+  --secondary: 207 71% 15%; /* #0b2942 */
+  --secondary-foreground: 217 34% 88%; /* #d6deeb */
+  --muted: 207 71% 15%; /* #0b2942 */
+  --muted-foreground: 211 27% 66%; /* #92a8c0 */
+  --accent: 207 48% 22%; /* #1d3b53 */
+  --accent-foreground: 217 34% 88%; /* #d6deeb */
+  --destructive: 1 83% 63%; /* #ef5350 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 207 48% 22%; /* #1d3b53 */
+  --input: 207 48% 22%; /* #1d3b53 */
+  --ring: 221 100% 75%; /* #82aaff */
+  --chart-1: 221 100% 75%; /* #82aaff */
+  --chart-2: 169 56% 68%; /* #7fdbca */
+  --chart-3: 84 62% 63%; /* #addb67 */
+  --chart-4: 35 71% 74%; /* #ecc48d */
+  --chart-5: 1 83% 63%; /* #ef5350 */
+  --radius: 0.625rem;
+}
+
+/* Kanagawa (escuro) */
+.t-kanagawa {
+  --background: 240 13% 14%; /* #1f1f28 */
+  --foreground: 51 33% 80%; /* #dcd7ba */
+  --card: 240 13% 19%; /* #2a2a37 */
+  --card-foreground: 51 33% 80%; /* #dcd7ba */
+  --popover: 240 13% 19%; /* #2a2a37 */
+  --popover-foreground: 51 33% 80%; /* #dcd7ba */
+  --primary: 220 54% 67%; /* #7e9cd8 */
+  --primary-foreground: 240 13% 14%; /* #1f1f28 */
+  --secondary: 240 13% 19%; /* #2a2a37 */
+  --secondary-foreground: 51 33% 80%; /* #dcd7ba */
+  --muted: 240 13% 19%; /* #2a2a37 */
+  --muted-foreground: 51 33% 68%; /* #c8c093 */
+  --accent: 240 13% 24%; /* #363646 */
+  --accent-foreground: 51 33% 80%; /* #dcd7ba */
+  --destructive: 353 70% 65%; /* #e46876 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 240 13% 24%; /* #363646 */
+  --input: 240 13% 24%; /* #363646 */
+  --ring: 220 54% 67%; /* #7e9cd8 */
+  --chart-1: 220 54% 67%; /* #7e9cd8 */
+  --chart-2: 198 41% 65%; /* #7fb4ca */
+  --chart-3: 87 37% 58%; /* #98bb6c */
+  --chart-4: 39 66% 71%; /* #e6c384 */
+  --chart-5: 353 70% 65%; /* #e46876 */
+  --radius: 0.625rem;
+}
+
+/* Everforest (escuro) */
+.t-everforest {
+  --background: 206 13% 20%; /* #2d353b */
+  --foreground: 41 32% 75%; /* #d3c6aa */
+  --card: 199 13% 24%; /* #343f44 */
+  --card-foreground: 41 32% 75%; /* #d3c6aa */
+  --popover: 199 13% 24%; /* #343f44 */
+  --popover-foreground: 41 32% 75%; /* #d3c6aa */
+  --primary: 83 34% 63%; /* #a7c080 */
+  --primary-foreground: 206 13% 20%; /* #2d353b */
+  --secondary: 199 13% 24%; /* #343f44 */
+  --secondary-foreground: 41 32% 75%; /* #d3c6aa */
+  --muted: 199 13% 24%; /* #343f44 */
+  --muted-foreground: 135 7% 64%; /* #9da9a0 */
+  --accent: 201 11% 31%; /* #475258 */
+  --accent-foreground: 41 32% 75%; /* #d3c6aa */
+  --destructive: 359 68% 70%; /* #e67e80 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 201 11% 31%; /* #475258 */
+  --input: 201 11% 31%; /* #475258 */
+  --ring: 83 34% 63%; /* #a7c080 */
+  --chart-1: 83 34% 63%; /* #a7c080 */
+  --chart-2: 172 31% 62%; /* #7fbbb3 */
+  --chart-3: 135 33% 63%; /* #83c092 */
+  --chart-4: 40 56% 68%; /* #dbbc7f */
+  --chart-5: 359 68% 70%; /* #e67e80 */
+  --radius: 0.625rem;
+}
+
+/* Ayu Mirage (escuro) */
+.t-ayu {
+  --background: 222 22% 15%; /* #1f2430 */
+  --foreground: 48 9% 78%; /* #cccac2 */
+  --card: 223 20% 18%; /* #242936 */
+  --card-foreground: 48 9% 78%; /* #cccac2 */
+  --popover: 223 20% 18%; /* #242936 */
+  --popover-foreground: 48 9% 78%; /* #cccac2 */
+  --primary: 40 100% 70%; /* #ffcc66 */
+  --primary-foreground: 222 22% 15%; /* #1f2430 */
+  --secondary: 223 20% 18%; /* #242936 */
+  --secondary-foreground: 48 9% 78%; /* #cccac2 */
+  --muted: 223 20% 18%; /* #242936 */
+  --muted-foreground: 222 14% 67%; /* #a0a7b8 */
+  --accent: 212 19% 25%; /* #343f4c */
+  --accent-foreground: 48 9% 78%; /* #cccac2 */
+  --destructive: 7 82% 71%; /* #f28779 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 212 19% 25%; /* #343f4c */
+  --input: 212 19% 25%; /* #343f4c */
+  --ring: 40 100% 70%; /* #ffcc66 */
+  --chart-1: 40 100% 70%; /* #ffcc66 */
+  --chart-2: 200 100% 73%; /* #73d0ff */
+  --chart-3: 80 100% 75%; /* #d5ff80 */
+  --chart-4: 28 100% 67%; /* #ffa759 */
+  --chart-5: 7 82% 71%; /* #f28779 */
+  --radius: 0.625rem;
+}
+
+/* Vesper (escuro) */
+.t-vesper {
+  --background: 0 0% 6%; /* #101010 */
+  --foreground: 0 0% 100%; /* #ffffff */
+  --card: 0 0% 9%; /* #161616 */
+  --card-foreground: 0 0% 100%; /* #ffffff */
+  --popover: 0 0% 9%; /* #161616 */
+  --popover-foreground: 0 0% 100%; /* #ffffff */
+  --primary: 27 100% 80%; /* #ffc799 */
+  --primary-foreground: 0 0% 6%; /* #101010 */
+  --secondary: 0 0% 9%; /* #161616 */
+  --secondary-foreground: 0 0% 100%; /* #ffffff */
+  --muted: 0 0% 9%; /* #161616 */
+  --muted-foreground: 0 0% 63%; /* #a0a0a0 */
+  --accent: 0 0% 16%; /* #2a2a2a */
+  --accent-foreground: 0 0% 100%; /* #ffffff */
+  --destructive: 0 100% 75%; /* #ff8080 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 0 0% 16%; /* #2a2a2a */
+  --input: 0 0% 16%; /* #2a2a2a */
+  --ring: 27 100% 80%; /* #ffc799 */
+  --chart-1: 27 100% 80%; /* #ffc799 */
+  --chart-2: 164 100% 80%; /* #99ffe4 */
+  --chart-3: 0 100% 75%; /* #ff8080 */
+  --chart-4: 0 0% 63%; /* #a0a0a0 */
+  --chart-5: 0 0% 100%; /* #ffffff */
+  --radius: 0.625rem;
+}
+
+/* Poimandres (escuro) */
+.t-poimandres {
+  --background: 226 19% 13%; /* #1b1e28 */
+  --foreground: 209 74% 94%; /* #e4f0fb */
+  --card: 220 20% 18%; /* #252b37 */
+  --card-foreground: 209 74% 94%; /* #e4f0fb */
+  --popover: 220 20% 18%; /* #252b37 */
+  --popover-foreground: 209 74% 94%; /* #e4f0fb */
+  --primary: 167 71% 63%; /* #5de4c7 */
+  --primary-foreground: 226 19% 13%; /* #1b1e28 */
+  --secondary: 220 20% 18%; /* #252b37 */
+  --secondary-foreground: 209 74% 94%; /* #e4f0fb */
+  --muted: 220 20% 18%; /* #252b37 */
+  --muted-foreground: 231 28% 73%; /* #a6accd */
+  --accent: 229 14% 22%; /* #303340 */
+  --accent-foreground: 209 74% 94%; /* #e4f0fb */
+  --destructive: 329 53% 61%; /* #d0679d */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 229 14% 22%; /* #303340 */
+  --input: 229 14% 22%; /* #303340 */
+  --ring: 167 71% 63%; /* #5de4c7 */
+  --chart-1: 167 71% 63%; /* #5de4c7 */
+  --chart-2: 197 100% 77%; /* #89ddff */
+  --chart-3: 209 100% 84%; /* #add7ff */
+  --chart-4: 55 100% 88%; /* #fffac2 */
+  --chart-5: 329 53% 61%; /* #d0679d */
+  --radius: 0.625rem;
+}
+
+/* Synthwave '84 (escuro) */
+.t-synthwave {
+  --background: 250 20% 17%; /* #262335 */
+  --foreground: 0 0% 100%; /* #ffffff */
+  --card: 267 27% 15%; /* #241b2f */
+  --card-foreground: 0 0% 100%; /* #ffffff */
+  --popover: 267 27% 15%; /* #241b2f */
+  --popover-foreground: 0 0% 100%; /* #ffffff */
+  --primary: 317 100% 75%; /* #ff7edb */
+  --primary-foreground: 250 20% 17%; /* #262335 */
+  --secondary: 267 27% 15%; /* #241b2f */
+  --secondary-foreground: 0 0% 100%; /* #ffffff */
+  --muted: 267 27% 15%; /* #241b2f */
+  --muted-foreground: 253 18% 74%; /* #b6b1c9 */
+  --accent: 257 32% 24%; /* #34294f */
+  --accent-foreground: 0 0% 100%; /* #ffffff */
+  --destructive: 356 99% 63%; /* #fe4450 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 257 32% 24%; /* #34294f */
+  --input: 257 32% 24%; /* #34294f */
+  --ring: 317 100% 75%; /* #ff7edb */
+  --chart-1: 317 100% 75%; /* #ff7edb */
+  --chart-2: 179 94% 59%; /* #36f9f6 */
+  --chart-3: 153 82% 70%; /* #72f1b8 */
+  --chart-4: 48 99% 68%; /* #fede5d */
+  --chart-5: 356 99% 63%; /* #fe4450 */
+  --radius: 0.625rem;
+}
+
+/* GitHub Light (claro) */
+.t-ghlight {
+  --background: 0 0% 100%; /* #ffffff */
+  --foreground: 213 13% 14%; /* #1f2328 */
+  --card: 210 29% 97%; /* #f6f8fa */
+  --card-foreground: 213 13% 14%; /* #1f2328 */
+  --popover: 210 29% 97%; /* #f6f8fa */
+  --popover-foreground: 213 13% 14%; /* #1f2328 */
+  --primary: 212 92% 45%; /* #0969da */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 210 29% 97%; /* #f6f8fa */
+  --secondary-foreground: 213 13% 14%; /* #1f2328 */
+  --muted: 210 29% 97%; /* #f6f8fa */
+  --muted-foreground: 211 11% 39%; /* #59636e */
+  --accent: 210 18% 84%; /* #d0d7de */
+  --accent-foreground: 213 13% 14%; /* #1f2328 */
+  --destructive: 356 72% 47%; /* #cf222e */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 210 18% 84%; /* #d0d7de */
+  --input: 210 18% 84%; /* #d0d7de */
+  --ring: 212 92% 45%; /* #0969da */
+  --chart-1: 212 92% 45%; /* #0969da */
+  --chart-2: 184 66% 31%; /* #1b7c83 */
+  --chart-3: 137 66% 30%; /* #1a7f37 */
+  --chart-4: 40 100% 30%; /* #9a6700 */
+  --chart-5: 356 72% 47%; /* #cf222e */
+  --radius: 0.625rem;
+}
+
+/* GitHub Dark (escuro) */
+.t-ghdark {
+  --background: 216 28% 7%; /* #0d1117 */
+  --foreground: 208 35% 93%; /* #e6edf3 */
+  --card: 215 21% 11%; /* #161b22 */
+  --card-foreground: 208 35% 93%; /* #e6edf3 */
+  --popover: 215 21% 11%; /* #161b22 */
+  --popover-foreground: 208 35% 93%; /* #e6edf3 */
+  --primary: 214 93% 62%; /* #4493f8 */
+  --primary-foreground: 216 28% 7%; /* #0d1117 */
+  --secondary: 215 21% 11%; /* #161b22 */
+  --secondary-foreground: 208 35% 93%; /* #e6edf3 */
+  --muted: 215 21% 11%; /* #161b22 */
+  --muted-foreground: 214 8% 60%; /* #9198a1 */
+  --accent: 212 12% 21%; /* #30363d */
+  --accent-foreground: 208 35% 93%; /* #e6edf3 */
+  --destructive: 3 93% 63%; /* #f85149 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 212 12% 21%; /* #30363d */
+  --input: 212 12% 21%; /* #30363d */
+  --ring: 214 93% 62%; /* #4493f8 */
+  --chart-1: 214 93% 62%; /* #4493f8 */
+  --chart-2: 184 61% 52%; /* #39c5cf */
+  --chart-3: 128 49% 49%; /* #3fb950 */
+  --chart-4: 41 72% 48%; /* #d29922 */
+  --chart-5: 3 93% 63%; /* #f85149 */
+  --radius: 0.625rem;
+}
+
+/* Flexoki Light (claro) */
+.t-flexoki {
+  --background: 48 100% 97%; /* #fffcf0 */
+  --foreground: 0 3% 6%; /* #100f0f */
+  --card: 51 33% 92%; /* #f2f0e5 */
+  --card-foreground: 0 3% 6%; /* #100f0f */
+  --popover: 51 33% 92%; /* #f2f0e5 */
+  --popover-foreground: 0 3% 6%; /* #100f0f */
+  --primary: 212 68% 39%; /* #205ea6 */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 51 33% 92%; /* #f2f0e5 */
+  --secondary-foreground: 0 3% 6%; /* #100f0f */
+  --muted: 51 33% 92%; /* #f2f0e5 */
+  --muted-foreground: 50 3% 42%; /* #6f6e69 */
+  --accent: 50 14% 83%; /* #dad8ce */
+  --accent-foreground: 0 3% 6%; /* #100f0f */
+  --destructive: 3 62% 42%; /* #af3029 */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 50 14% 83%; /* #dad8ce */
+  --input: 50 14% 83%; /* #dad8ce */
+  --ring: 212 68% 39%; /* #205ea6 */
+  --chart-1: 212 68% 39%; /* #205ea6 */
+  --chart-2: 175 57% 33%; /* #24837b */
+  --chart-3: 73 84% 27%; /* #66800b */
+  --chart-4: 45 99% 34%; /* #ad8301 */
+  --chart-5: 3 62% 42%; /* #af3029 */
+  --radius: 0.625rem;
+}
+
+/* Gruvbox Light (claro) */
+.t-gruvlight {
+  --background: 48 87% 88%; /* #fbf1c7 */
+  --foreground: 20 5% 22%; /* #3c3836 */
+  --card: 46 67% 84%; /* #f2e5bc */
+  --card-foreground: 20 5% 22%; /* #3c3836 */
+  --popover: 46 67% 84%; /* #f2e5bc */
+  --popover-foreground: 20 5% 22%; /* #3c3836 */
+  --primary: 19 97% 35%; /* #af3a03 */
+  --primary-foreground: 0 0% 100%; /* #ffffff */
+  --secondary: 46 67% 84%; /* #f2e5bc */
+  --secondary-foreground: 20 5% 22%; /* #3c3836 */
+  --muted: 46 67% 84%; /* #f2e5bc */
+  --muted-foreground: 27 10% 36%; /* #665c54 */
+  --accent: 40 38% 73%; /* #d5c4a1 */
+  --accent-foreground: 20 5% 22%; /* #3c3836 */
+  --destructive: 358 100% 31%; /* #9d0006 */
+  --destructive-foreground: 0 0% 100%; /* #ffffff */
+  --border: 40 38% 73%; /* #d5c4a1 */
+  --input: 40 38% 73%; /* #d5c4a1 */
+  --ring: 19 97% 35%; /* #af3a03 */
+  --chart-1: 19 97% 35%; /* #af3a03 */
+  --chart-2: 190 89% 25%; /* #076678 */
+  --chart-3: 57 79% 26%; /* #79740e */
+  --chart-4: 37 80% 39%; /* #b57614 */
+  --chart-5: 358 100% 31%; /* #9d0006 */
+  --radius: 0.625rem;
+}
+
+/* Catppuccin Frappé (escuro) */
+.t-frappe {
+  --background: 229 19% 23%; /* #303446 */
+  --foreground: 227 70% 87%; /* #c6d0f5 */
+  --card: 231 19% 20%; /* #292c3c */
+  --card-foreground: 227 70% 87%; /* #c6d0f5 */
+  --popover: 231 19% 20%; /* #292c3c */
+  --popover-foreground: 227 70% 87%; /* #c6d0f5 */
+  --primary: 277 59% 76%; /* #ca9ee6 */
+  --primary-foreground: 229 19% 23%; /* #303446 */
+  --secondary: 231 19% 20%; /* #292c3c */
+  --secondary-foreground: 227 70% 87%; /* #c6d0f5 */
+  --muted: 231 19% 20%; /* #292c3c */
+  --muted-foreground: 228 29% 73%; /* #a5adce */
+  --accent: 227 15% 37%; /* #51576d */
+  --accent-foreground: 227 70% 87%; /* #c6d0f5 */
+  --destructive: 359 68% 71%; /* #e78284 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 227 15% 37%; /* #51576d */
+  --input: 227 15% 37%; /* #51576d */
+  --ring: 277 59% 76%; /* #ca9ee6 */
+  --chart-1: 277 59% 76%; /* #ca9ee6 */
+  --chart-2: 222 74% 74%; /* #8caaee */
+  --chart-3: 96 44% 68%; /* #a6d189 */
+  --chart-4: 40 62% 73%; /* #e5c890 */
+  --chart-5: 359 68% 71%; /* #e78284 */
+  --radius: 0.625rem;
+}
+
+/* Catppuccin Macchiato (escuro) */
+.t-macchiato {
+  --background: 232 23% 18%; /* #24273a */
+  --foreground: 227 68% 88%; /* #cad3f5 */
+  --card: 233 23% 15%; /* #1e2030 */
+  --card-foreground: 227 68% 88%; /* #cad3f5 */
+  --popover: 233 23% 15%; /* #1e2030 */
+  --popover-foreground: 227 68% 88%; /* #cad3f5 */
+  --primary: 267 83% 80%; /* #c6a0f6 */
+  --primary-foreground: 232 23% 18%; /* #24273a */
+  --secondary: 233 23% 15%; /* #1e2030 */
+  --secondary-foreground: 227 68% 88%; /* #cad3f5 */
+  --muted: 233 23% 15%; /* #1e2030 */
+  --muted-foreground: 227 27% 72%; /* #a5adcb */
+  --accent: 231 16% 34%; /* #494d64 */
+  --accent-foreground: 227 68% 88%; /* #cad3f5 */
+  --destructive: 351 74% 73%; /* #ed8796 */
+  --destructive-foreground: 0 0% 4%; /* #0a0a0a */
+  --border: 231 16% 34%; /* #494d64 */
+  --input: 231 16% 34%; /* #494d64 */
+  --ring: 267 83% 80%; /* #c6a0f6 */
+  --chart-1: 267 83% 80%; /* #c6a0f6 */
+  --chart-2: 220 83% 75%; /* #8aadf4 */
+  --chart-3: 105 48% 72%; /* #a6da95 */
+  --chart-4: 40 70% 78%; /* #eed49f */
+  --chart-5: 351 74% 73%; /* #ed8796 */
+  --radius: 0.625rem;
+}
+
+/* Margem (padrão do app) */
+.t-margem {
+  --background: 40 33% 98%; --foreground: 36 9% 11%;
+  --card: 40 33% 98%; --card-foreground: 36 9% 11%;
+  --primary: 186 35% 28%; --primary-foreground: 0 0% 100%;
+  --secondary: 42 20% 92%; --secondary-foreground: 36 9% 11%;
+  --muted: 40 22% 95%; --muted-foreground: 38 6% 39%;
+  --accent: 42 20% 92%; --accent-foreground: 36 9% 11%;
+  --border: 40 17% 88%; --input: 40 14% 86%; --ring: 186 35% 28%;
+  --chart-3: 104 27% 29%; --chart-4: 40 100% 25%;
+}
+.t-margem-escuro {
+  --background: 36 8% 10%; --foreground: 40 20% 94%;
+  --card: 36 8% 10%; --card-foreground: 40 20% 94%;
+  --primary: 186 40% 62%; --primary-foreground: 36 8% 10%;
+  --secondary: 36 6% 17%; --secondary-foreground: 40 20% 94%;
+  --muted: 36 8% 13%; --muted-foreground: 38 8% 62%;
+  --accent: 36 6% 17%; --accent-foreground: 40 20% 94%;
+  --border: 36 6% 20%; --input: 36 6% 22%; --ring: 186 40% 62%;
+  --chart-3: 100 30% 70%; --chart-4: 40 80% 70%;
+}

@@ -5,6 +5,7 @@
 // As notas de aluno não guardam cópia: o app junta as ocorrências lendo os diários.
 import { invoke } from "@/lib/api";
 import { setProp } from "@/lib/frontmatter";
+import { serieDeTurma } from "@/lib/utils";
 
 export const ESTADOS = [
   { id: "pendente", nome: "Pendente" },
@@ -48,7 +49,7 @@ export async function criarDiario(items, { ano, turma, semana, aulas, foto }) {
   const dirTipo = `${raiz(items)}/Anos/${ano}`;
   for (const [dir, name] of [[dirTipo, "Diarios"], [`${dirTipo}/Diarios`, turma]]) { try { await invoke("create_folder", { dir, name }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir: pasta(items, ano, "Diarios", turma), name: `Diario ${turma} - ${semana}` });
-  const fm = `---\ntipo: diario\nano: ${ano}\nturma: "${turma}"\nsemana: ${semana}\ntranscricao: ${foto ? "pendente" : "aprovada"}\n${foto ? `foto: ${foto}\n` : ""}---\n`;
+  const fm = `---\ntipo: diario\n${serieDeTurma(turma) ? `ano: ${serieDeTurma(turma)}\n` : ""}turma: "${turma}"\nsemana: ${semana}\ntranscricao: ${foto ? "pendente" : "aprovada"}\n${foto ? `foto: ${foto}\n` : ""}---\n`;
   const corpo = aulas.map((a, i) => `## Aula ${i + 1} — ${a}\n\nDado: \n`).join("\n");
   await invoke("save_note", { path, text: `${fm}# Diário ${turma} — ${semana}\n\n${corpo}` });
   return path;
@@ -58,7 +59,7 @@ export async function criarAluno(items, { ano, turma, nome }) {
   const dirTipo = `${raiz(items)}/Anos/${ano}`;
   for (const [dir, n] of [[dirTipo, "Alunos"], [`${dirTipo}/Alunos`, turma]]) { try { await invoke("create_folder", { dir, name: n }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir: pasta(items, ano, "Alunos", turma), name: nome });
-  await invoke("save_note", { path, text: `---\ntipo: aluno\nano: ${ano}\nturma: "${turma}"\n---\n# ${nome}\n\nAs ocorrências vêm dos diários (aba Alunos do app). Observações livres abaixo.\n` });
+  await invoke("save_note", { path, text: `---\ntipo: aluno\n${serieDeTurma(turma) ? `ano: ${serieDeTurma(turma)}\n` : ""}turma: "${turma}"\n---\n# ${nome}\n\nAs ocorrências vêm dos diários (aba Alunos do app). Observações livres abaixo.\n` });
   return path;
 }
 

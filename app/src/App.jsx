@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
-import { BookOpen, HeartPulse, ArrowLeft, ArrowRight, CalendarCheck, CalendarDays, PenLine, FileCheck, FolderTree, ListTree, PanelLeft, Settings, Search, Sun, Moon, Maximize2 } from "lucide-react";
+import { BookOpen, HeartPulse, ArrowLeft, ArrowRight, House, CalendarDays, PenLine, FileCheck, ListTree, PanelLeft, Settings, Search, Sun, Moon, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTree } from "@/components/FileTree";
@@ -24,6 +24,7 @@ import { CicloPage } from "@/components/CicloPage";
 import { capturing } from "@/components/ShortcutsPage";
 import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault } from "@/components/VaultGate";
+import { aplicarTema, aplicarEstiloCallout, lerTemas } from "@/lib/temas";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
@@ -64,6 +65,9 @@ export default function App() {
   const [reveal, setReveal] = useState(null);
   const [navTick, setNavTick] = useState(0);
   const [dark, setDark] = useState(() => store.get("tema", "light") === "dark");
+  const [temaClaro, setTemaClaro] = useState(() => lerTemas().claro);
+  const [temaEscuro, setTemaEscuro] = useState(() => lerTemas().escuro);
+  const [estiloCallout, setEstiloCallout] = useState(() => store.get("estiloCallout", "preenchido"));
   const [zoom, setZoom] = useState(() => store.get("zoom", 1));
   const [sideW, setSideW] = useState(() => store.get("sideW", 288));
   const [outlineW, setOutlineW] = useState(() => store.get("outlineW", 240));
@@ -80,7 +84,8 @@ export default function App() {
   const timer = useRef(null);
   const hist = useRef({ stack: [], idx: -1 });
 
-  useEffect(() => { document.documentElement.classList.toggle("dark", dark); store.set("tema", dark ? "dark" : "light"); }, [dark]);
+  useEffect(() => { aplicarTema(temaClaro, temaEscuro, dark); store.set("tema", dark ? "dark" : "light"); store.set("temaClaro", temaClaro); store.set("temaEscuro", temaEscuro); }, [dark, temaClaro, temaEscuro]);
+  useEffect(() => { aplicarEstiloCallout(estiloCallout); store.set("estiloCallout", estiloCallout); }, [estiloCallout]);
   useEffect(() => { store.set("sideW", sideW); }, [sideW]);
   useEffect(() => { store.set("outlineW", outlineW); }, [outlineW]);
   useEffect(() => { store.set("outline", showOutline); }, [showOutline]);
@@ -212,6 +217,13 @@ export default function App() {
     const r = await invoke("rename_entry", { path: t.path, name }); remap(t.path, r.path); await refresh();
     setStatus(t.kind === "note" ? `Renomeada; ${r.links} link(s) atualizado(s)` : "Pasta renomeada");
   } });
+  // Renomeia a nota aberta numa tela personalizada (ex.: trocar o título do ciclo) e devolve o novo caminho.
+  const renomearNota = async (path, name) => {
+    await save();
+    const r = await invoke("rename_entry", { path, name }); remap(path, r.path); await refresh();
+    setStatus(`Renomeada; ${r.links} link(s) atualizado(s)`);
+    return r.path;
+  };
   const deleteEntry = (t) => setDialog({ title: "Excluir", message: `Mover “${t.name}” para a lixeira do vault (.lixeira)?`, okLabel: "Excluir", danger: true, onOk: async () => {
     await save();
     await invoke("delete_entry", { path: t.path });
@@ -314,6 +326,11 @@ export default function App() {
     if (modo === "markdown" && cur.current) load(cur.current); // a tela pode ter gravado no disco: recarrega o editor
     else setVerTick((n) => n + 1);
   };
+  // "editar" na lista do diário: abre a nota em Markdown (a visão personalizada do diário é só a lista)
+  const abrirMarkdown = async (path) => {
+    const novo = { ...prefVisao, diario: "markdown" }; setPrefVisao(novo); store.set("visaoPorTipo", novo);
+    await open(path); setPage("editor");
+  };
   const crumbs = rel ? rel.replace(/\.md$/, "").split("/") : [];
   const pick = async (path, line) => { setSearchOpen(false); await open(path); if (line) setTimeout(() => goLine(line), 50); };
   const goHeading = (pos, i) => { setActiveHeading(i); ed.current.goTo(pos); };
@@ -330,10 +347,8 @@ export default function App() {
   return (
     <div className="flex h-full">
       {!foco && <nav aria-label="Navegação" className="flex w-14 shrink-0 flex-col items-center gap-1.5 border-r bg-muted py-3">
-        <RailButton label="Arquivos" active><FolderTree className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-5 w-5" strokeWidth={1.6} /></RailButton>
+        <RailButton label="Início — Esta semana" active={page === "semana"} onClick={() => setPage("semana")}><House className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Planejamento do ano" active={page === "ano" || page === "ciclo"} onClick={() => setPage(page === "ano" || page === "ciclo" ? "editor" : "ano")}><CalendarDays className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label="Esta semana" active={page === "semana"} onClick={() => setPage(page === "semana" ? "editor" : "semana")}><CalendarCheck className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Diário e alunos" active={page === "diario"} onClick={() => setPage(page === "diario" ? "editor" : "diario")}><BookOpen className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Correções" active={page === "correcao"} onClick={() => setPage(page === "correcao" ? "editor" : "correcao")}><PenLine className="h-5 w-5" strokeWidth={1.6} /></RailButton>
         <RailButton label="Montar prova" active={page === "prova"} onClick={() => setPage(page === "prova" ? "editor" : "prova")}><FileCheck className="h-5 w-5" strokeWidth={1.6} /></RailButton>
@@ -390,22 +405,23 @@ export default function App() {
             </div>
           )}
           {info?.tipo === "texto" && current && page === "editor" && <button onClick={() => { setTextoAtiv(current); setPage("prova"); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Atividade a partir deste texto</button>}
+          <RailButton size="sm" label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>
         </header>}
 
-        {page === "config" && <SettingsPage overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
+        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
         {page === "ano" && <AnoPage items={items} onOpen={open} onRefresh={refresh} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
         {page === "prova" && <ProvaPage items={items} onOpen={open} onRefresh={refresh} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
         {page === "correcao" && <CorrecaoPage items={items} onOpen={open} />}
         {page === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} />}
-        {page === "diario" && <DiarioPage items={items} onOpen={open} onRefresh={refresh} />}
+        {page === "diario" && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} />}
         {page === "saude" && <SaudePage items={items} onOpen={open} onRefresh={refresh} />}
-        {page === "ciclo" && ciclo && <CicloPage ciclo={ciclo} items={items} onOpen={open} onAno={() => setPage("ano")} onChange={setCiclo} />}
-        {personalizada && visao.id === "ciclo" && <CicloDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} onAno={() => setPage("ano")} />}
+        {page === "ciclo" && ciclo && <CicloPage ciclo={ciclo} items={items} onOpen={open} onAno={() => setPage("ano")} onChange={setCiclo} onRename={renomearNota} />}
+        {personalizada && visao.id === "ciclo" && <CicloDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} onAno={() => setPage("ano")} onRename={renomearNota} />}
         {personalizada && visao.id === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "prova" && <ProvaDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} />}
-        {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
+        {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "texto" && <TextoDaNota item={items.find((i) => i.path === current)} onOpen={open} tick={verTick} onAtividade={() => { setTextoAtiv(current); setPage("prova"); }} />}
         {personalizada && visao.id === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={current} />}
         <main className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>

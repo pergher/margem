@@ -37,7 +37,7 @@ export function parseCiclo(item, text) {
   const body = text.replace(/^---\n[\s\S]*?\n---\n?/, "");
   const secao = (nome) => new RegExp(`^##\\s+${nome}\\s*$([\\s\\S]*?)(?=^##\\s|(?![\\s\\S]))`, "m").exec(body)?.[1] ?? "";
   const aulas = secao("Aulas").split("\n").filter((l) => /^\|\s*\d+\s*\|/.test(l)).map((l) => {
-    const c = l.split("|").map((x) => x.trim());
+    const c = l.split(/(?<!\\)\|/).map((x) => x.trim().replace(/\\\|/g, "|"));
     return { n: Number(c[1]), texto: c[2] ?? "", recurso: c[3] ?? "", fase: faseDaAula(c[2] ?? "") };
   });
   return {
@@ -81,6 +81,32 @@ export function inserirAula(text, pos, conteudo) {
   const nova = `| 0 | ${conteudo.replace(/\|/g, "\\|")} |  |`;
   return editarTabela(text, (rows) => [...rows.slice(0, pos - 1), nova, ...rows.slice(pos - 1)]);
 }
+
+// Troca o conteúdo (col. 2) ou o recurso (col. 3) de uma aula, sem mexer no resto da linha.
+export function editarCelula(text, n, col, valor) {
+  const v = valor.replace(/\s*\n\s*/g, " ").replace(/(?<!\\)\|/g, "\\|").trim();
+  return editarTabela(text, (rows) => rows.map((l, i) => {
+    if (i !== n - 1) return l;
+    const cel = l.split(/(?<!\\)\|/);
+    while (cel.length < 5) cel.splice(cel.length - 1, 0, " ");
+    cel[col] = ` ${v} `;
+    return cel.join("|");
+  }));
+}
+
+// Troca o corpo de uma seção "## Nome" (cria antes de "## Aulas" se faltar).
+function trocarSecao(text, nome, linhas) {
+  const corpo = "\n" + (linhas.length ? linhas.join("\n") + "\n" : "") + "\n";
+  const re = new RegExp(`(^##\\s+${nome}\\s*$)([\\s\\S]*?)(?=^##\\s|(?![\\s\\S]))`, "m");
+  if (re.test(text)) return text.replace(re, (_, h) => h + corpo);
+  const bloco = `## ${nome}${corpo}`;
+  return /^##\s+Aulas\s*$/m.test(text) ? text.replace(/^##\s+Aulas\s*$/m, (m) => bloco + m) : text.replace(/\s*$/, "\n\n") + bloco;
+}
+export const salvarConteudos = (text, itens) => trocarSecao(text, "Conteúdos", itens.map((x) => `- ${x}`));
+export const salvarHabilidades = (text, hs) => trocarSecao(text, "Habilidades", hs.map((h) => `(${h.codigo}) ${h.texto}`.trim()));
+
+// Nome do arquivo com o título novo (mantém ATC e o sufixo PR/PT/TG).
+export const nomeComTitulo = (c, titulo) => `${c.ano}${c.tri}${c.ciclo} - ${titulo.trim()}${c.sufixo ? ` - ${c.sufixo}` : ""}`;
 
 export function removerAula(text, n) {
   return editarTabela(text, (rows) => rows.filter((_, i) => i !== n - 1));

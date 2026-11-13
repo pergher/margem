@@ -1,24 +1,26 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { Keyboard, FileText, FolderOpen, Download } from "lucide-react";
+import { Keyboard, FileText, FolderOpen, Download, Palette, Sun, Moon } from "lucide-react";
 import { invoke, isTauri } from "@/lib/api";
 import { escolherPastaDoVault } from "@/components/VaultGate";
 import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atualizar";
 import { lerLogo } from "@/lib/configProva";
 import { useConfigProva } from "@/lib/useConfigProva";
 import { ShortcutsPage } from "@/components/ShortcutsPage";
+import { CLAROS, ESCUROS, ESTILOS_CALLOUT } from "@/lib/temas";
 import { cn } from "@/lib/utils";
 
 // Seções da página; novas (cabeçalho das avaliações, escola, logo…) entram aqui.
 const SECOES = [
+  { id: "aparencia", label: "Aparência", icon: Palette },
   { id: "atalhos", label: "Atalhos de teclado", icon: Keyboard },
   { id: "provas", label: "Cabeçalho das provas", icon: FileText },
   { id: "vault", label: "Pasta do vault", icon: FolderOpen, soApp: true },
   { id: "atualizacoes", label: "Atualizações", icon: Download, soApp: true },
 ];
 
-export function SettingsPage({ overrides, setOverrides, items = [], onRefresh }) {
-  const [secao, setSecao] = useState("atalhos");
+export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh }) {
+  const [secao, setSecao] = useState("aparencia");
   return (
     <div className="flex min-h-0 flex-1">
       <nav aria-label="Seções das configurações" className="w-52 shrink-0 border-r p-3">
@@ -30,6 +32,7 @@ export function SettingsPage({ overrides, setOverrides, items = [], onRefresh })
           </button>
         ))}
       </nav>
+      {secao === "aparencia" && <Aparencia tema={tema} />}
       {secao === "provas" && <CabecalhoProvas items={items} onRefresh={onRefresh} />}
       {secao === "vault" && <PastaDoVault />}
       {secao === "atualizacoes" && <Atualizacoes />}
@@ -124,5 +127,64 @@ function Atualizacoes() {
         </div>
       )}
     </div></div>
+  );
+}
+
+function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout } }) {
+  return (
+    <div className="min-h-0 flex-1 overflow-auto"><div className="mx-auto max-w-[720px] px-6 py-10">
+      <h1 className="text-xl font-semibold">Aparência</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Escolha um tema claro e um escuro, de forma independente; o modo decide qual está em uso. O modo também alterna pelo botão de sol/lua no menu lateral.</p>
+      <div role="radiogroup" aria-label="Modo" className="mt-6 inline-flex rounded-lg border p-0.5 text-sm">
+        {[[false, "Claro", Sun], [true, "Escuro", Moon]].map(([v, nome, Icone]) => (
+          <button key={nome} role="radio" aria-checked={dark === v} onClick={() => setDark(v)}
+            className={cn("flex items-center gap-1.5 rounded-md px-3 py-1", dark === v ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60")}>
+            <Icone className="h-4 w-4" strokeWidth={1.6} />{nome}
+          </button>
+        ))}
+      </div>
+      <GradeTemas titulo="Tema claro" lista={CLAROS} atual={temaClaro} onPick={setTemaClaro} emUso={!dark} />
+      <GradeTemas titulo="Tema escuro" lista={ESCUROS} atual={temaEscuro} onPick={setTemaEscuro} emUso={dark} />
+      <h2 className="mt-10 text-base font-semibold">Callouts</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Como aparecem os blocos <code>&gt; [!note]</code>, <code>[!tip]</code> e <code>[!warning]</code> no editor. As cores seguem o tema.</p>
+      <div role="radiogroup" aria-label="Estilo dos callouts" className="mt-4 grid grid-cols-2 gap-3">
+        {Object.entries(ESTILOS_CALLOUT).map(([id, nome]) => (
+          <button key={id} role="radio" aria-checked={estiloCallout === id} onClick={() => setEstiloCallout(id)} data-callout={id}
+            className={cn("overflow-hidden rounded-xl border text-left", estiloCallout === id ? "ring-2 ring-primary" : "hover:border-primary/60")}>
+            <div className="space-y-2 bg-background p-3">
+              {[["", "Nota"], ["cm-callout-warning", "Atenção"]].map(([c, t]) => (
+                <div key={t} className={cn("cm-callout cm-callout-first cm-callout-last", c)} style={{ borderTopWidth: 0, borderBottomWidth: 0 }}>
+                  <div className="py-2"><div className="cm-callout-title">{t}</div><div className="text-xs">Texto do bloco de exemplo.</div></div>
+                </div>
+              ))}
+            </div>
+            <div className="border-t bg-background px-3 py-1.5 text-xs">{nome}</div>
+          </button>
+        ))}
+      </div>
+    </div></div>
+  );
+}
+
+function GradeTemas({ titulo, lista, atual, onPick, emUso }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-base font-semibold">{titulo}{emUso && <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-normal text-muted-foreground">em uso</span>}</h2>
+      <div role="radiogroup" aria-label={titulo} className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {Object.entries(lista).map(([classe, nome]) => (
+          <button key={classe} role="radio" aria-checked={atual === classe} onClick={() => onPick(classe)}
+            className={cn("overflow-hidden rounded-xl border text-left", atual === classe ? "ring-2 ring-primary" : "hover:border-primary/60")}>
+            <div className={cn(classe, "bg-background p-3 text-foreground")}>
+              <div className="text-xs font-semibold">Título da nota</div>
+              <div className="mt-1 text-xs text-muted-foreground">Texto de exemplo com <span className="text-primary underline">link</span></div>
+              <div className="mt-2 flex gap-1.5">
+                <span className="h-3 w-8 rounded-full bg-primary" /><span className="h-3 w-5 rounded-full bg-accent" /><span className="h-3 w-5 rounded-full bg-muted-foreground" />
+              </div>
+            </div>
+            <div className="border-t bg-background px-3 py-1.5 text-xs">{nome}</div>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 }

@@ -4,7 +4,7 @@ import { parseCiclo } from "@/lib/ciclos";
 import { CicloPage } from "@/components/CicloPage";
 
 /** Mostra a tela Ciclo para a nota de ciclo aberta (path). */
-export function CicloDaNota({ item, items, onOpen, onAno, tick }) {
+export function CicloDaNota({ item, items, onOpen, onAno, tick, onRename }) {
   const [ciclo, setCiclo] = useState(null);
   const [erro, setErro] = useState("");
   useEffect(() => {
@@ -13,5 +13,5 @@ export function CicloDaNota({ item, items, onOpen, onAno, tick }) {
   }, [item.path, tick]);
   if (erro) return <div className="p-8 text-sm text-destructive">{erro}</div>;
   if (!ciclo) return <div className="p-8 text-sm text-muted-foreground">Lendo o ciclo…</div>;
-  return <CicloPage ciclo={ciclo} items={items} onOpen={onOpen} onAno={onAno} onChange={setCiclo} />;
+  return <CicloPage ciclo={ciclo} items={items} onOpen={onOpen} onAno={onAno} onChange={setCiclo} onRename={onRename} />;
 }
