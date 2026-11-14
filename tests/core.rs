@@ -306,3 +306,25 @@ fn professor_vira_margem() {
     assert!(n.contains("```\n> [!tip] Dica para o professor: no código"));
     assert_eq!(professor_para_margem(&n).1, 0);
 }
+
+#[test]
+fn ciclos_viram_atemporais_com_planejamento_do_ano_e_links_reescritos() {
+    use vault_core::{atemporais, reorganizar};
+    let dir = std::env::temp_dir().join(format!("vault-atemp-{}", std::process::id()));
+    escreve(&dir, "Anos/2026/Planejamento/723 - Crase - PR.md", "---\ntipo: ciclo\nano: 7\ntrimestre: 2\nciclo: 3\n---\n## Aulas\n");
+    escreve(&dir, "Anos/2026/Planejamento/831 - PT.md", "---\ntipo: ciclo\nano: 8\ntrimestre: 3\nciclo: 1\n---\n");
+    escreve(&dir, "Anos/2026/Semanas/S.md", "Ciclo: [[723 - Crase - PR]] e [[723 - Crase - PR|Crase]] 4");
+    let r = atemporais::plan(&dir).unwrap();
+    assert_eq!(r.renomeados.len(), 2);
+    reorganizar::apply(&dir, &r.plan).unwrap();
+    let crase = std::fs::read_to_string(dir.join("Acervo/Ciclos/Crase.md")).unwrap();
+    assert_eq!(crase, "---\ntipo: ciclo\nsufixo: PR\n---\n## Aulas\n");
+    assert!(dir.join("Acervo/Ciclos/Ciclo 831.md").exists());
+    let sem = std::fs::read_to_string(dir.join("Anos/2026/Semanas/S.md")).unwrap();
+    assert_eq!(sem, "Ciclo: [[Crase]] e [[Crase|Crase]] 4");
+    let plan = std::fs::read_to_string(dir.join("Anos/2026/Planejamento 2026.md")).unwrap();
+    assert!(plan.contains("ano_letivo: 2026") && plan.contains("| 7 | 2 | 3 | [[Crase]] |") && plan.contains("| 8 | 3 | 1 | [[Ciclo 831]] |"), "{plan}");
+    // idempotente: nada mais a mover
+    assert!(atemporais::plan(&dir).unwrap().renomeados.is_empty());
+    std::fs::remove_dir_all(dir).ok();
+}

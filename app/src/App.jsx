@@ -1,23 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
-import { BookOpen, HeartPulse, ArrowLeft, ArrowRight, House, CalendarDays, PenLine, FileCheck, ListTree, PanelLeft, Settings, Search, Sun, Moon, Maximize2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, ListOrdered, ListTree, PanelLeft, Search, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Logo } from "@/components/Logo";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileTree } from "@/components/FileTree";
+import { Menu } from "@/components/Menu";
 import { Editor } from "@/components/Editor";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { Outline, headingsOf } from "@/components/Outline";
+import { DESTAQUES_PADRAO, aplicarDestaques } from "@/lib/destaques";
 import { RightPanel } from "@/components/RightPanel";
 import { setProp, lineStart } from "@/lib/frontmatter";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SearchModal } from "@/components/SearchModal";
 import { EntryDialog } from "@/components/EntryDialog";
 import { InicioPage } from "@/components/InicioPage";
-import { ProvaPage } from "@/components/ProvaPage";
+import { QuestoesPage } from "@/components/QuestoesPage";
+import { AulasPage } from "@/components/AulasPage";
+import { CorrecoesPage } from "@/components/CorrecoesPage";
 import { ProvaDaNota } from "@/components/ProvaDaNota";
 import { TextoDaNota } from "@/components/TextoDaNota";
 import { AulaDaNota } from "@/components/AulaDaNota";
+import { BancoDaNota } from "@/components/BancoDaNota";
 import { CorrecaoPage } from "@/components/CorrecaoPage";
 import { SemanaPage } from "@/components/SemanaPage";
 import { SaudePage } from "@/components/SaudePage";
@@ -27,7 +29,9 @@ import { capturing } from "@/components/ShortcutsPage";
 import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault } from "@/components/VaultGate";
 import { aplicarTema, aplicarEstiloCallout, lerTemas } from "@/lib/temas";
-import { aplicarFonte } from "@/lib/fontes";
+import { aplicarFonte, fonteSalva } from "@/lib/fontes";
+import { aplicarIcones } from "@/lib/icones";
+import { criarAula } from "@/lib/aula";
 import { aplicarForma } from "@/lib/forma";
 import { lembrarRecente } from "@/lib/recentes";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
@@ -56,7 +60,6 @@ export default function App() {
   const [items, setItems] = useState([]);
   const [dirs, setDirs] = useState([]);
   const [dialog, setDialog] = useState(null);
-  const [undo, setUndo] = useState(null);
   const [info, setInfo] = useState(null);
   const [propsText, setPropsText] = useState("");
   const [panelTab, setPanelTab] = useState(() => store.get("painel", "sumario"));
@@ -67,17 +70,18 @@ export default function App() {
   const [activeHeading, setActiveHeading] = useState(-1);
   const [searchOpen, setSearchOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [reveal, setReveal] = useState(null);
   const [navTick, setNavTick] = useState(0);
   const [dark, setDark] = useState(() => store.get("tema", "light") === "dark");
   const [temaClaro, setTemaClaro] = useState(() => lerTemas().claro);
   const [temaEscuro, setTemaEscuro] = useState(() => lerTemas().escuro);
   const [estiloCallout, setEstiloCallout] = useState(() => store.get("estiloCallout", "preenchido"));
-  const [fonte, setFonte] = useState(() => store.get("fonte", "sobrio"));
+  const [fonte, setFonte] = useState(fonteSalva);
   const [tamanhoTexto, setTamanhoTexto] = useState(() => store.get("tamanhoTexto", 17));
+  const [destaques, setDestaques] = useState(() => ({ ...DESTAQUES_PADRAO, ...store.get("destaques", {}) }));
+  const [numeros, setNumeros] = useState(() => store.get("numeros", false));
+  const [icones, setIcones] = useState(() => store.get("icones", "padrao"));
   const [forma, setForma] = useState(() => store.get("forma", "padrao"));
   const [zoom, setZoom] = useState(() => store.get("zoom", 1));
-  const [sideW, setSideW] = useState(() => store.get("sideW", 288));
   const [outlineW, setOutlineW] = useState(() => store.get("outlineW", 240));
   const [overrides, setOverrides] = useState(loadOverrides);
   const [page, setPage] = useState("semana");
@@ -85,7 +89,18 @@ export default function App() {
   const [inicioModo, setInicioModoState] = useState(() => store.get("inicioModo", "hoje"));
   const setInicioModo = (m) => { setInicioModoState(m); store.set("inicioModo", m); };
   const irAno = () => { setInicioModo("ano"); setPage("semana"); };
+  const irMontarProva = () => { setQuestoesAba("montar"); setPage("questoes"); };
+  // Menu lateral: cada área abre na sua tela inicial.
+  const irSecao = (id) => {
+    if (id === "hoje" || id === "semana" || id === "ano") { setInicioModo(id); setPage("semana"); }
+    else if (id === "correcao") { setCorrecaoFoco(null); setPage("correcao"); }
+    else { if (id === "aulas") setAulasPasta(""); if (id === "questoes") { setQuestoesPasta(""); setQuestoesAba("bancos"); } setPage(id); }
+  };
+  const [aulasPasta, setAulasPasta] = useState(""); // pasta aberta em Aulas (os crumbs e a página compartilham)
   const [correcaoFoco, setCorrecaoFoco] = useState(null);
+  const [correcaoVista, setCorrecaoVista] = useState("aluno"); // vista com que a Correção abre: "aluno" ou "turma"
+  const [questoesAba, setQuestoesAba] = useState("bancos");
+  const [questoesPasta, setQuestoesPasta] = useState(""); // pasta aberta em Questões
   const [textoAtiv, setTextoAtiv] = useState(null);
   const [showSide, setShowSide] = useState(() => store.get("side", true));
   const [foco, setFoco] = useState(false);
@@ -98,9 +113,11 @@ export default function App() {
 
   useEffect(() => { aplicarTema(temaClaro, temaEscuro, dark); store.set("tema", dark ? "dark" : "light"); store.set("temaClaro", temaClaro); store.set("temaEscuro", temaEscuro); }, [dark, temaClaro, temaEscuro]);
   useEffect(() => { aplicarFonte(fonte, tamanhoTexto); store.set("fonte", fonte); store.set("tamanhoTexto", tamanhoTexto); }, [fonte, tamanhoTexto]);
+  useEffect(() => { aplicarDestaques(destaques); store.set("destaques", destaques); }, [destaques]);
+  useEffect(() => { store.set("numeros", numeros); }, [numeros]);
+  useEffect(() => { aplicarIcones(icones); store.set("icones", icones); }, [icones]);
   useEffect(() => { aplicarForma(forma); store.set("forma", forma); }, [forma]);
   useEffect(() => { aplicarEstiloCallout(estiloCallout); store.set("estiloCallout", estiloCallout); }, [estiloCallout]);
-  useEffect(() => { store.set("sideW", sideW); }, [sideW]);
   useEffect(() => { store.set("outlineW", outlineW); }, [outlineW]);
   useEffect(() => { store.set("outline", showOutline); }, [showOutline]);
   useEffect(() => { store.set("painel", panelTab); }, [panelTab]);
@@ -152,8 +169,8 @@ export default function App() {
   };
 
   // ---------- abrir / histórico ----------
+  // Só troca a tela depois de ler a nota (página e nota entram juntas): senão aparece antes o editor vazio ou a nota anterior.
   const load = async (path) => {
-    setPage("editor");
     await save();
     const text = await invoke("read_note", { path });
     ed.current.setText(text);
@@ -161,6 +178,7 @@ export default function App() {
     setCurrent(path); setStatus(""); setActiveHeading(-1);
     setWords(text.split(/\s+/).filter(Boolean).length);
     setHeadings(headingsOf(text)); setPropsText(text); setInfo(null); refreshInfo(path);
+    setPage("editor");
   };
   const [histTick, setHistTick] = useState(0);
   // Atualização: salva a nota e guarda onde o usuário estava; ao reabrir, volta para lá.
@@ -190,21 +208,34 @@ export default function App() {
     setWords(text.split(/\s+/).filter(Boolean).length); setHeadings(headingsOf(text)); setPropsText(text);
     refreshInfo(cur.current); setHistTick((n) => n + 1); setStatus("Versão restaurada");
   };
-  const open = async (path) => {
-    setPage("editor");
-    lembrarRecente(path);
-    if (path === cur.current) return;
+  // Histórico de navegação: cada passo é uma nota ({ k: "nota", path }) ou uma tela do app ({ k: "pag", page, … }), para o
+  // Voltar/Avançar também refazerem listagens (ex.: a pasta aberta em Aulas), não só arquivos.
+  const chaveEntrada = (e) => e.k === "nota" ? "n:" + e.path : `p:${e.page}|${e.aulasPasta}|${e.inicioModo}|${e.correcaoFoco}|${e.questoesAba}|${e.questoesPasta}|${e.ciclo?.path ?? ""}`;
+  const empurrar = (e) => {
     const h = hist.current;
-    h.stack = [...h.stack.slice(0, h.idx + 1), path]; h.idx = h.stack.length - 1;
+    if (h.idx >= 0 && chaveEntrada(h.stack[h.idx]) === chaveEntrada(e)) return;
+    h.stack = [...h.stack.slice(0, h.idx + 1), e]; h.idx = h.stack.length - 1;
     setNavTick((n) => n + 1);
+  };
+  const open = async (path) => {
+    lembrarRecente(path);
+    empurrar({ k: "nota", path });
+    if (path === cur.current) { setPage("editor"); return; }
     await load(path);
   };
   const go = async (delta) => {
     const h = hist.current, i = h.idx + delta;
     if (i < 0 || i >= h.stack.length) return;
     h.idx = i; setNavTick((n) => n + 1);
-    await load(h.stack[i]);
+    const e = h.stack[i];
+    if (e.k === "nota") await load(e.path);
+    else { setAulasPasta(e.aulasPasta); setInicioModoState(e.inicioModo); setCorrecaoFoco(e.correcaoFoco); setQuestoesAba(e.questoesAba); setQuestoesPasta(e.questoesPasta ?? ""); setCiclo(e.ciclo); await save(); setPage(e.page); }
   };
+  // Toda mudança de tela (ou de pasta em Aulas, aba, etc.) vira um passo do histórico.
+  useEffect(() => {
+    if (page === "editor") return;
+    empurrar({ k: "pag", page, aulasPasta, inicioModo, correcaoFoco, questoesAba, questoesPasta, ciclo });
+  }, [page, aulasPasta, inicioModo, correcaoFoco, questoesAba, questoesPasta, ciclo]); // eslint-disable-line react-hooks/exhaustive-deps
   const canBack = hist.current.idx > 0, canFwd = hist.current.idx < hist.current.stack.length - 1;
   const link = async (t) => {
     const p = await invoke("resolve_link", { target: t });
@@ -215,22 +246,23 @@ export default function App() {
   const under = (p, base) => p === base || p.startsWith(base + "/");
   const remap = (from, to) => {
     const sub = (p) => (p && under(p, from) ? to + p.slice(from.length) : p);
-    const h = hist.current; h.stack = h.stack.map(sub);
+    const h = hist.current; h.stack = h.stack.map((e) => e.k === "nota" ? { ...e, path: sub(e.path) } : { ...e, correcaoFoco: sub(e.correcaoFoco) });
     if (cur.current) { cur.current = sub(cur.current); setCurrent(cur.current); }
   };
   const fail = (e) => setStatus("Erro: " + e);
+  // Pastas e arquivos de Aulas (a página chama estas funções e mostra o erro, se houver).
+  const criarPastaEm = async (dir, name) => { const p = await invoke("create_folder", { dir, name }); await refresh(); return p; };
+  const moverEntrada = async (path, dir) => { await save(); const r = await invoke("move_entry", { path, dir }); remap(path, r.path); await refresh(); setStatus("Movida"); return r.path; };
+  const excluirEntrada = (path, nome, n) => new Promise((ok) => setDialog({
+    title: "Excluir", danger: true, okLabel: "Excluir",
+    message: `Excluir “${nome}”${n ? ` e as ${n} aulas dentro dela` : ""}? Vai para a pasta .lixeira do vault e pode ser recuperada de lá.`,
+    onOk: async () => { try { await invoke("delete_entry", { path }); await refresh(); setStatus("Excluída"); ok(); } catch (e) { throw e; } },
+  }));
+  const novaAula = (pasta = "") => setDialog({ title: "Nova aula", input: true, okLabel: "Criar", onOk: async (name) => {
+    const p = await criarAula(items, { titulo: name, turma: "", pasta: typeof pasta === "string" ? pasta : "" }); await refresh(); open(p);
+  } });
   const createNote = (dir) => setDialog({ title: "Novo arquivo", input: true, okLabel: "Criar", onOk: async (name) => {
     const p = await invoke("create_note", { dir, name }); await refresh(); open(p);
-  } });
-  const createFolder = (dir) => setDialog({ title: "Nova pasta", input: true, okLabel: "Criar", onOk: async (name) => {
-    await invoke("create_folder", { dir, name }); await refresh();
-    setReveal({ key: (dir ? dir.slice(items[0]?.path.length - items[0]?.rel.length) + "/" : "") .replace(/^\//, "") + name + "/", n: Date.now() });
-  } });
-  const renameEntry = (t) => setDialog({ title: t.kind === "dir" ? "Renomear pasta" : "Renomear arquivo", input: true, initial: t.name, okLabel: "Renomear", onOk: async (name) => {
-    if (name === t.name) return;
-    await save();
-    const r = await invoke("rename_entry", { path: t.path, name }); remap(t.path, r.path); await refresh();
-    setStatus(t.kind === "note" ? `Renomeada; ${r.links} link(s) atualizado(s)` : "Pasta renomeada");
   } });
   // Renomeia a nota aberta numa tela personalizada (ex.: trocar o título do ciclo) e devolve o novo caminho.
   const renomearNota = async (path, name) => {
@@ -239,30 +271,6 @@ export default function App() {
     setStatus(`Renomeada; ${r.links} link(s) atualizado(s)`);
     return r.path;
   };
-  const deleteEntry = (t) => setDialog({ title: "Excluir", message: `Mover “${t.name}” para a lixeira do vault (.lixeira)?`, okLabel: "Excluir", danger: true, onOk: async () => {
-    await save();
-    await invoke("delete_entry", { path: t.path });
-    if (cur.current && under(cur.current, t.path)) { cur.current = null; dirty.current = false; ed.current.setText(""); setCurrent(null); setHeadings([]); setWords(0); }
-    hist.current.stack = hist.current.stack.filter((p) => !under(p, t.path)); hist.current.idx = Math.min(hist.current.idx, hist.current.stack.length - 1);
-    setNavTick((n) => n + 1);
-    await refresh(); setStatus(`“${t.name}” movida para .lixeira`);
-  } });
-  const moveEntry = async (path, dir) => {
-    try {
-      await save();
-      const r = await invoke("move_entry", { path, dir });
-      if (r.path === path) return;
-      const oldDir = path.slice(0, path.lastIndexOf("/"));
-      remap(path, r.path); await refresh();
-      setUndo({ from: r.path, dir: oldDir, nome: r.path.split("/").pop() });
-      setStatus(`Movido: ${r.path.split("/").pop()}`);
-    } catch (e) { fail(e); }
-  };
-  const undoMove = async () => {
-    const u = undo; setUndo(null); if (!u) return;
-    try { await save(); const r = await invoke("move_entry", { path: u.from, dir: u.dir }); remap(u.from, r.path); await refresh(); setStatus("Movimento desfeito"); } catch (e) { fail(e); }
-  };
-
   useEffect(() => {
     if (!foco) return;
     const esc = (e) => { if (e.key === "Escape" && !e.defaultPrevented) setFoco(false); };
@@ -320,19 +328,23 @@ export default function App() {
   const keys = effective(overrides);
   const commands = [
     { id: "p-editor", label: "Ir para o editor", run: () => setPage("editor") },
-    { id: "p-semana", label: "Ir para o Início (Semana)", hint: "aula dar aula turma hoje", run: () => { setInicioModo("semana"); setPage("semana"); } },
+    { id: "p-hoje", label: "Ir para Hoje", hint: "dia início", run: () => irSecao("hoje") },
+    { id: "p-semana", label: "Ir para a Semana", hint: "aula dar aula turma", run: () => { setInicioModo("semana"); setPage("semana"); } },
     { id: "p-ano", label: "Ir para o Ano e seus ciclos", hint: "ciclo", run: irAno },
     { id: "p-diario", label: "Ir para Diário e alunos", hint: "ocorrência conselho", run: () => setPage("diario") },
     { id: "p-saude", label: "Ir para Saúde do vault", hint: "avisos validar problemas", run: () => setPage("saude") },
-    { id: "p-correcao", label: "Ir para Correções", hint: "redações produções", run: () => setPage("correcao") },
-    { id: "p-prova", label: "Ir para Montar prova", run: () => setPage("prova") },
+    { id: "p-aulas", label: "Ir para Aulas", hint: "acervo planos", run: () => irSecao("aulas") },
+    { id: "p-questoes", label: "Ir para Questões", hint: "banco provas", run: () => irSecao("questoes") },
+    { id: "p-correcao", label: "Ir para Correção", hint: "redações produções", run: () => irSecao("correcao") },
+    { id: "p-prova", label: "Ir para Montar prova", run: irMontarProva },
+    { id: "p-nova-aula", label: "Nova aula", hint: "criar modelo", run: () => novaAula() },
     { id: "p-config", label: "Ir para Configurações", run: () => setPage("config") },
     { id: "buscar", label: "Buscar arquivo", keys: pretty(keys.search), run: () => setSearchOpen(true) },
     { id: "salvar", label: "Salvar agora", keys: pretty(keys.save), run: () => save() },
     { id: "tabela", label: "Inserir tabela", keys: pretty(keys.insertTable), run: () => { if (cur.current) { setPage("editor"); setTimeout(() => ed.current?.insertTable(), 50); } } },
     { id: "nota", label: "Novo arquivo", hint: "criar", run: () => createNote(items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length - 1) : "") },
     { id: "foco", label: "Modo foco (esconde menus e barras)", keys: pretty(keys.focus), run: () => setFoco((v) => !v) },
-    { id: "lado", label: "Ocultar/mostrar arquivos (coluna 1)", keys: pretty(keys.toggleSide), run: () => setShowSide((v) => !v) },
+    { id: "lado", label: "Reduzir/ampliar o menu lateral", keys: pretty(keys.toggleSide), run: () => setShowSide((v) => !v) },
     { id: "painel", label: "Ocultar/mostrar painel lateral", run: () => setShowOutline((v) => !v) },
     { id: "tema", label: dark ? "Tema claro" : "Tema escuro", run: () => setDark((v) => !v) },
     { id: "voltar", label: "Voltar na navegação", keys: pretty(keys.back), run: () => go(-1) },
@@ -354,7 +366,39 @@ export default function App() {
     const novo = { ...prefVisao, diario: "markdown" }; setPrefVisao(novo); store.set("visaoPorTipo", novo);
     await open(path); setPage("editor");
   };
-  const crumbs = rel ? rel.replace(/\.md$/, "").split("/") : [];
+  const ROTULOS = { semana: { hoje: "Hoje", semana: "Semana", ano: "Ano e ciclos" }[inicioModo] ?? "Hoje", aulas: "Aulas", questoes: "Questões", correcao: "Correção", diario: "Diário e alunos", saude: "Saúde do vault", config: "Configurações" };
+  // Caminho no topo: cada item é { t: texto, ir?: função }. Em Aulas (e numa aula aberta) as pastas são clicáveis e levam à listagem delas.
+  const irAulas = (pasta) => { setAulasPasta(pasta); setPage("aulas"); };
+  const irQuestoes = (pasta) => { setQuestoesPasta(pasta); setQuestoesAba("bancos"); setPage("questoes"); };
+  const crumbs = page === "aulas" ? [{ t: "Aulas", ir: () => irAulas("") }, ...(aulasPasta ? aulasPasta.split("/") : []).map((t, i, a) => ({ t: t.replace(/^_/, ""), ir: () => irAulas(a.slice(0, i + 1).join("/")) }))]
+    : page === "questoes" && questoesAba !== "montar" ? [{ t: "Questões", ir: () => irQuestoes("") }, ...(questoesPasta ? questoesPasta.split("/") : []).map((t, i, a) => ({ t: t.replace(/^_/, ""), ir: () => irQuestoes(a.slice(0, i + 1).join("/")) }))]
+    : page === "ciclo" ? [{ t: "Ciclos", ir: irAno }, { t: ciclo?.titulo ?? "Ciclo" }]
+    : page !== "editor" ? [ROTULOS[page] ?? ""].filter(Boolean).map((t) => ({ t }))
+    : !rel ? []
+    : rel.replace(/\.md$/, "").split("/").map((t, i, a) => {
+      if (/^Acervo\/Aulas\//.test(rel)) { // aula: o caminho começa em "Aulas" (sem "Acervo"); as pastas levam à listagem delas
+        if (i === 0) return null;
+        if (i === 1) return { t, ir: () => irAulas("") };
+        if (i < a.length - 1) return { t, ir: () => irAulas(a.slice(2, i + 1).join("/")) };
+      }
+      if (/^Acervo\/Questoes\//.test(rel)) { // banco: o caminho começa em "Questões"; as pastas levam à listagem delas
+        if (i === 0) return null;
+        if (i === 1) return { t: "Questões", ir: () => irQuestoes("") };
+        if (i < a.length - 1) return { t, ir: () => irQuestoes(a.slice(2, i + 1).join("/")) };
+      }
+      if (/^Acervo\//.test(rel)) { // demais pastas do Acervo: sem "Acervo"; "Ciclos" leva à tela Ano e ciclos
+        if (i === 0) return null;
+        if (i === 1 && t === "Ciclos") return { t, ir: irAno };
+      }
+      if (/^Anos\//.test(rel) && i === 2) { // seções do ano que têm tela própria
+        const tela = { Semanas: "semana", Correcoes: "correcao", Diario: "diario", Diarios: "diario" }[t];
+        if (tela) return { t, ir: () => irSecao(tela) };
+      }
+      return { t };
+    }).filter(Boolean);
+    const secao = page === "editor"
+    ? (!rel ? null : /^Acervo\/Aulas\//.test(rel) ? "aulas" : /^Acervo\/Questoes\/|\/Provas\//.test(rel) ? "questoes" : /\/Correcoes\//.test(rel) ? "correcao" : null)
+    : ({ semana: "hoje", ciclo: "hoje", aulas: "aulas", questoes: "questoes", correcao: "correcao", diario: "diario", saude: "saude", config: "config" })[page];
   const pick = async (path, line) => { setSearchOpen(false); await open(path); if (line) setTimeout(() => goLine(line), 50); };
   const goHeading = (pos, i) => { setActiveHeading(i); ed.current.goTo(pos); };
   const setProperty = (key, value) => {
@@ -362,47 +406,20 @@ export default function App() {
     ed.current.replaceDoc(t); setPropsText(t);
   };
   const goLine = (line) => { ed.current.goTo(lineStart(ed.current.getText(), line)); };
-  const outlineVisible = showOutline && !!current && !foco;
+  const temPainel = page === "editor" && !!current; // o painel lateral só existe com uma nota aberta no editor
+  const outlineVisible = showOutline && temPainel && !foco;
 
   if (vaultRoot === undefined) return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abrindo…</div>;
   if (vaultRoot === null) return <EscolherVault onDone={setVaultRoot} />;
 
   return (
     <div className="flex h-full">
-      {!foco && <nav aria-label="Navegação" className="flex w-14 shrink-0 flex-col items-center gap-1.5 border-r bg-muted py-3">
-        <button type="button" aria-label="Margem — ir para o início" title="Margem" onClick={() => setPage("semana")} className="mb-1 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"><Logo className="h-9 w-9" /></button>
-        <RailButton label="Início — Semana e Ano" active={page === "semana" || page === "ciclo"} onClick={() => setPage("semana")}><House className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label="Diário e alunos" active={page === "diario"} onClick={() => setPage(page === "diario" ? "editor" : "diario")}><BookOpen className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label="Correções" active={page === "correcao"} onClick={() => setPage(page === "correcao" ? "editor" : "correcao")}><PenLine className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label="Montar prova" active={page === "prova"} onClick={() => setPage(page === "prova" ? "editor" : "prova")}><FileCheck className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <div className="flex-1" />
-        <RailButton label="Saúde do vault" active={page === "saude"} onClick={() => setPage(page === "saude" ? "editor" : "saude")}><HeartPulse className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label="Configurações" active={page === "config"} onClick={() => setPage(page === "config" ? "editor" : "config")}><Settings className="h-5 w-5" strokeWidth={1.6} /></RailButton>
-        <RailButton label={dark ? "Tema claro" : "Tema escuro"} onClick={() => setDark(!dark)}>
-          {dark ? <Sun className="h-5 w-5" strokeWidth={1.6} /> : <Moon className="h-5 w-5" strokeWidth={1.6} />}
-        </RailButton>
-      </nav>}
-
-      {showSide && !foco && <aside style={{ width: sideW }} className="flex shrink-0 flex-col bg-muted/50">
-        <div className="p-2.5">
-          <button onClick={() => setSearchOpen(true)}
-            className="flex h-9 w-full items-center gap-2 rounded-md border bg-background px-3 text-left text-sm text-muted-foreground hover:border-primary/40">
-            <Search className="h-4 w-4 shrink-0" />
-            <span className="flex-1 truncate">Buscar arquivo…</span>
-            <kbd className="text-xs">{pretty(keys.search).replace(/ /g, "")}</kbd>
-          </button>
-        </div>
-        <ScrollArea className="flex-1 px-1.5 pb-2">
-          <FileTree items={items} dirs={dirs} current={current} currentRel={rel} reveal={reveal} onOpen={open}
-            onCreate={createNote} onCreateFolder={createFolder} onRename={renameEntry} onDelete={deleteEntry} onMove={moveEntry} />
-        </ScrollArea>
-      </aside>}
-      {showSide && !foco && <ResizeHandle width={sideW} setWidth={setSideW} min={180} max={560} side="left" />}
+      {!foco && <Menu ativo={secao === "hoje" ? (page === "ciclo" ? "ano" : inicioModo) : secao} onGo={irSecao} dark={dark} setDark={setDark} compacto={!showSide} />}
 
       <div className="flex min-w-0 flex-1 flex-col">
         {foco && <button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
         {!foco && <header className="flex min-h-[3.5rem] shrink-0 items-center gap-2 border-b px-4 py-2">
-          <RailButton size="sm" label={`Ocultar/mostrar arquivos (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>
+          <RailButton size="sm" label={`Reduzir/ampliar o menu (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
           <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
@@ -412,10 +429,7 @@ export default function App() {
               return (
                 <span key={i} className="flex items-center gap-1">
                   {i > 0 && <span aria-hidden>/</span>}
-                  {last
-                    ? <span className="font-medium text-foreground">{c}</span>
-                    : <button title="Mostrar esta pasta na árvore" onClick={() => setReveal({ key: crumbs.slice(0, i + 1).join("/") + "/", n: Date.now() })}
-                        className="rounded px-1 hover:bg-accent hover:text-foreground">{c}</button>}
+                  {c.ir && !last ? <button onClick={c.ir} className="rounded px-1 hover:bg-accent hover:text-foreground">{c.t}</button> : <span className={last ? "font-medium text-foreground" : undefined}>{c.t}</span>}
                 </span>
               );
             })}
@@ -427,16 +441,20 @@ export default function App() {
               <button onClick={() => escolherVisao("personalizado")} className={cn("border-l px-3 py-1", personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Personalizada</button>
             </div>
           )}
-          {info?.tipo === "texto" && current && page === "editor" && <button onClick={() => { setTextoAtiv(current); setPage("prova"); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Atividade a partir deste texto</button>}
+          {info?.tipo === "texto" && current && page === "editor" && <button onClick={() => { setTextoAtiv(current); irMontarProva(); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Atividade a partir deste texto</button>}
           <RailButton size="sm" label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>
-          <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>
+          {temPainel && <RailButton size="sm" label={numeros ? "Ocultar a numeração das linhas" : "Mostrar a numeração das linhas"} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
+          {temPainel && <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>}
         </header>}
 
-        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
-                {page === "prova" && <ProvaPage items={items} onOpen={open} onRefresh={refresh} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
-        {page === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={correcaoFoco} />}
-        {page === "semana" && <InicioPage items={items} onOpen={open} onRefresh={refresh} modo={inicioModo} setModo={setInicioModo} onCorrecao={(p) => { setCorrecaoFoco(p); setPage("correcao"); }} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
+        {page === "config" && <SettingsPage tema={{ icones, setIcones, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
+        {page === "aulas" && <AulasPage items={items} dirs={dirs} onOpen={open} onCreate={() => novaAula(aulasPasta)} pasta={aulasPasta} setPasta={setAulasPasta} onRefresh={refresh} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} />}
+        {page === "questoes" && <QuestoesPage items={items} dirs={dirs} onOpen={open} onRefresh={refresh} aba={questoesAba} setAba={setQuestoesAba} pasta={questoesPasta} setPasta={setQuestoesPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
+        {page === "correcao" && (correcaoFoco
+          ? <CorrecaoPage items={items} onOpen={open} focoPath={correcaoFoco} vistaInicial={correcaoVista} onVoltar={() => { setCorrecaoFoco(null); setCorrecaoVista("aluno"); }} />
+          : <CorrecoesPage items={items} onCorrigir={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); }} onTurma={(p) => { setCorrecaoVista("turma"); setCorrecaoFoco(p); }} onOpen={open} onRename={renomearNota} onDelete={excluirEntrada} />)}
+        {page === "semana" && <InicioPage items={items} onOpen={open} onRefresh={refresh} modo={inicioModo} setModo={setInicioModo} onCorrecao={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); setPage("correcao"); }} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
         {page === "diario" && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} />}
         {page === "saude" && <SaudePage items={items} onOpen={open} onRefresh={refresh} />}
         {page === "ciclo" && ciclo && <CicloPage ciclo={ciclo} items={items} onOpen={open} onAno={irAno} onChange={setCiclo} onRename={renomearNota} />}
@@ -444,16 +462,16 @@ export default function App() {
         {personalizada && visao.id === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "prova" && <ProvaDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} />}
         {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} focoPath={current} />}
-        {personalizada && visao.id === "aula" && <AulaDaNota item={items.find((i) => i.path === current)} tick={verTick} onLink={link} />}
-        {personalizada && visao.id === "texto" && <TextoDaNota item={items.find((i) => i.path === current)} onOpen={open} tick={verTick} onAtividade={() => { setTextoAtiv(current); setPage("prova"); }} />}
+        {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
+        {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} tick={verTick} onLink={link} numeros={numeros} onRename={renomearNota} />}
+        {personalizada && visao.id === "texto" && <TextoDaNota item={items.find((i) => i.path === current)} onOpen={open} tick={verTick} onAtividade={() => { setTextoAtiv(current); irMontarProva(); }} />}
         {personalizada && visao.id === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={current} />}
         <main className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>
-          <Editor ref={ed} onChange={onChange} onSave={save} onLink={link} />
+          <Editor ref={ed} onChange={onChange} onSave={save} onLink={link} numeros={numeros} />
         </main>
 
         {!foco && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
           <span className={/^Erro/.test(status) ? "font-medium text-err" : undefined}>{status}</span>
-          {undo && <button onClick={undoMove} className="text-primary hover:underline">Desfazer movimento</button>}
           <span className="flex-1" />
           {current && info?.issues.length > 0 && <button onClick={() => { setShowOutline(true); setPanelTab("links"); }} className="text-warn hover:underline">{info.issues.length} aviso{info.issues.length > 1 ? "s" : ""}</button>}
           {current && <span>{words} palavras</span>}

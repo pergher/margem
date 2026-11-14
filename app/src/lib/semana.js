@@ -60,10 +60,10 @@ import { inserirAula, parseCiclo } from "@/lib/ciclos";
 /** Situação de uma aula da semana; a marca fica no fim da célula "Aula". Sem marca = ainda planejada. */
 export const SITUACOES = [
   { id: "dada", marca: "✓", nome: "Dada" },
-  { id: "pulada", marca: "↷", nome: "Pulei" },
-  { id: "incerta", marca: "❔", nome: "Não sei" },
+  { id: "pulada", marca: "↷", nome: "Adiada" }, // não deu, mas dará: volta na semana seguinte
+  { id: "descartada", marca: "⊘", nome: "Descartada" }, // não dará mais: sai do ciclo e do ano
 ];
-const reMarca = /\s*(✓|↷|❔)\s*$/;
+const reMarca = /\s*(✓|↷|⊘|❔)\s*$/;
 const tiraMarca = (t) => t.replace(reMarca, "");
 const marcaDe = (a) => { const m = SITUACOES.find((x) => x.id === (a.situacao ?? (a.dada ? "dada" : null)))?.marca; return m ? " " + m : ""; };
 const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -167,7 +167,7 @@ export function semanaNova({ semanas, turmas }) {
   const ultima = semanas[semanas.length - 1];
   return turmas.map((turma) => ({
     turma, cicloNome: cicloDaTurma(semanas, turma),
-    aulas: (ultima?.turmas.find((t) => t.turma === turma)?.aulas ?? []).filter((a) => !a.dada).map((a) => ({ ...a, dada: false, situacao: null, trazida: true })),
+    aulas: (ultima?.turmas.find((t) => t.turma === turma)?.aulas ?? []).filter((a) => !a.dada && a.situacao !== "descartada").map((a) => ({ ...a, dada: false, situacao: null, trazida: true })),
   }));
 }
 
@@ -219,9 +219,9 @@ export const adicionarDoCiclo = (path, turma, aula) => editar(path, (t) => reesc
 
 /**
  * Mantém as notas de semana certas quando o ciclo muda: ao inserir uma aula na posição P, as linhas ligadas às aulas de P em diante
- * passam a apontar para N+1; ao remover a aula N, a linha ligada a ela vira avulsa e as seguintes apontam para N-1.
+ * passam a apontar para N+1; ao remover a aula N, a linha ligada a ela vira avulsa e as seguintes apontam para N-1; ao mover uma aula, as ligações a acompanham.
  */
-export async function ajustarSemanasAoCiclo(items, cicloNome, { inserirEm = null, removida = null }) {
+export async function ajustarSemanasAoCiclo(items, cicloNome, { inserirEm = null, removida = null, movida = null }) {
   const alvo = cicloNome.toLowerCase();
   for (const it of items.filter((i) => /^Anos\/\d{4}\/Semanas\/[^/]+\.md$/.test(i.rel))) {
     let text;
@@ -231,7 +231,11 @@ export async function ajustarSemanasAoCiclo(items, cicloNome, { inserirEm = null
     const novo = reescrever(text, (s) => {
       for (const t of s.turmas) for (const a of t.aulas) {
         if (!a.cicloNome || a.cicloNome.toLowerCase() !== alvo || a.cicloN == null) continue;
-        if (inserirEm != null && a.cicloN >= inserirEm) { a.cicloN += 1; mudou = true; }
+        if (movida) {
+          const { de, para } = movida, n = a.cicloN;
+          const novoN = n === de ? para : de < para && n > de && n <= para ? n - 1 : para < de && n >= para && n < de ? n + 1 : n;
+          if (novoN !== n) { a.cicloN = novoN; mudou = true; }
+        } else if (inserirEm != null && a.cicloN >= inserirEm) { a.cicloN += 1; mudou = true; }
         else if (removida != null && a.cicloN === removida) { a.cicloNome = null; a.cicloN = null; mudou = true; }
         else if (removida != null && a.cicloN > removida) { a.cicloN -= 1; mudou = true; }
       }

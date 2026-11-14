@@ -9,7 +9,7 @@ import { Estado } from "@/components/ui/estado";
 
 export const TABS = [["sumario", "Sumário", ListTree], ["props", "Propriedades", SlidersHorizontal], ["links", "Links", Link2], ["hist", "Histórico", History]];
 
-function Chips({ items, onChange }) {
+export function Chips({ items, onChange }) {
   const [v, setV] = useState("");
   const add = () => { const t = v.trim(); if (t && !items.includes(t)) onChange([...items, t]); setV(""); };
   return (
@@ -26,7 +26,7 @@ function Chips({ items, onChange }) {
   );
 }
 
-function Text({ value, onCommit, warn }) {
+export function Text({ value, onCommit, warn }) {
   const [v, setV] = useState(value);
   useEffect(() => setV(value), [value]);
   const commit = () => { if (v.trim() !== value) onCommit(v.trim()); };

@@ -6,7 +6,7 @@ const sem = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim
 export const SECOES = [
   { id: "objetivos", nome: "Objetivos", casa: /^objetivos?$/ },
   { id: "habilidades", nome: "Habilidades", casa: /^(habilidades?|bncc|habilidades? \(bncc\))$/ },
-  { id: "conteudo", nome: "Conteúdo", casa: /^conteudo$/ },
+  { id: "conteudo", nome: "Conteúdo", casa: /^conteudos?$/ },
   { id: "mindmap", nome: "Mindmap", casa: /^(mindmap|mapa mental|esquema)$/ },
   { id: "atividades", nome: "Atividades", casa: /^atividades?$/ },
 ];
@@ -44,19 +44,14 @@ export function parseAula(text) {
     if (h) { partes.push(atual); atual = { titulo: h[1].trim(), linhas: [] }; } else atual.linhas.push(l);
   }
   partes.push(atual);
-  const secoes = [], outras = [];
-  for (const p of partes) {
-    const md = p.linhas.join("\n").trim();
-    if (!p.titulo) { if (md) outras.push({ nome: "Introdução", md }); continue; }
-    const def = SECOES.find((s) => s.casa.test(sem(p.titulo.replace(/^[^\p{L}\p{N}(]+/u, ""))));
-    if (def && !secoes.some((s) => s.id === def.id)) secoes.push({ id: def.id, nome: def.nome, md });
-    else outras.push({ nome: p.titulo, md });
-  }
-  secoes.sort((a, b) => SECOES.findIndex((s) => s.id === a.id) - SECOES.findIndex((s) => s.id === b.id));
+  // Toda seção `##` vira uma aba, na ordem do arquivo; o id é a posição (estável ao renomear o título). `tipo` só serve para os dados da margem.
+  const tipoDe = (t) => SECOES.find((x) => x.casa.test(sem(t.replace(/^[^\p{L}\p{N}(]+/u, ""))))?.id ?? null;
+  const secoes = partes.slice(1).map((p, k) => ({ id: "s" + k, tipo: tipoDe(p.titulo), nome: p.titulo || "(sem título)", md: p.linhas.join("\n").trim() }));
+  const intro = partes[0].linhas.filter((l) => !/^#\s/.test(l)).join("\n").trim();
   return {
     meta: { status: val("status"), ano: val("ano"), assuntos: val("assuntos"), tags: val("tags") },
-    secoes, outras, notas, corpo: corpo.trim(),
-    codigos: [...new Set((secoes.find((s) => s.id === "habilidades")?.md ?? "").match(/EF\d\dLP\d\d/g) ?? [])],
+    secoes, intro, notas, corpo: corpo.trim(),
+    codigos: [...new Set((secoes.find((s) => s.tipo === "habilidades")?.md ?? "").match(/EF\d\dLP\d\d/g) ?? [])],
   };
 }
 
@@ -100,14 +95,14 @@ mindmap
 }
 
 /** Cria `Acervo/Aulas/<titulo>.md` com o modelo e devolve o caminho; se já existir uma nota com o nome, só devolve o dela. */
-export async function criarAula(items, { titulo, turma }) {
+export async function criarAula(items, { titulo, turma, pasta = "" }) {
   const { invoke } = await import("@/lib/api");
   const nome = titulo.replace(/\[\[|\]\]/g, "").replace(/[\\/:*?"<>|#^]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
   if (!nome) throw new Error("A aula não tem título.");
   const ja = items.find((i) => i.rel.startsWith("Acervo/Aulas/") && i.name.toLowerCase() === nome.toLowerCase());
   if (ja) return ja.path;
   const raiz = items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
-  const dir = `${raiz}/Acervo/Aulas`;
+  const dir = `${raiz}/Acervo/Aulas${pasta ? "/" + pasta : ""}`;
   if (!items.some((i) => i.rel.startsWith("Acervo/Aulas/"))) { try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: "Aulas" }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir, name: nome });
   await invoke("save_note", { path, text: modeloAula({ ano: /^[6-9]/.test(turma ?? "") ? turma[0] : "", titulo: nome }) });
@@ -123,23 +118,42 @@ export function secoesBrutas(text) {
     const h = !fence && /^##\s+(.*)$/.exec(l);
     if (h) cab.push({ i, titulo: h[1].trim() });
   });
-  const vistos = new Set(), out = [];
+  const out = [];
   cab.forEach((c, k) => {
-    const def = SECOES.find((s) => s.casa.test(sem(c.titulo.replace(/^[^\p{L}\p{N}(]+/u, ""))));
-    if (!def || vistos.has(def.id)) return; // as demais ficam em "Outras seções" (só leitura)
-    vistos.add(def.id);
     const fim = k + 1 < cab.length ? cab[k + 1].i : linhas.length;
-    out.push({ id: def.id, ini: c.i, fim, md: linhas.slice(c.i + 1, fim).join("\n").replace(/^\n+/, "").replace(/\s+$/, "") });
+    // `md` inclui a linha do título `##`; linha0: quantas linhas do arquivo vêm antes dela (para numerar as linhas como no arquivo)
+    out.push({ id: "s" + k, ini: c.i, fim, linha0: c.i, md: linhas.slice(c.i, fim).join("\n").replace(/\s+$/, "") });
   });
   return out;
 }
 
-/** Troca o corpo da seção `id` no texto bruto, mantendo o título e o resto da nota como estavam. */
+/** Troca a seção `id` (título `##` + corpo) no texto bruto, mantendo o resto da nota; se o título sumir da edição, mantém o antigo. */
 export function trocarSecao(text, id, md) {
   const s = secoesBrutas(text).find((x) => x.id === id);
   if (!s) return text;
   const linhas = text.split("\n");
-  const corpo = md.replace(/\s+$/, "");
-  const novo = ["", ...(corpo ? corpo.split("\n") : []), ...(s.fim < linhas.length ? [""] : [])];
-  return [...linhas.slice(0, s.ini + 1), ...novo, ...linhas.slice(s.fim)].join("\n");
+  let corpo = md.replace(/\s+$/, "");
+  if (!/^##\s/.test(corpo)) corpo = linhas[s.ini] + "\n" + corpo;
+  const novo = [...corpo.split("\n"), ...(s.fim < linhas.length ? [""] : [])];
+  return [...linhas.slice(0, s.ini), ...novo, ...linhas.slice(s.fim)].join("\n");
+}
+
+const itensDe = (md) => (md ?? "").split("\n").filter((l) => /^(\d+[.)]|[-*+])\s+(\[[ xX]\]\s+)?\S/.test(l)).length;
+const palavrasDe = (md) => ((md ?? "").replace(/[#>*_`|\-\[\]]/g, " ").match(/\S+/g) ?? []).length;
+
+/** Dados calculados da aula para a margem (nada é digitado: tudo sai do texto). */
+export function dadosDaAula(a, text) {
+  const sec = (id) => a.secoes.find((s) => s.tipo === id)?.md ?? "";
+  const ativ = sec("atividades"), atividades = itensDe(ativ) || (ativ.match(/^###\s+\S/gm) ?? []).length;
+  const corpo = a.corpo;
+  return {
+    mindmap: !!mermaidDe(sec("mindmap")),
+    objetivos: itensDe(sec("objetivos")),
+    habilidades: a.codigos.length,
+    atividades,
+    palavras: palavrasDe(sec("conteudo")),
+    imagens: (corpo.match(/!\[\[|!\[[^\]]*\]\(/g) ?? []).length,
+    links: (corpo.match(/(?<!!)\[\[[^\]]+\]\]/g) ?? []).length,
+    faltam: ["objetivos", "habilidades", "conteudo", "atividades"].filter((id) => !itensDe(sec(id)) && !palavrasDe(sec(id))),
+  };
 }

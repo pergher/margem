@@ -107,20 +107,20 @@ fn diarios_e_alunos_ficam_ocultos_por_pasta_e_por_tipo() {
 #[test]
 fn plan_ciclo_propoe_sem_gravar_e_cria_sem_sobrescrever() {
     let dir = std::env::temp_dir().join(format!("mcp-ciclo-{}", std::process::id()));
-    std::fs::create_dir_all(dir.join("Anos/2026/Planejamento")).unwrap();
+    std::fs::create_dir_all(dir.join("Acervo/Ciclos")).unwrap();
     let s = Server { root: dir.clone(), expor_correcoes: false };
-    let args = json!({"ano": 7, "trimestre": 2, "ciclo": 3, "titulo": "Crase", "conteudos": ["Crase"], "habilidades": ["EF07LP99"],
+    let args = json!({"titulo": "Crase", "conteudos": ["Crase"], "habilidades": ["EF07LP99"],
         "aulas": [{"conteudo": "**Crase**.", "recurso": "A crase"}, {"conteudo": "🔥 Prova"}]});
     let (err, txt) = call(&s, "plan_ciclo", args.clone());
     assert!(!err, "{txt}");
     assert!(txt.contains("nada foi gravado") && txt.contains("EF07LP99") && txt.contains("não existe no vault") && txt.contains("termina na avaliação"), "{txt}");
-    assert!(!dir.join("Anos/2026/Planejamento/723 - Crase.md").exists());
+    assert!(!dir.join("Acervo/Ciclos/Crase.md").exists());
     let mut g = args.clone();
     g["gravar"] = json!(true);
     let (err, txt) = call(&s, "plan_ciclo", g.clone());
-    assert!(!err && txt.contains("criado: Anos/2026/Planejamento/723 - Crase.md"), "{txt}");
-    let feito = std::fs::read_to_string(dir.join("Anos/2026/Planejamento/723 - Crase.md")).unwrap();
-    assert!(feito.starts_with("---\ntipo: ciclo\nano: 7\ntrimestre: 2\nciclo: 3\n---") && feito.contains("| 2 | 🔥 Prova |  |"), "{feito}");
+    assert!(!err && txt.contains("criado: Acervo/Ciclos/Crase.md"), "{txt}");
+    let feito = std::fs::read_to_string(dir.join("Acervo/Ciclos/Crase.md")).unwrap();
+    assert!(feito.starts_with("---\ntipo: ciclo\n---") && feito.contains("| 2 | 🔥 Prova |  |"), "{feito}");
     let (err, _) = call(&s, "plan_ciclo", g);
     assert!(err, "não pode sobrescrever");
     std::fs::remove_dir_all(dir).ok();

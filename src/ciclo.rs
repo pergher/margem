@@ -1,5 +1,5 @@
 //! Montagem de um ciclo novo a partir de uma proposta (usada pelo MCP `plan_ciclo`).
-//! O ciclo é só uma sequência ordenada de aulas, sem datas (docs/formato-do-vault.md).
+//! O ciclo é só uma sequência ordenada de aulas, sem datas, ano nem turma: atemporal (docs/formato-do-vault.md).
 
 use crate::vault::Vault;
 
@@ -9,11 +9,7 @@ pub struct Aula {
 }
 
 pub struct Proposta {
-    pub ano: u32,
-    pub trimestre: u32,
-    pub ciclo: u32,
     pub titulo: String,
-    pub sufixo: Option<String>,
     pub objetivo: String,
     pub conteudos: Vec<String>,
     pub habilidades: Vec<String>,
@@ -46,9 +42,6 @@ pub fn habilidade(v: &Vault, codigo: &str) -> Option<String> {
 }
 
 pub fn montar(v: &Vault, p: &Proposta) -> Result<Montado, String> {
-    if !(1..=9).contains(&p.ano) || !(1..=3).contains(&p.trimestre) || !(1..=9).contains(&p.ciclo) {
-        return Err("ano, trimestre e ciclo devem ser números de 1 a 9 (ex.: 7, 2, 3 → ciclo 723)".into());
-    }
     let titulo = p.titulo.trim();
     if titulo.is_empty() || titulo.contains(['/', '\\', ':']) || titulo.starts_with('.') {
         return Err("título inválido (vazio ou com barras/dois-pontos)".into());
@@ -56,21 +49,12 @@ pub fn montar(v: &Vault, p: &Proposta) -> Result<Montado, String> {
     if p.aulas.is_empty() {
         return Err("o ciclo precisa de ao menos uma aula".into());
     }
-    if let Some(s) = &p.sufixo {
-        if !matches!(s.as_str(), "PR" | "PT" | "TG") {
-            return Err("sufixo deve ser PR, PT ou TG".into());
-        }
-    }
-    let codigo = format!("{}{}{}", p.ano, p.trimestre, p.ciclo);
-    let nome = match &p.sufixo {
-        Some(s) => format!("{codigo} - {titulo} - {s}"),
-        None => format!("{codigo} - {titulo}"),
-    };
-    if let Some(n) = v.notes.iter().find(|n| n.tipo() == Some("ciclo") && (n.name == nome || n.name.starts_with(&format!("{codigo} - ")) && p.sufixo.is_none())) {
-        return Err(format!("já existe um ciclo {codigo}: `{}`", n.name));
+    let nome = titulo.to_string();
+    if let Some(n) = v.resolve(&nome) {
+        return Err(format!("já existe uma nota chamada `{}`", n.name));
     }
     let mut avisos = vec![];
-    let mut t = format!("---\ntipo: ciclo\nano: {}\ntrimestre: {}\nciclo: {}\n", p.ano, p.trimestre, p.ciclo);
+    let mut t = String::from("---\ntipo: ciclo\n");
     if !p.objetivo.trim().is_empty() {
         t.push_str(&format!("objetivo: \"{}\"\n", p.objetivo.trim().replace('"', "'")));
     }

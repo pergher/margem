@@ -1,9 +1,10 @@
 // "Planejar ciclo com o Claude": o app NÃO tem modelo embutido. Monta o pedido (com os recursos que existem no vault),
 // o Claude responde (ou grava direto pelo vault-mcp, ferramenta plan_ciclo) e aqui o professor aceita linha a linha.
 import { invoke } from "@/lib/api";
+import { incluirCicloNoAno } from "@/lib/ciclos";
 
 const sanitiza = (s) => s.replace(/[\\/:|]/g, " ").replace(/\s+/g, " ").trim();
-export const nomeCiclo = ({ ano, tri, ciclo, titulo, sufixo }) => `${ano}${tri}${ciclo} - ${sanitiza(titulo)}${sufixo ? ` - ${sufixo}` : ""}`;
+export const nomeCiclo = ({ titulo }) => sanitiza(titulo);
 
 /** Nomes de notas de acervo (aulas, textos) que o Claude pode usar como recurso. */
 export function recursosDoAcervo(items) {
@@ -11,12 +12,12 @@ export function recursosDoAcervo(items) {
   return { aulas: de("Acervo/Aulas/"), textos: de("Acervo/Textos/") };
 }
 
-export function montarPedido({ ano, tri, ciclo, titulo, sufixo, nAulas, tema }, rec) {
+export function montarPedido({ ano, tri, incluir, titulo, nAulas, tema }, rec) {
   const lista = (l) => (l.length ? l.slice(0, 120).map((n) => `[[${n}]]`).join(", ") + (l.length > 120 ? ` … (+${l.length - 120})` : "") : "nenhum");
-  return `Planeje um ciclo de aulas de Português para o ${ano}º ano (trimestre ${tri}, ciclo ${ciclo}): "${titulo}".
+  return `Planeje um ciclo de aulas de Português (um ciclo é atemporal: não tem ano, turma nem datas)${incluir ? `, que vou usar no ${ano}º ano, ${tri}º trimestre` : ""}: "${titulo}".
 ${tema ? `Tema e observações: ${tema}\n` : ""}Aproximadamente ${nAulas} aulas, em sequência (sem datas). Inclua exercícios, revisão, prova, correção, recuperação e finalização do ciclo.
 
-Se o vault-mcp estiver conectado: use search_notes e get_habilidade para escolher só recursos e habilidades que existem e chame plan_ciclo (ano=${ano}, trimestre=${tri}, ciclo=${ciclo}, titulo="${titulo}"${sufixo ? `, sufixo="${sufixo}"` : ""}) SEM gravar; me mostre a proposta. Eu aceito aula por aula no app.
+Se o vault-mcp estiver conectado: use search_notes e get_habilidade para escolher só recursos e habilidades que existem e chame plan_ciclo (titulo="${titulo}") SEM gravar; me mostre a proposta. Eu aceito aula por aula no app.
 Se não estiver, responda neste formato exato (recursos só entre os que existem; deixe vazio se não houver):
 
 ## Conteúdos
@@ -60,10 +61,10 @@ export function lerProposta(text, items) {
 const cel = (s) => s.replace(/\|/g, "\\|").replace(/\n/g, " ").trim();
 
 /** Texto final do ciclo só com o que foi aceito; aulas renumeradas, recurso inexistente vira texto simples. */
-export function montarCiclo({ ano, tri, ciclo }, p) {
+export function montarCiclo(_dados, p) {
   const aulas = p.aulas.filter((a) => a.ok);
   if (!aulas.length) throw new Error("Aceite ao menos uma aula.");
-  let t = `---\ntipo: ciclo\nano: ${ano}\ntrimestre: ${tri}\nciclo: ${ciclo}\n---\n## Conteúdos\n\n`;
+  let t = `---\ntipo: ciclo\n---\n## Conteúdos\n\n`;
   for (const c of p.conteudos.filter((x) => x.ok)) t += `- ${c.texto}\n`;
   t += "\n## Habilidades\n\n";
   for (const h of p.habilidades.filter((x) => x.ok)) t += `(${h.codigo})${h.texto ? " " + h.texto : ""}\n`;
@@ -74,16 +75,14 @@ export function montarCiclo({ ano, tri, ciclo }, p) {
 
 export async function criarCiclo(items, dados, proposta) {
   const nome = nomeCiclo(dados);
-  if (!dados.titulo.trim()) throw new Error("Dê um título ao ciclo.");
-  const cod = `${dados.ano}${dados.tri}${dados.ciclo}`, suf = (n) => /\s-\s(PR|PT|TG)$/.exec(n)?.[1] ?? "";
-  const igual = items.find((i) => /^Anos\/\d{4}\/Planejamento\/[^/]+\.md$/.test(i.rel) && i.name.startsWith(cod + " - ") && suf(i.name) === (dados.sufixo || ""));
-  if (igual) throw new Error(`Já existe o ciclo ${cod}${dados.sufixo ? " " + dados.sufixo : ""}: “${igual.name}”. Mude o número do ciclo ou a turma.`);
+  if (!nome) throw new Error("Dê um título ao ciclo.");
+  const igual = items.find((i) => i.name.toLowerCase() === nome.toLowerCase());
+  if (igual) throw new Error(`Já existe uma nota chamada “${igual.name}”. Mude o título do ciclo.`);
   const texto = montarCiclo(dados, proposta);
-  const anoLetivo = items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean).sort().pop();
-  if (!anoLetivo) throw new Error("Não achei a pasta Anos/AAAA.");
   const root = items[0].path.slice(0, -items[0].rel.length);
-  await invoke("create_folder", { dir: root + `Anos/${anoLetivo}`, name: "Planejamento" }).catch(() => {});
-  const path = await invoke("create_note", { dir: root + `Anos/${anoLetivo}/Planejamento`, name: nome });
+  await invoke("create_folder", { dir: root + "Acervo/", name: "Ciclos" }).catch(() => {});
+  const path = await invoke("create_note", { dir: root + "Acervo/Ciclos/", name: nome });
   await invoke("save_note", { path, text: texto });
+  if (dados.incluir && dados.anoLetivo) await incluirCicloNoAno(items, { name: nome }, dados.anoLetivo, { ano: dados.ano, tri: dados.tri });
   return path;
 }

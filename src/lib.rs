@@ -5,6 +5,7 @@ pub mod vault;
 pub mod validate;
 pub mod mcp;
 pub mod ciclo;
+pub mod atemporais;
 pub mod migrate;
 pub mod reorganizar;
 pub mod historico;

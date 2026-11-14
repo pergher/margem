@@ -16,6 +16,8 @@ function tipoSugerido(rel, name) {
   if (/^Acervo\/Aulas\//.test(rel)) return "aula";
   if (/^Acervo\/Textos\//.test(rel)) return "texto";
   if (/^Acervo\/Questoes\//.test(rel)) return "banco";
+  if (/^Acervo\/Ciclos\//.test(rel)) return "ciclo";
+  if (/^Anos\/\d{4}\/Planejamento \d{4}$/.test(rel.replace(/\.md$/, ""))) return "planejamento";
   if (/\/Planejamento\//.test(rel)) return /^\d{3}\b/.test(name) ? "ciclo" : "plano";
   if (/\/Provas\//.test(rel)) return "prova";
   if (/\/Semanas\//.test(rel)) return "semana";

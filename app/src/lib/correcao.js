@@ -94,9 +94,9 @@ export function estatisticas(d) {
   const notas = d.alunos.map((a) => a.total).filter((x) => x != null).sort((x, y) => x - y);
   const media = notas.length ? notas.reduce((a, b) => a + b, 0) / notas.length : null;
   const mediana = notas.length ? (notas.length % 2 ? notas[(notas.length - 1) / 2] : (notas[notas.length / 2 - 1] + notas[notas.length / 2]) / 2) : null;
-  const passo = maximo / 5;
-  const faixas = Array.from({ length: 5 }, (_, k) => ({ de: k * passo, ate: (k + 1) * passo, n: 0 }));
-  for (const x of notas) faixas[Math.min(4, Math.floor(x / passo))].n++;
+  const nFaixas = Math.max(1, Math.ceil(maximo)); // uma faixa a cada 1 ponto; a última inclui o máximo
+  const faixas = Array.from({ length: nFaixas }, (_, k) => ({ de: k, ate: Math.min(k + 1, maximo), n: 0 }));
+  for (const x of notas) faixas[Math.min(nFaixas - 1, Math.floor(x))].n++;
   const porCriterio = crit.map((nome, k) => {
     const v = d.alunos.map((a) => num(a.criterios[k]?.nota)).filter((x) => x != null);
     return { nome, max: maxDe(d, nome), media: v.length ? v.reduce((a, b) => a + b, 0) / v.length : null };

@@ -1,7 +1,7 @@
 // Live preview de Markdown para CodeMirror 6: renderiza títulos, ênfase, listas, tarefas,
 // citações, callouts, tabelas, wikilinks e frontmatter; mostra o texto-fonte só onde está o cursor.
-import { Decoration, EditorView, ViewPlugin, WidgetType } from "@codemirror/view";
-import { StateField } from "@codemirror/state";
+import { Decoration, EditorView, ViewPlugin, WidgetType, GutterMarker, gutterLineClass } from "@codemirror/view";
+import { StateField, RangeSetBuilder } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { invoke } from "@/lib/api";
 
@@ -510,3 +510,31 @@ export const livePreview = [
     }
   }, { decorations: (p) => p.decorations }),
 ];
+
+
+// Numeração de linhas: cada número recebe a mesma folga/altura das linhas com título ou callout (ver `.cm-g-*` no CSS),
+// para ficar alinhado ao texto e não ao topo do bloco.
+class MarcaLinha extends GutterMarker { constructor(c) { super(); this.elementClass = c; } eq(o) { return o.elementClass === this.elementClass; } }
+const marcas = {};
+const marca = (c) => (marcas[c] ??= new MarcaLinha(c));
+export const gutterAlinhado = gutterLineClass.compute(["doc"], (state) => {
+  const doc = state.doc, achados = new Map();
+  const fim = frontmatterEnd(doc);
+  syntaxTree(state).iterate({
+    enter(n) {
+      if (n.to <= fim) return false;
+      let m;
+      if ((m = /^ATXHeading([1-6])$/.exec(n.name))) { achados.set(doc.lineAt(n.from).number, `cm-g-h${m[1]}`); return false; }
+      if (n.name === "Blockquote") {
+        const l0 = doc.lineAt(n.from).number, l1 = doc.lineAt(n.to).number;
+        if (CALLOUT_RE.test(doc.line(l0).text)) {
+          achados.set(l0, "cm-g-call-first");
+          if (l1 > l0) achados.set(l1, "cm-g-call-last");
+        }
+      }
+    },
+  });
+  const b = new RangeSetBuilder();
+  [...achados.keys()].sort((a, c) => a - c).forEach((l) => b.add(doc.line(l).from, doc.line(l).from, marca(achados.get(l))));
+  return b.finish();
+});

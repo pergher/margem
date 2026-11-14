@@ -5,7 +5,7 @@ export const ACTIONS = [
   { id: "search", label: "Buscar arquivo", def: "Ctrl+K" },
   { id: "palette", label: "Paleta de comandos", def: "Ctrl+P" },
   { id: "save", label: "Salvar agora", def: "Ctrl+S" },
-  { id: "toggleSide", label: "Ocultar/mostrar arquivos (coluna 1)", def: "Ctrl+B" },
+  { id: "toggleSide", label: "Reduzir/ampliar o menu lateral", def: "Ctrl+B" },
   { id: "focus", label: "Modo foco (esconde menus e barras)", def: "Ctrl+Shift+F" },
   { id: "back", label: "Voltar na navegação", def: "Alt+ArrowLeft" },
   { id: "forward", label: "Avançar na navegação", def: "Alt+ArrowRight" },

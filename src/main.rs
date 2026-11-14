@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use vault_core::migrate::migrate_named;
-use vault_core::{historico, reorganizar};
+use vault_core::{atemporais, historico, reorganizar};
 use std::process::ExitCode;
 
 use vault_core::tables::{find_tables, replace_cell};
@@ -9,7 +9,7 @@ use vault_core::validate::{validate, Severity};
 use vault_core::vault::Vault;
 
 fn usage() -> ExitCode {
-    eprintln!("uso:\n  vault validate <pasta>\n  vault reorganizar <pasta> [--ano 2026] [--raiz Escola] [--aplicar] [--detalhes]\n  vault migrar <pasta> [--aplicar]   (sem --aplicar só mostra o que mudaria)\n  vault margem <pasta> [--aplicar]   (aulas: [!tip] Dica para o professor vira [!margem]; sem --aplicar só mostra)\n  vault edit-cell <arquivo> <tabela> <linha> <coluna> <texto>   (índices a partir de 0)\n  vault historico <pasta> [--dias 30] [--limpar]   (históricos de notas excluídas; sem --limpar só lista)");
+    eprintln!("uso:\n  vault validate <pasta>\n  vault reorganizar <pasta> [--ano 2026] [--raiz Escola] [--aplicar] [--detalhes]\n  vault migrar <pasta> [--aplicar]   (sem --aplicar só mostra o que mudaria)\n  vault margem <pasta> [--aplicar]   (aulas: [!tip] Dica para o professor vira [!margem]; sem --aplicar só mostra)\n  vault ciclos <pasta> [--aplicar]   (ciclos viram atemporais: Acervo/Ciclos/Título.md + Planejamento do Ano; sem --aplicar só mostra)\n  vault edit-cell <arquivo> <tabela> <linha> <coluna> <texto>   (índices a partir de 0)\n  vault historico <pasta> [--dias 30] [--limpar]   (históricos de notas excluídas; sem --limpar só lista)");
     ExitCode::from(2)
 }
 
@@ -75,6 +75,34 @@ fn main() -> ExitCode {
             println!("\n{} arquivos {}", plan.moves.len(), if aplicar { "movidos" } else { "seriam movidos (simulação)" });
             if aplicar {
                 if let Err(e) = reorganizar::apply(&root, &plan) {
+                    eprintln!("erro ao aplicar: {e}");
+                    return ExitCode::from(1);
+                }
+            }
+            ExitCode::SUCCESS
+        }
+        Some("ciclos") if args.len() >= 2 => {
+            let aplicar = args.iter().any(|a| a == "--aplicar");
+            let root = PathBuf::from(&args[1]);
+            let r = match atemporais::plan(&root) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("erro: {e}");
+                    return ExitCode::from(2);
+                }
+            };
+            for (a, n) in &r.renomeados {
+                println!("{a}  →  Acervo/Ciclos/{n}.md");
+            }
+            for p in &r.planejamentos {
+                println!("CRIA {p}");
+            }
+            for a in &r.avisos {
+                println!("AVISO {a}");
+            }
+            println!("\n{} ciclos {}; {} links reescritos em {} notas; {} planejamento(s) do ano", r.renomeados.len(), if aplicar { "movidos" } else { "seriam movidos (simulação)" }, r.plan.links_reescritos, r.plan.textos.len(), r.planejamentos.len());
+            if aplicar {
+                if let Err(e) = reorganizar::apply(&root, &r.plan) {
                     eprintln!("erro ao aplicar: {e}");
                     return ExitCode::from(1);
                 }

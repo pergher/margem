@@ -108,7 +108,6 @@ impl Server {
     /// Propõe (e, com `gravar: true`, cria) um ciclo novo. Sem `gravar` nada é escrito: o professor revisa a proposta.
     fn plan_ciclo(&self, v: &Vault, a: &Value) -> Result<String, String> {
         use crate::ciclo::{montar, Aula, Proposta};
-        let num = |k: &str| a.get(k).and_then(Value::as_u64).map(|x| x as u32).ok_or(format!("faltou `{k}` (número)"));
         let txt = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").to_string();
         let lista = |k: &str| -> Vec<String> { a.get(k).and_then(Value::as_array).map(|x| x.iter().filter_map(|i| i.as_str().map(String::from)).collect()).unwrap_or_default() };
         let aulas = a
@@ -119,11 +118,7 @@ impl Server {
             .map(|x| Aula { conteudo: x.get("conteudo").and_then(Value::as_str).unwrap_or("").to_string(), recurso: x.get("recurso").and_then(Value::as_str).unwrap_or("").to_string() })
             .collect();
         let p = Proposta {
-            ano: num("ano")?,
-            trimestre: num("trimestre")?,
-            ciclo: num("ciclo")?,
             titulo: txt("titulo"),
-            sufixo: a.get("sufixo").and_then(Value::as_str).map(String::from),
             objetivo: txt("objetivo"),
             conteudos: lista("conteudos"),
             habilidades: lista("habilidades"),
@@ -204,7 +199,9 @@ impl Server {
             "aula" => r.join("Acervo/Aulas"),
             "texto" => r.join("Acervo/Textos"),
             "banco" => r.join("Acervo/Questoes"),
-            "plano" | "ciclo" => r.join("Anos").join(ano()).join("Planejamento"),
+            "ciclo" => r.join("Acervo/Ciclos"),
+            "plano" => r.join("Anos").join(ano()).join("Planejamento"),
+            "planejamento" => r.join("Anos").join(ano()),
             "calendario" => r.join("Anos").join(ano()),
             "semana" => r.join("Anos").join(ano()).join("Semanas"),
             "prova" => r.join("Anos").join(ano()).join("Provas"),
@@ -246,8 +243,8 @@ fn tools() -> Value {
         {"name": "backlinks", "description": "Lista as notas que apontam para a nota dada (arquivo:linha).", "inputSchema": obj(json!({"nome": {"type": "string"}}), &["nome"])},
         {"name": "validate", "description": "Valida o vault (ou uma nota): campos por tipo, taxonomia, links, datas do ciclo.", "inputSchema": obj(json!({"nome": {"type": "string"}}), &[])},
         {"name": "get_habilidade", "description": "Devolve o texto de uma habilidade BNCC/CBTC pelo código (ex.: EF06LP04).", "inputSchema": obj(json!({"codigo": {"type": "string"}}), &["codigo"])},
-        {"name": "plan_ciclo", "description": "Planeja um ciclo de aulas (sequência ordenada, sem datas). Sem `gravar` só devolve a proposta e avisos (habilidade ou recurso inexistente, ciclo sem prova); com gravar=true cria Anos/AAAA/Planejamento/ATC - Título.md sem sobrescrever. Antes, use search_notes (tipo=aula/texto/banco) e get_habilidade para escolher recursos e habilidades que existem. ano/trimestre/ciclo: 1 a 9 (ex.: 7,2,3 = ciclo 723). sufixo opcional: PR, PT ou TG.",
-         "inputSchema": obj(json!({"ano": {"type": "integer"}, "trimestre": {"type": "integer"}, "ciclo": {"type": "integer"}, "titulo": {"type": "string"}, "sufixo": {"type": "string"}, "objetivo": {"type": "string"}, "conteudos": {"type": "array", "items": {"type": "string"}}, "habilidades": {"type": "array", "items": {"type": "string"}}, "aulas": {"type": "array", "items": {"type": "object", "properties": {"conteudo": {"type": "string"}, "recurso": {"type": "string"}}, "required": ["conteudo"]}}, "gravar": {"type": "boolean"}}), &["ano", "trimestre", "ciclo", "titulo", "aulas"])},
+        {"name": "plan_ciclo", "description": "Planeja um ciclo de aulas (sequência ordenada, sem datas). Sem `gravar` só devolve a proposta e avisos (habilidade ou recurso inexistente, ciclo sem prova); com gravar=true cria Acervo/Ciclos/Título.md sem sobrescrever. O ciclo é atemporal (16 aulas, sem ano nem turma); quem o põe num ano é o Planejamento do Ano. Antes, use search_notes (tipo=aula/texto/banco) e get_habilidade para escolher recursos e habilidades que existem.",
+         "inputSchema": obj(json!({"titulo": {"type": "string"}, "objetivo": {"type": "string"}, "conteudos": {"type": "array", "items": {"type": "string"}}, "habilidades": {"type": "array", "items": {"type": "string"}}, "aulas": {"type": "array", "items": {"type": "object", "properties": {"conteudo": {"type": "string"}, "recurso": {"type": "string"}}, "required": ["conteudo"]}}, "gravar": {"type": "boolean"}}), &["titulo", "aulas"])},
         {"name": "create_note", "description": "Cria uma nota na pasta correta do vault (conforme o tipo) com o frontmatter mínimo do tipo. Não sobrescreve nada.", "inputSchema": obj(json!({"tipo": {"type": "string"}, "nome": {"type": "string"}}), &["tipo", "nome"])}
     ])
 }

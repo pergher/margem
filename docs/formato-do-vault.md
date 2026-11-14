@@ -28,7 +28,7 @@ Regras para toda nota nova. Notas antigas são convertidas pelo comando `vault m
 |---|---|---|
 | `aula` | ano, status | assuntos, tags |
 | `plano` | ano, trimestre | turmas, status, tags |
-| `ciclo` | ano, trimestre, ciclo | objetivo, habilidades, conteudos, status, textos_sala, textos_prova, tags |
+| `ciclo` | (nenhum: atemporal) | objetivo, sufixo, habilidades, conteudos, status, textos_sala, textos_prova, tags |
 | `calendario` | inicio, fim, feriados, turmas | recessos |
 | `texto` | titulo, autor, genero, fonte, dominio_publico, foco, conteudos, alertas | publicacao, link, imagem, tags |
 | `banco` | ano, conteudos, conteudos_excluidos, textos | |
@@ -43,7 +43,7 @@ Regras para toda nota nova. Notas antigas são convertidas pelo comando `vault m
 
 ## Nota de semana (`tipo: semana`)
 
-Uma tabela por turma (`### 61`), com `Ciclo: [[231 - Crase]]` logo abaixo do título e as colunas `Aula | Recurso | Ciclo`. Na coluna **Ciclo** a linha aponta a aula do ciclo (`[[231 - Crase]] 3`) ou fica vazia (aula avulsa). A **situação** da aula é uma marca no fim da célula *Aula*:
+Uma tabela por turma (`### 61`), com `Ciclo: [[Crase]]` logo abaixo do título e as colunas `Aula | Recurso | Ciclo`. Na coluna **Ciclo** a linha aponta a aula do ciclo (`[[231 - Crase]] 3`) ou fica vazia (aula avulsa). A **situação** da aula é uma marca no fim da célula *Aula*:
 
 | marca | situação | conta no progresso do Ano? |
 |---|---|---|
@@ -122,13 +122,15 @@ Escola/
 ├── _sistema/        CLAUDE.md, templates, rubricas, codigos (taxonomia), BNCC e CBTC
 ├── Acervo/          perene: serve em qualquer ano
 │   ├── Aulas/<assunto>/
+│   ├── Ciclos/      ciclos atemporais: 16 aulas, nome = título (sem ano, trimestre nem turma)
 │   ├── Textos/      fichas de texto
 │   ├── Questoes/    bancos de questões
 │   └── Oficinas/    jogos e dinâmicas
 └── Anos/
     └── 2026/
         ├── calendario.md
-        ├── Planejamento/   plano anual, ciclos e planos por turma
+        ├── Planejamento {AAAA}.md   o plano anual: tabela Ano | Trimestre | Ordem | [[Ciclo]], sem turma
+        ├── Planejamento/   planos antigos por turma (legado)
         ├── Semanas/        uma nota `tipo: semana` por semana (aulas dadas ✓, avulsas)
         ├── Diarios/<turma>/   diário de aula por turma e semana (sensível, bloqueado no MCP)
         ├── Alunos/<turma>/    uma nota por aluno, com as ocorrências (sensível, bloqueado no MCP)
@@ -141,7 +143,7 @@ Escola/
 - **Acervo** não tem ano nem turma. **Anos/AAAA** é tudo o que pertence a um ano letivo e pode ser arquivado inteiro.
 - Links são por nome, então mover pastas não quebra nada. Exceção: embeds de imagem por caminho (`![[Fotos/Foto 27.jpg]]`) precisam ser ajustados.
 - Nomes de nota são únicos no vault inteiro. Notas de ano levam o ano na frente (`2026-81-Setembro-Poção Mágica · Transcrições`). *(proposta, ainda não confirmada)*
-- Arquivos `.base` ficam em `_sistema/bases/`; notas soltas de trabalho (ex.: ajustes de skill) em `_sistema/notas/`. O `create_note` do MCP grava na pasta do tipo (aula→Acervo/Aulas, texto→Acervo/Textos, banco→Acervo/Questoes, plano/ciclo→Anos/AAAA/Planejamento, prova→Provas, semana→Semanas, correcao→Correcoes, demais→_sistema).
+- Arquivos `.base` ficam em `_sistema/bases/`; notas soltas de trabalho (ex.: ajustes de skill) em `_sistema/notas/`. O `create_note` do MCP grava na pasta do tipo (aula→Acervo/Aulas, texto→Acervo/Textos, banco→Acervo/Questoes, ciclo→Acervo/Ciclos, planejamento→Anos/AAAA, plano→Anos/AAAA/Planejamento, prova→Provas, semana→Semanas, correcao→Correcoes, demais→_sistema).
 - O servidor MCP bloqueia `Anos/*/Correcoes`, `Relatorios`, `Diarios` e `Alunos` por pasta, além do bloqueio por `tipo: correcao`, `diario` e `aluno` (decisão: o Claude não lê o diário nem as notas de aluno pelo MCP).
 - `vault reorganizar <pasta> --ano 2026` move para essa estrutura (simulação por padrão; `--aplicar` grava). Só muda de pasta, nunca renomeia, e troca links por caminho (`[[Escola/Aulas/X]]`, `![[Recursos/imagens/y.png]]`) por links por nome.
 
@@ -152,3 +154,10 @@ A aula (`tipo: aula`, `Acervo/Aulas/…`) não tem "plano de aula" separado. A v
 
 - **Mindmap** é um bloco Mermaid (```` ```mermaid ```` com `mindmap`); se o código falhar, a visão mostra o texto-fonte.
 - **Na margem:** anotações do professor são callouts `> [!margem] texto`; a visão as tira do corpo e as mostra na coluna lateral "Na margem". Os `> [!tip] Dica para o professor` antigos **não** são migrados automaticamente (ficam no corpo).
+
+## Ciclos e Planejamento do Ano (decisão de 2026-11-14)
+
+- **Ciclo** = conjunto de 16 aulas (gêneros textuais e conteúdos da língua), atemporal como a Aula: `Acervo/Ciclos/<Título>.md`, `tipo: ciclo`, nome só com o título. Não tem ano, trimestre, ordem nem turma. Um Projeto de escrita também pode ser um ciclo.
+- **Planejamento do Ano** = plano anual que contém os ciclos: `Anos/AAAA/Planejamento AAAA.md`, `tipo: planejamento`, `ano_letivo: AAAA`, tabela `Ano | Trimestre | Ordem | Ciclo` (`| 6 | 2 | 1 | [[Crase]] |`). É ele quem põe o ciclo num ano; a turma só entra quando as aulas do ciclo vão para as semanas.
+- A tela **Ano e ciclos** lê essa tabela; os ciclos de `Acervo/Ciclos` que nenhum Planejamento usa aparecem em "Fora de um ano", com o botão Incluir.
+- Migração do formato antigo (`Anos/AAAA/Planejamento/ATC - Título - PR.md`): `vault ciclos <pasta>` simula; `--aplicar` move os ciclos, tira `ano/trimestre/ciclo` do frontmatter (guarda o sufixo PR/PT/TG em `sufixo`), reescreve os `[[links]]` e cria o Planejamento do Ano. Título repetido ganha o sufixo ou o código; ciclo sem título vira `Ciclo NNN`. O app ainda lê o formato antigo enquanto o vault não for migrado.

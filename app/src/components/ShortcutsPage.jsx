@@ -38,7 +38,7 @@ export function ShortcutsPage({ overrides, setOverrides }) {
 
   return (
     <div className="min-h-0 flex-1 overflow-auto">
-      <div className="mx-auto max-w-[640px] px-6 py-10">
+      <div className="w-full px-8 py-8">
         <div className="flex items-end justify-between">
           <div>
             <h1 className="text-xl font-semibold">Atalhos de teclado</h1>

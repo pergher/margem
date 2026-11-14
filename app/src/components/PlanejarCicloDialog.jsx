@@ -3,8 +3,8 @@ import { recursosDoAcervo, montarPedido, lerProposta, criarCiclo, nomeCiclo } fr
 
 const num = "w-14 rounded border bg-background px-1";
 
-export function PlanejarCicloDialog({ items, onClose, onCriado }) {
-  const [d, setD] = useState({ ano: 7, tri: 1, ciclo: 1, titulo: "", sufixo: "", nAulas: 16, tema: "" });
+export function PlanejarCicloDialog({ items, anoLetivo, onClose, onCriado }) {
+  const [d, setD] = useState({ ano: 7, tri: 1, incluir: true, anoLetivo, titulo: "", nAulas: 16, tema: "" });
   const [colado, setColado] = useState("");
   const [prop, setProp] = useState(null);
   const [msg, setMsg] = useState("");
@@ -19,19 +19,18 @@ export function PlanejarCicloDialog({ items, onClose, onCriado }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/30 p-6" onMouseDown={onClose}>
       <div role="dialog" aria-label="Planejar ciclo" className="w-[min(860px,96vw)] rounded-xl border bg-background p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
         <div className="mb-1 flex items-center"><h2 className="flex-1 font-serif text-2xl font-semibold">Planejar ciclo com o Claude</h2><button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">fechar</button></div>
-        <p className="mb-4 text-xs text-muted-foreground">O app não escreve o plano: ele monta o pedido (com as aulas e textos do seu acervo) e, depois, deixa você aceitar linha a linha o que o Claude propuser. Nada é gravado antes de “Criar ciclo”.</p>
+        <p className="mb-4 text-xs text-muted-foreground">O app não escreve o plano: ele monta o pedido (com as aulas e textos do seu acervo) e, depois, deixa você aceitar linha a linha o que o Claude propuser. O ciclo é atemporal (sem ano nem turma); o Planejamento do Ano é quem o põe num ano. Nada é gravado antes de “Criar ciclo”.</p>
 
         <div className="mb-3 flex flex-wrap items-center gap-3 text-sm">
-          <label>Ano <input type="number" min={6} max={9} value={d.ano} onChange={set("ano")} className={num} /></label>
-          <label>Trimestre <input type="number" min={1} max={3} value={d.tri} onChange={set("tri")} className={num} /></label>
-          <label>Ciclo <input type="number" min={1} max={9} value={d.ciclo} onChange={set("ciclo")} className={num} /></label>
+          <label className="flex items-center gap-1.5"><input type="checkbox" checked={d.incluir} onChange={(e) => setD({ ...d, incluir: e.target.checked })} />Incluir no Planejamento {anoLetivo}</label>
+          {d.incluir && <><label>Ano <input type="number" min={6} max={9} value={d.ano} onChange={set("ano")} className={num} /></label>
+          <label>Trimestre <input type="number" min={1} max={3} value={d.tri} onChange={set("tri")} className={num} /></label></>}
           <label>Aulas <input type="number" min={4} max={30} value={d.nAulas} onChange={set("nAulas")} className={num} /></label>
-          <label>Turma <select value={d.sufixo} onChange={set("sufixo")} className="rounded border bg-background px-1"><option value="">—</option><option>PR</option><option>PT</option><option>TG</option></select></label>
         </div>
         <input value={d.titulo} onChange={set("titulo")} placeholder="Título do ciclo (ex.: Transitividade, preposições e crase)" aria-label="Título do ciclo" className="mb-2 w-full rounded border bg-background px-2 py-1 text-sm" />
         <textarea value={d.tema} onChange={set("tema")} placeholder="Tema e observações (opcional)" aria-label="Tema e observações" className="mb-2 h-14 w-full rounded border bg-background p-2 text-sm" />
         <div className="mb-4 flex items-center gap-3"><button onClick={copiar} disabled={!d.titulo.trim()} className="rounded-md bg-primary px-3 py-1 text-sm text-primary-foreground disabled:opacity-40">Copiar pedido para o Claude</button>
-          <span className="text-xs text-muted-foreground">{rec.aulas.length} aulas e {rec.textos.length} textos do acervo entram no pedido. Arquivo: {d.titulo.trim() ? nomeCiclo(d) + ".md" : "—"}</span></div>
+          <span className="text-xs text-muted-foreground">{rec.aulas.length} aulas e {rec.textos.length} textos do acervo entram no pedido. Arquivo: {d.titulo.trim() ? `Acervo/Ciclos/${nomeCiclo(d)}.md` : "—"}</span></div>
 
         <div className="mb-1 text-xs font-medium">Cole aqui a proposta do Claude</div>
         <textarea value={colado} onChange={(e) => setColado(e.target.value)} placeholder={"## Conteúdos\n…\n## Habilidades\n…\n## Aulas\n| # | Conteúdo | Recurso |"} className="mb-2 h-36 w-full rounded border bg-background p-2 font-mono text-xs" />
@@ -48,7 +47,7 @@ export function PlanejarCicloDialog({ items, onClose, onCriado }) {
                 <span className="min-w-0 flex-1">{a.conteudo}</span>
                 {a.recurso && <span className={"text-xs " + (a.recursoExiste ? "text-muted-foreground" : "text-warn")}>{a.recurso}{a.recursoExiste ? "" : " (não existe no vault: vira texto)"}</span>}</label>)}
             </div>
-            <button onClick={criar} className="mt-3 rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground">Criar ciclo {nomeCiclo(d)}</button>
+            <button onClick={criar} className="mt-3 rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground">Criar ciclo “{nomeCiclo(d)}”</button>
           </div>
         )}
         {msg && <div className="text-xs text-muted-foreground">{msg}</div>}

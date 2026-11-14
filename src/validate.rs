@@ -40,7 +40,8 @@ pub fn required_fields(tipo: &str) -> Option<&'static [&'static str]> {
     Some(match tipo {
         "aula" => &["ano", "status"],
         "plano" => &["ano", "trimestre"],
-        "ciclo" => &["ano", "trimestre", "ciclo"],
+        "ciclo" => &[],
+        "planejamento" => &["ano_letivo"],
         "diario" => &["ano", "turma", "semana", "transcricao"],
         "aluno" => &["ano", "turma"],
         "semana" => &["ano", "rotulo"],

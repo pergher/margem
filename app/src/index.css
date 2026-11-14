@@ -13,6 +13,8 @@
     --border: 40 17% 88%; --input: 40 14% 86%; --ring: 186 35% 28%;
     --radius: 0.5rem;
     --ok: 152 45% 28%; --warn: 30 85% 33%; --err: 4 65% 42%;
+    /* Cor de cada ano: símbolo das turmas no app (ver lib/cores.js) */
+    --ano-6: 217 70% 48%; --ano-7: 275 55% 52%; --ano-8: 332 65% 50%; --ano-9: 78 55% 36%; --ano-0: 38 6% 45%;
   }
   .dark {
     --background: 36 8% 10%; --foreground: 40 20% 94%;
@@ -22,6 +24,7 @@
     --accent: 36 6% 17%; --accent-foreground: 40 20% 94%;
     --border: 36 6% 20%; --input: 36 6% 22%; --ring: 186 40% 62%;
     --ok: 152 40% 62%; --warn: 35 85% 65%; --err: 4 75% 70%;
+    --ano-6: 217 85% 68%; --ano-7: 275 70% 74%; --ano-8: 332 80% 71%; --ano-9: 78 55% 58%; --ano-0: 38 8% 62%;
   }
   * { @apply border-border; }
   /* Tokens (rodada 2026-11-13): raios 8/12/pílula; espaçamento 4·8·12·16·24·32; controles 40px; texto 15px;
@@ -50,14 +53,25 @@
 .cm-h2 { font-size: 1.5rem; padding-top: 1.8rem !important; padding-bottom: .25rem; border-bottom: 1px solid hsl(var(--border)); }
 .cm-h3 { font-family: var(--f-h1, 'Source Serif 4 Variable', Georgia, serif); font-size: 1.35rem; font-weight: 600; padding-top: 1rem !important; }
 .cm-h4, .cm-h5, .cm-h6 { font-size: 1.05rem; padding-top: .6rem !important; }
-.cm-strong { font-weight: 650; color: hsl(var(--foreground)); }
+.cm-strong { font-weight: 650; color: var(--cor-negrito, hsl(var(--primary))); }
 .cm-h-u { text-decoration: underline; text-underline-offset: 3px; }
 .cm-h-mark { background: #fff3a6; color: #1f1d1a; border-radius: 3px; padding: 0 .15em; }
 .cm-h-b { font-weight: 650; }
 .cm-h-i { font-style: italic; }
 .cm-h-sub { vertical-align: sub; font-size: .75em; }
 .cm-h-sup { vertical-align: super; font-size: .75em; }
-.cm-em { font-style: italic; }
+.cm-em { font-style: italic; color: var(--cor-italico, hsl(var(--ok))); }
+.aula-md strong, .cm-embed-box strong { color: var(--cor-negrito, hsl(var(--primary))); }
+.aula-md em, .cm-embed-box em { color: var(--cor-italico, hsl(var(--ok))); }
+/* numeração de linhas (botão no cabeçalho) */
+.cm-editor .cm-gutters { background: transparent; border: none; color: hsl(var(--muted-foreground)); font-family: var(--f-mono, monospace); font-size: .72rem; }
+.cm-editor .cm-lineNumbers .cm-gutterElement { padding: 0 1.25rem 0 0; min-width: 0; opacity: .7; line-height: calc(var(--tamanho-texto, 1.0625rem) * 1.7); }
+/* mesma folga e altura de linha dos títulos (1.7 × tamanho da fonte do título) e dos callouts */
+.cm-lineNumbers .cm-g-h1 { line-height: 3.91rem !important; }
+.cm-lineNumbers .cm-g-h2 { padding-top: 1.8rem !important; line-height: 2.55rem !important; }
+.cm-lineNumbers .cm-g-h3 { padding-top: 1rem !important; line-height: 2.295rem !important; }
+.cm-lineNumbers .cm-g-h4, .cm-lineNumbers .cm-g-h5, .cm-lineNumbers .cm-g-h6 { padding-top: .6rem !important; line-height: 1.785rem !important; }
+.cm-lineNumbers .cm-g-call-first { padding-top: 1.35rem !important; }
 .cm-strike, .cm-done { text-decoration: line-through; color: hsl(var(--muted-foreground)); }
 .cm-icode { font-family: var(--f-mono, 'JetBrains Mono Variable', monospace); font-size: .82em; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); padding: .05em .35em; border-radius: 5px; }
 .cm-codeblock { font-family: var(--f-mono, 'JetBrains Mono Variable', monospace); font-size: .82em; background: hsl(var(--muted)); padding: 0 1rem !important; }
@@ -172,3 +186,19 @@
 .aula-ed .cm-editor .cm-scroller { padding: .25rem 0 3rem; overflow: visible; }
 .aula-ed .cm-editor .cm-content { max-width: none; margin: 0; padding: 0; }
 .aula-ed .cm-editor .cm-content { min-height: 10rem; }
+/* Banco de questões: cada texto/questão é um editor curto, sem a folga de uma seção de aula. */
+.banco-ed .aula-ed .cm-editor .cm-scroller { padding: 0; }
+.banco-ed .aula-ed .cm-editor .cm-content { min-height: 0; }
+
+/* ---------- estilo dos ícones (Configurações → Aparência → Ícones) ---------- */
+/* `:where()` deixa o estilo global fraco o bastante para as amostras (.icones-*) o vencerem. */
+:where(html[data-icones="fino"]) .lucide, .icones-fino .lucide { stroke-width: 1.25; }
+:where(html[data-icones="duotone"]) .lucide, .icones-duotone .lucide { stroke-width: 1.75; fill: currentColor; fill-opacity: .18; }
+/* Setas, "x", "ok" e símbolos de linha aberta não têm miolo: sem preenchimento. */
+:where(html[data-icones="duotone"]) :is(.lucide-chevron-down, .lucide-chevron-up, .lucide-chevron-left, .lucide-chevron-right, .lucide-x, .lucide-check, .lucide-plus, .lucide-minus, .lucide-arrow-left, .lucide-arrow-right, .lucide-search, .lucide-loader-circle, .lucide-maximize-2, .lucide-list-tree, .lucide-pen-line, .lucide-star, .lucide-zoom-in, .lucide-zoom-out, .lucide-rotate-cw, .lucide-eye, .lucide-eye-off),
+.icones-duotone :is(.lucide-search, .lucide-pen-line) { fill: none; }
+.icones-padrao .lucide { stroke-width: 1.6; fill: none; }
+
+/* Editor de seção: o título `##` que abre a seção não precisa do respiro de cima (o cabeçalho da página já separa). */
+.aula-ed .cm-content > .cm-line:first-child.cm-h2 { padding-top: 0 !important; }
+.aula-ed .cm-lineNumbers .cm-gutterElement:nth-child(2).cm-g-h2 { padding-top: 0 !important; }

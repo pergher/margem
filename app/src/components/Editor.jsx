@@ -1,13 +1,16 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
-import { EditorView, keymap } from "@codemirror/view";
-import { EditorState, Text } from "@codemirror/state";
+import { EditorView, keymap, lineNumbers } from "@codemirror/view";
+import { EditorState, Text, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
-import { livePreview, frontmatterEnd as fmEnd, focusTableCellOnCreate } from "@/lib/livePreview";
+import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate } from "@/lib/livePreview";
 
-export const Editor = forwardRef(function Editor({ onChange, onSave, onLink }, ref) {
-  const host = useRef(null), view = useRef(null);
+// `numeros`: mostra a numeração das linhas; `linhaInicial`: número da linha em que o texto começa no arquivo (seções de uma aula).
+const gutter = (numeros, linhaInicial) => (numeros ? [lineNumbers({ formatNumber: (n) => String(n + linhaInicial) }), gutterAlinhado] : []);
+
+export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, numeros = false, linhaInicial = 0 }, ref) {
+  const host = useRef(null), view = useRef(null), comp = useRef(new Compartment());
   const cb = useRef({});
   cb.current = { onChange, onSave, onLink };
   const silent = useRef(false);
@@ -18,7 +21,7 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink }, r
       state: EditorState.create({
         doc: "",
         extensions: [
-          history(), markdown({ extensions: [GFM] }), livePreview, EditorView.lineWrapping,
+          history(), markdown({ extensions: [GFM] }), livePreview, EditorView.lineWrapping, comp.current.of(gutter(numeros, linhaInicial)),
           keymap.of([...defaultKeymap, ...historyKeymap]),
           EditorView.updateListener.of((u) => { if (u.docChanged && !silent.current) cb.current.onChange(u.state.doc); }),
           EditorView.domEventHandlers({
@@ -39,6 +42,8 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink }, r
     h.addEventListener("cm-open-link", open);
     return () => { h.removeEventListener("cm-open-link", open); view.current.destroy(); };
   }, []);
+
+  useEffect(() => { view.current?.dispatch({ effects: comp.current.reconfigure(gutter(numeros, linhaInicial)) }); }, [numeros, linhaInicial]);
 
   useImperativeHandle(ref, () => ({
     getText: () => view.current.state.doc.toString(),
