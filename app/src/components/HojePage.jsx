@@ -99,10 +99,7 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
                       {resolvida && pendente && <button onClick={() => setFoco((f) => { const { [t.turma]: _, ...resto } = f; return resto; })} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent">Próxima aula<ArrowRight aria-hidden className="h-4 w-4" /></button>}
                       {aula && !resolvida && (pronto
                         ? <button onClick={() => onOpen(prontos[0].path)} className="rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent">Abrir plano</button>
-                        : <>
-                          <button onClick={() => criar(aula, t.turma)} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Criar aula</button>
-                          <button onClick={onSemana} className="rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent">Preparar na Semana</button>
-                        </>)}
+                        : <button onClick={() => criar(aula, t.turma)} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Criar aula</button>)}
                     </div>
                   );
                 })}

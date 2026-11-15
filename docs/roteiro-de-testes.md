@@ -60,7 +60,6 @@ Legenda: 🅣 = só foi testado no navegador, **precisa conferir no Tauri**.
 - [ ] Marcar **Dar aula ✓ / ↷ Pulei / ❔ Não sei**; "desfazer"; conferir a marca no arquivo.
 - [ ] Texto legível (fonte maior).
 - [ ] Promover aula avulsa ao fim do ciclo.
-- [ ] **Preparar aula**: pacote com a aula, recursos, anterior/seguinte, conteúdos, habilidades.
 - [ ] Alternância "1. Markdown | 2. Semana" ao abrir uma nota de semana.
 - **Nota:** __ / __   **Obs.:**
 

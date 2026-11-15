@@ -21,7 +21,6 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
   const [idx, setIdx] = useState(focoPath ? -1 : ultima?.idx ?? -1);
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState(""); // "" = todas as turmas
-  const [preparo, setPreparo] = useState(null); // { turma, aula } aberto no painel "Preparar aula"
   const carregar = (irParaUltima) => lerCiclos(items).then(async (c) => {
     const ano = c.anoLetivo ?? String(new Date().getFullYear());
     const [semanas, legado, cfg] = await Promise.all([lerSemanas(items), lerSemana(items).catch(() => null), lerTurmas(items, ano)]);
@@ -123,7 +122,6 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
             <div className="mb-3 flex items-baseline justify-between gap-2"><span className="flex items-center gap-2 font-serif text-xl font-semibold"><span aria-hidden className="h-3 w-3 rounded-full" style={{ background: corTurma(t.turma) }} />Turma {t.turma}</span>
               <span className="flex items-center gap-1.5">
                 {vazios > 0 && sugestoes.length > 0 && <button title={`Preencher os espaços vazios com as próximas aulas de ${ciclo0}`} onClick={() => mexer(async () => { for (const a of sugestoes) await adicionarDoCiclo(s.path, t.turma, a); })} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent">Preencher</button>}
-                {proximaAula(t) && <button onClick={() => setPreparo({ turma: t.turma, aula: proximaAula(t) })} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent">Preparar aula</button>}
               </span></div>
             <div className="flex flex-col divide-y">
               {t.aulas.map((a) => (
@@ -150,13 +148,9 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
           </div>
         ); })}
       </div>
-      {preparo && <PrepararAula turma={preparo.turma} aula={preparo.aula} semana={s} ciclo={ciclos.find((c) => c.name.toLowerCase() === (preparo.aula.cicloNome ?? "").toLowerCase()) ?? null} existe={existe} onOpen={(p) => { setPreparo(null); onOpen(p); }} onClose={() => setPreparo(null)} />}
     </div>
   );
 }
-
-/** A próxima aula a dar: a primeira da turma sem situação (nem dada, nem pulada, nem "não sei"). */
-const proximaAula = (t) => t.aulas.find((a) => !a.situacao) ?? null;
 
 /** Primeira vez: pede as turmas do ano e grava `Anos/AAAA/Turmas AAAA.md`. */
 function DefinirTurmas({ ano, onOk }) {
@@ -175,33 +169,6 @@ function DefinirTurmas({ ano, onOk }) {
 }
 
 /** Pacote da aula: o que ela é, os recursos, o contexto do ciclo (aulas vizinhas, conteúdos, habilidades) e as aulas já dadas da turma. */
-function PrepararAula({ turma, aula, semana, ciclo, existe, onOpen, onClose }) {
-  const vizinha = (n) => ciclo?.aulas.find((x) => x.n === n);
-  const antes = aula.cicloN ? vizinha(aula.cicloN - 1) : null, depois = aula.cicloN ? vizinha(aula.cicloN + 1) : null;
-  const dadasHoje = semana.turmas.find((t) => t.turma === turma)?.aulas.filter((a) => a.dada) ?? [];
-  const alvos = [...new Set([...nomes(aula.recurso ?? ""), ...nomes(aula.texto)])];
-  const hab = ciclo?.habTexto?.length ? ciclo.habTexto : (ciclo?.habilidades ?? []).map((codigo) => ({ codigo, texto: "" }));
-  const Nota = ({ n }) => existe(n) ? <button onClick={() => onOpen(existe(n).path)} className="mr-2 text-primary hover:underline">{n}</button> : <span className="mr-2 text-warn">{n} (a criar)</span>;
-  return (
-    <div role="dialog" aria-label="Preparar aula" className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/40 p-8" onClick={onClose}>
-      <div className="w-full max-w-2xl rounded-xl border bg-background p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-1 flex items-baseline justify-between"><span className="text-xs text-muted-foreground">Turma {turma} · {aula.cicloNome ? `${aula.cicloNome} · aula ${aula.cicloN ?? "?"}` : "aula avulsa"}</span>
-          <button onClick={onClose} className="text-xs text-muted-foreground hover:underline">fechar</button></div>
-        <h2 className="font-serif text-2xl font-semibold"><span style={{ color: fase[aula.fase].cor }}>{fase[aula.fase].nome}</span> · <Inline texto={aula.texto} /></h2>
-        {alvos.length > 0 && <div className="mt-3 text-sm"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Recursos e textos</div>{alvos.map((n) => <Nota key={n} n={n} />)}
-          {aula.recurso && !nomes(aula.recurso).length && <span className="text-muted-foreground">{aula.recurso}</span>}</div>}
-        {!alvos.length && aula.recurso && <div className="mt-3 text-sm"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Recurso</div>{aula.recurso}</div>}
-        {(antes || depois) && <div className="mt-4 grid gap-3 text-xs sm:grid-cols-2">
-          <div><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Aula anterior do ciclo</div>{antes ? `${antes.n}. ${limpa(antes.texto)}` : "—"}</div>
-          <div><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Aula seguinte do ciclo</div>{depois ? `${depois.n}. ${limpa(depois.texto)}` : "—"}</div></div>}
-        {ciclo?.conteudos?.length > 0 && <div className="mt-4 text-xs"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Conteúdos do ciclo</div><ul className="list-disc pl-5">{ciclo.conteudos.map((c) => <li key={c}>{limpa(c)}</li>)}</ul></div>}
-        {hab.length > 0 && <div className="mt-4 text-xs"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Habilidades</div>{hab.map((h) => <div key={h.codigo}><b>{h.codigo}</b> {h.texto}</div>)}</div>}
-        {dadasHoje.length > 0 && <div className="mt-4 text-xs"><div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">Já dadas nesta semana</div>{dadasHoje.map((a) => <div key={a.n}>✓ {limpa(a.texto)}</div>)}</div>}
-        {ciclo && <div className="mt-5"><button onClick={() => onOpen(ciclo.path)} className="text-xs text-primary hover:underline">abrir o plano do ciclo</button></div>}
-      </div>
-    </div>
-  );
-}
 
 /** Espaço vazio da semana: um clique abre as sugestões do ciclo (e um campo para escrever qualquer coisa). */
 function Espaco({ n, turma, ciclos, semanas, cicloInicial, onCiclo, onTexto }) {
