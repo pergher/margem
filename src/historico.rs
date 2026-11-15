@@ -23,6 +23,7 @@ pub fn hist_dir(root: &Path, nota: &Path) -> Result<PathBuf, String> {
 /// Ids (segundos) das versões, da mais nova para a mais antiga.
 pub fn hist_ids(dir: &Path) -> Vec<u64> {
     let mut v: Vec<u64> = std::fs::read_dir(dir).into_iter().flatten().flatten()
+        .filter(|e| e.path().is_file() && e.path().extension().is_some_and(|x| x == "md")) // pastas numéricas (ex.: `2026/`) não são versões
         .filter_map(|e| e.path().file_stem()?.to_str()?.parse().ok()).collect();
     v.sort_unstable_by(|a, b| b.cmp(a));
     v
@@ -141,6 +142,22 @@ mod testes {
         assert_eq!(limpar(&d, 30), 1);
         assert!(d.join(".historico/A/Viva").exists() && d.join(".historico/A/NaLixeira").exists() && d.join(".historico/A/Recente").exists());
         assert!(!d.join(".historico/A/Sumiu").exists());
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn pasta_numerica_nao_e_versao_nem_orfa() {
+        let d = tmp("hist-c");
+        // `.historico/Anos/2026/Semana.../1000.md`: "Anos" e "2026" são pastas, não notas nem versões.
+        let h = d.join(".historico/Anos/2026/S01");
+        std::fs::create_dir_all(&h).unwrap();
+        std::fs::write(h.join("1000.md"), "x").unwrap();
+        std::fs::create_dir_all(d.join("Anos/2026")).unwrap();
+        std::fs::write(d.join("Anos/2026/S01.md"), "viva").unwrap();
+        assert!(hist_ids(&d.join(".historico/Anos")).is_empty());
+        assert!(orfaos(&d, 30).is_empty());
+        assert_eq!(limpar(&d, 30), 0);
+        assert!(h.join("1000.md").exists());
         let _ = std::fs::remove_dir_all(&d);
     }
 }

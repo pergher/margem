@@ -123,6 +123,7 @@ Escola/
 ├── Acervo/          perene: serve em qualquer ano
 │   ├── Aulas/<assunto>/
 │   ├── Ciclos/      ciclos atemporais: 16 aulas, nome = título (sem ano, trimestre nem turma)
+│   ├── Gramática/   referência por tópico (regra, exemplos, dúvidas), atemporal
 │   ├── Textos/      fichas de texto
 │   ├── Questoes/    bancos de questões
 │   └── Oficinas/    jogos e dinâmicas
@@ -154,6 +155,16 @@ A aula (`tipo: aula`, `Acervo/Aulas/…`) não tem "plano de aula" separado. A v
 
 - **Mindmap** é um bloco Mermaid (```` ```mermaid ```` com `mindmap`); se o código falhar, a visão mostra o texto-fonte.
 - **Na margem:** anotações do professor são callouts `> [!margem] texto`; a visão as tira do corpo e as mostra na coluna lateral "Na margem". Os `> [!tip] Dica para o professor` antigos **não** são migrados automaticamente (ficam no corpo).
+
+## Gramática do acervo (modelo de 2026-11-15)
+
+`Acervo/Gramática/<Tópico>.md`, `tipo: gramatica`, um arquivo por tópico (Crase, Concordância verbal…), atemporal como Aula e Ciclo. O `create_note` do MCP grava aí.
+
+- **Fronteira com a Aula:** a gramática é *referência*: a regra, os exemplos e as dúvidas, nas palavras do professor, valendo para qualquer aula. A aula é a *sequência didática* (objetivos, atividades) e cita a gramática por `[[Crase]]` ou por trecho, `![[Crase#Como testar]]`. A regra mora num só lugar; a aula não a copia.
+- **Frontmatter:** `tipo: gramatica`; `topico` (igual ao nome do arquivo e ao `# título`); `ano` (6 a 9, pode ser lista: onde costuma ser trabalhado); `assuntos` (liga aulas e gramática); `tags`; `status` (pendente, andamento, finalizado, arquivado). Obrigatórios para o validador: `topico` e `ano`.
+- **Seções `##`** (nenhuma tem número; o título é reconhecido sem diferença de acento ou maiúscula): **Regra** (obrigatória, poucas linhas), **Exemplos** (obrigatória; blocos ```` ```exemplo ```` e, em sintaxe, ```` ```sintaxe ````), **Exceções e dúvidas**, **Como testar** (macete) e **Veja também** (links para outras gramáticas). Cada `##` é uma seção da página única da visão de aula.
+- Conteúdo: texto do próprio professor (resumo e organização), não cópia de gramática publicada. Nada de aluno, turma ou data aqui.
+- Código: `app/src/lib/gramatica.js` (modelo, `parseGramatica`, avisos); exemplos fictícios em `docs/modelos/Gramática/` (4 tópicos) e `docs/modelos/Aula fictícia - Crase na prática.md`, que mostra a aula citando a gramática. Os testes conferem que cada arquivo segue o modelo.
 
 ## Ciclos e Planejamento do Ano (decisão de 2026-11-14)
 

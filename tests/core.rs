@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use vault_core::frontmatter;
 use vault_core::links::extract_links;
 use vault_core::tables::{find_tables, replace_cell};
-use vault_core::validate::{validate, Severity};
+use vault_core::validate::{validate, validate_note, Severity};
 use vault_core::vault::{Note, Vault};
 
 fn fixtures() -> PathBuf {
@@ -327,4 +327,78 @@ fn ciclos_viram_atemporais_com_planejamento_do_ano_e_links_reescritos() {
     // idempotente: nada mais a mover
     assert!(atemporais::plan(&dir).unwrap().renomeados.is_empty());
     std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn tabela_com_linha_mais_curta_que_o_cabecalho_nao_derruba_o_validador() {
+    // Acontece naturalmente enquanto se digita uma linha nova numa tabela.
+    let dir = std::env::temp_dir().join(format!("vault-curta-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("c.md"), "---\ntipo: ciclo\nano: 7\n---\n| # | Conteúdo | Recurso |\n| --- | --- | --- |\n| 1 | Crase | x |\n|\n| 2 |\n| 3 | Prova |\n").unwrap();
+    std::fs::write(dir.join("rubrica.md"), "---\ntipo: rubrica\n---\n| Critério | Máximo | Passo |\n| --- | --- | --- |\n| Ortografia | 2 | 0,5 |\n| Coesão |\n|\n").unwrap();
+    std::fs::write(dir.join("r.md"), "---\ntipo: correcao\nrubrica: \"[[rubrica]]\"\ntranscricao: aprovada\n---\n[[rubrica]]\n\n| Critério | Nota | Obs |\n| --- | --- | --- |\n| Pontuação |\n|\n| Ortografia | 1 |\n| Total | 1 |\n").unwrap();
+    let _ = validate(&Vault::open(&dir).unwrap()); // não pode dar pânico
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+fn tmp_vault(nome: &str) -> PathBuf {
+    let d = std::env::temp_dir().join(format!("vault-{nome}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(&d).unwrap();
+    d
+}
+
+#[test]
+fn arquivo_fora_de_utf8_e_pulado_e_avisado_sem_impedir_o_vault() {
+    let d = tmp_vault("latin1");
+    std::fs::write(d.join("boa.md"), "---\ntipo: ciclo\nano: 7\n---\n").unwrap();
+    std::fs::write(d.join("antiga.md"), b"Educa\xe7\xe3o em Latin-1").unwrap(); // "ção" em Latin-1: não é UTF-8
+    let v = Vault::open(&d).expect("um arquivo ruim não pode impedir de abrir o vault");
+    assert_eq!(v.notes.len(), 1);
+    let issues = validate(&v);
+    assert!(issues.iter().any(|i| i.code == "arquivo-ilegivel" && i.note == "antiga"), "{issues:?}");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn nomes_repetidos_em_pastas_diferentes_sao_avisados() {
+    let d = tmp_vault("repetido");
+    std::fs::create_dir_all(d.join("A")).unwrap();
+    std::fs::create_dir_all(d.join("B")).unwrap();
+    std::fs::write(d.join("A/X.md"), "---\ntipo: ciclo\nano: 7\n---\n").unwrap();
+    std::fs::write(d.join("B/x.md"), "---\ntipo: ciclo\nano: 7\n---\n").unwrap();
+    let issues = validate(&Vault::open(&d).unwrap());
+    assert_eq!(issues.iter().filter(|i| i.code == "nome-repetido").count(), 2, "{issues:?}");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+#[test]
+fn bom_e_crlf_nao_escondem_o_frontmatter() {
+    let n = Note::parse(PathBuf::from("n.md"), "\u{feff}---\r\ntipo: ciclo\r\nano: 7\r\n---\r\ncorpo\r\n".to_string());
+    assert_eq!(n.tipo(), Some("ciclo"));
+}
+
+#[test]
+fn celula_com_barra_vertical_e_escapada() {
+    let text = "| a | b |\n|---|---|\n| x | y |\n";
+    let t = &find_tables(text)[0];
+    let novo = replace_cell(text, &t.rows[0][1], "um | dois");
+    assert_eq!(novo, "| a | b |\n|---|---|\n| x | um \\| dois |\n");
+    assert_eq!(find_tables(&novo)[0].rows[0].len(), 2); // continua com 2 células
+}
+
+#[test]
+fn validate_note_so_devolve_a_nota_pedida() {
+    let dir = std::env::temp_dir().join(format!("vc-valnota-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a.md"), "sem tipo\n[[nada]]\n").unwrap();
+    std::fs::write(dir.join("b.md"), "também sem tipo\n").unwrap();
+    let v = Vault::open(&dir).unwrap();
+    let so_a = validate_note(&v, "a");
+    assert!(!so_a.is_empty() && so_a.iter().all(|i| i.note == "a"), "{so_a:?}");
+    let todos: Vec<_> = validate(&v).into_iter().filter(|i| i.note == "a").map(|i| (i.line, i.code)).collect();
+    assert_eq!(so_a.iter().map(|i| (i.line, i.code)).collect::<Vec<_>>(), todos);
+    assert!(validate_note(&v, "inexistente").is_empty());
 }

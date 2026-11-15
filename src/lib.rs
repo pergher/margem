@@ -9,3 +9,4 @@ pub mod atemporais;
 pub mod migrate;
 pub mod reorganizar;
 pub mod historico;
+pub mod semana;

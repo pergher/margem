@@ -41,6 +41,7 @@ pub fn required_fields(tipo: &str) -> Option<&'static [&'static str]> {
         "aula" => &["ano", "status"],
         "plano" => &["ano", "trimestre"],
         "ciclo" => &[],
+        "gramatica" => &["topico", "ano"],
         "planejamento" => &["ano_letivo"],
         "diario" => &["ano", "turma", "semana", "transcricao"],
         "aluno" => &["ano", "turma"],
@@ -142,9 +143,33 @@ pub fn taxonomy(v: &Vault) -> HashSet<String> {
 }
 
 pub fn validate(v: &Vault) -> Vec<Issue> {
+    validar(v, None)
+}
+
+/// Só os problemas da nota `nome` (o painel de uma nota não precisa dos de todas as outras).
+pub fn validate_note(v: &Vault, nome: &str) -> Vec<Issue> {
+    validar(v, Some(nome))
+}
+
+fn validar(v: &Vault, so: Option<&str>) -> Vec<Issue> {
     let mut out = vec![];
+    let da_nota = |nome: &str| so.is_none_or(|s| s == nome);
+    for (p, motivo) in v.ilegiveis.iter().filter(|_| so.is_none()) {
+        let nome = p.file_stem().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
+        out.push(Issue { note: nome, line: 1, severity: Severity::Warning, code: "arquivo-ilegivel", msg: format!("{} ({motivo}): ignorado; abra no editor de texto e salve como UTF-8", p.display()) });
+    }
+    // Links resolvem por nome: duas notas com o mesmo nome em pastas diferentes deixam `[[nome]]` ambíguo (vale a primeira, por caminho).
+    let mut por_nome: std::collections::BTreeMap<String, Vec<&crate::vault::Note>> = Default::default();
+    for n in v.notes.iter().filter(|n| n.name != "CLAUDE") { por_nome.entry(n.name.trim().to_lowercase()).or_default().push(n); }
+    for grupo in por_nome.values().filter(|g| g.len() > 1 && g.iter().any(|n| da_nota(&n.name))) {
+        let rel = |n: &crate::vault::Note| n.path.strip_prefix(&v.root).unwrap_or(&n.path).display().to_string().replace('\\', "/");
+        let todos = grupo.iter().map(|n| rel(n)).collect::<Vec<_>>().join(", ");
+        for n in grupo.iter().filter(|n| da_nota(&n.name)) {
+            out.push(Issue { note: n.name.clone(), line: 1, severity: Severity::Warning, code: "nome-repetido", msg: format!("há notas com o mesmo nome ({todos}); `[[{}]]` aponta sempre para a primeira", n.name) });
+        }
+    }
     let tax = taxonomy(v);
-    for n in v.notes.iter().filter(|n| n.name != "CLAUDE") {
+    for n in v.notes.iter().filter(|n| n.name != "CLAUDE" && da_nota(&n.name)) {
         let mut push = |line: usize, severity, code, msg: String| {
             out.push(Issue { note: n.name.clone(), line, severity, code, msg })
         };
@@ -200,7 +225,7 @@ pub fn validate(v: &Vault) -> Vec<Issue> {
             }
         }
     }
-    for n in &v.notes {
+    for n in v.notes.iter().filter(|n| da_nota(&n.name)) {
         match n.tipo() {
             Some("ciclo") => check_ciclo(v, n, &mut out),
             Some("correcao") => check_correcao(v, n, &mut out),
@@ -226,16 +251,18 @@ fn check_ciclo(_v: &Vault, n: &Note, out: &mut Vec<Issue>) {
     for t in find_tables(&n.text) {
         let (Some(cc), Some(cr)) = (norm(&t, &["conteudo", "conteúdo"]), norm(&t, &["recurso"])) else { continue };
         for r in &t.rows {
+            let Some(primeira) = r.first() else { continue };
             let texto = r.get(cc).map(|c| c.text.to_lowercase()).unwrap_or_default();
             // exercícios, revisão, prova, correção etc. não precisam de recurso
             const SEM_RECURSO: &[&str] = &["exerc", "revis", "prova", "corre", "recupera", "finaliza", "diagn", "🔻", "🔹", "🔥", "🎮"];
             if !SEM_RECURSO.iter().any(|w| texto.contains(w)) && r.get(cr).is_none_or(|c| c.text.is_empty()) {
-                out.push(Issue { note: n.name.clone(), line: line_of(&n.text, r[0].raw.0), severity: Severity::Info, code: "aula-sem-recurso", msg: "aula sem recurso".into() });
+                out.push(Issue { note: n.name.clone(), line: line_of(&n.text, primeira.raw.0), severity: Severity::Info, code: "aula-sem-recurso", msg: "aula sem recurso".into() });
             }
         }
         let last = t.rows.last().and_then(|r| r.get(cc)).map(|c| c.text.to_lowercase()).unwrap_or_default();
-        if last.contains("prova") && !last.contains("correção") && !last.contains("correcao") {
-            out.push(Issue { note: n.name.clone(), line: line_of(&n.text, t.rows.last().unwrap()[0].raw.0), severity: Severity::Info, code: "sem-recuperacao", msg: "o ciclo termina na avaliação, sem aula de correção ou recuperação".into() });
+        let primeira_da_ultima = t.rows.last().and_then(|r| r.first());
+        if let (true, Some(pc)) = (last.contains("prova") && !last.contains("correção") && !last.contains("correcao"), primeira_da_ultima) {
+            out.push(Issue { note: n.name.clone(), line: line_of(&n.text, pc.raw.0), severity: Severity::Info, code: "sem-recuperacao", msg: "o ciclo termina na avaliação, sem aula de correção ou recuperação".into() });
         }
     }
 }
@@ -248,8 +275,9 @@ pub fn rubrica(v: &Vault, n: &Note) -> Vec<(String, f64, f64)> {
     for t in find_tables(&r.text) {
         let (Some(c), Some(m), Some(p)) = (col(&t, "critério"), col(&t, "máximo"), col(&t, "passo")) else { continue };
         for row in &t.rows {
-            if let (Some(max), Some(step)) = (parse_num(&row[m].text), parse_num(&row[p].text)) {
-                out.push((row[c].text.clone(), max, step));
+            let (Some(cm), Some(cp), Some(cc)) = (row.get(m), row.get(p), row.get(c)) else { continue };
+            if let (Some(max), Some(step)) = (parse_num(&cm.text), parse_num(&cp.text)) {
+                out.push((cc.text.clone(), max, step));
             }
         }
     }
@@ -279,9 +307,10 @@ fn check_correcao(v: &Vault, n: &Note, out: &mut Vec<Issue>) {
         }
         let mut soma = 0.0;
         for r in &t.rows {
-            let line = line_of(&n.text, r[0].raw.0);
-            let crit = r[cc].text.replace('*', "");
-            let Some(val) = parse_num(&r[cn].text) else { continue };
+            let (Some(primeira), Some(ccrit), Some(cnota)) = (r.first(), r.get(cc), r.get(cn)) else { continue };
+            let line = line_of(&n.text, primeira.raw.0);
+            let crit = ccrit.text.replace('*', "");
+            let Some(val) = parse_num(&cnota.text) else { continue };
             if crit.eq_ignore_ascii_case("total") {
                 if (val - soma).abs() > 1e-9 {
                     out.push(Issue { note: n.name.clone(), line, severity: Severity::Error, code: "total-diverge", msg: format!("total {val} mas a soma dos critérios é {soma}") });

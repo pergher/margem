@@ -58,6 +58,8 @@ impl Note {
 pub struct Vault {
     pub root: PathBuf,
     pub notes: Vec<Note>,
+    /// `.md` que não puderam ser lidos como UTF-8 (ex.: Latin-1 de arquivos antigos): ficam de fora e aparecem na validação.
+    pub ilegiveis: Vec<(PathBuf, String)>,
     by_name: HashMap<String, usize>,
     /// Nomes de arquivos não-Markdown (imagens, PDFs), para resolver embeds.
     attachments: std::collections::HashSet<String>,
@@ -74,15 +76,19 @@ impl Vault {
         walk(root, &mut files, &mut attachments)?;
         files.sort();
         let mut notes = vec![];
+        let mut ilegiveis = vec![];
         for f in files {
-            let text = fs::read_to_string(&f)?;
-            notes.push(Note::parse(f, text));
+            match fs::read_to_string(&f) {
+                Ok(text) => notes.push(Note::parse(f, text)),
+                Err(e) if e.kind() == std::io::ErrorKind::InvalidData => ilegiveis.push((f, "não está em UTF-8".to_string())),
+                Err(e) => return Err(e),
+            }
         }
         let mut by_name = HashMap::new();
         for (i, n) in notes.iter().enumerate() {
             by_name.entry(norm(&n.name)).or_insert(i);
         }
-        Ok(Vault { root: root.to_path_buf(), notes, by_name, attachments })
+        Ok(Vault { root: root.to_path_buf(), notes, ilegiveis, by_name, attachments })
     }
 
     /// Resolve por nome, nunca por caminho: usa só o último segmento do alvo.

@@ -21,10 +21,15 @@ impl Server {
         if self.expor_correcoes {
             return false;
         }
-        // dois cadeados: o tipo da nota (correcao, diario, aluno) e a pasta (Anos/AAAA/Correcoes, Relatorios, Diarios e Alunos)
+        // dois cadeados: o tipo da nota (correcao, diario, aluno) e a pasta. A pasta vale em qualquer profundidade: se o servidor
+        // for iniciado uma pasta acima da raiz do vault, `Anos` deixa de ser o primeiro componente e o cadeado não pode sumir.
         let rel = n.path.strip_prefix(&self.root).unwrap_or(&n.path);
-        let c: Vec<_> = rel.components().map(|c| c.as_os_str().to_string_lossy().to_string()).collect();
-        let por_pasta = c.first().is_some_and(|x| x == "Anos") && c.iter().skip(2).any(|x| x == "Correcoes" || x == "Relatorios" || x == "Diarios" || x == "Alunos");
+        let c: Vec<String> = rel.components().map(|c| c.as_os_str().to_string_lossy().to_lowercase()).collect();
+        let sensivel = |x: &String| matches!(x.as_str(), "correcoes" | "correções" | "relatorios" | "relatórios" | "diarios" | "diario" | "diário" | "alunos");
+        // Anos/AAAA/<pasta sensível>
+        let por_pasta = c.iter().position(|x| x == "anos").is_some_and(|i| c.iter().skip(i + 2).any(sensivel))
+            // notas soltas e fichas que vieram de `Correções/` ao reorganizar
+            || c.windows(2).any(|w| w[0] == "_sistema" && (w[1] == "notas" || w[1] == "fichas"));
         matches!(n.tipo(), Some("correcao" | "diario" | "aluno")) || por_pasta
     }
 
@@ -98,6 +103,11 @@ impl Server {
                     }
                 }
                 Err(format!("habilidade {cod} não encontrada"))
+            }
+            "progress" => {
+                let only = s("turma");
+                let l: Vec<String> = crate::semana::progresso(&v).iter().filter(|p| only.is_none_or(|t| p.turma == t)).map(|p| p.to_string()).collect();
+                Ok(if l.is_empty() { "nenhuma aula de semana ligada a um ciclo".into() } else { l.join("\n") })
             }
             "plan_ciclo" => self.plan_ciclo(&v, a),
             "create_note" => self.create(&v, s("tipo").ok_or("faltou `tipo`")?, s("nome").ok_or("faltou `nome`")?),
@@ -200,6 +210,7 @@ impl Server {
             "texto" => r.join("Acervo/Textos"),
             "banco" => r.join("Acervo/Questoes"),
             "ciclo" => r.join("Acervo/Ciclos"),
+            "gramatica" => r.join("Acervo/Gramática"),
             "plano" => r.join("Anos").join(ano()).join("Planejamento"),
             "planejamento" => r.join("Anos").join(ano()),
             "calendario" => r.join("Anos").join(ano()),
@@ -241,8 +252,9 @@ fn tools() -> Value {
          "inputSchema": obj(json!({"query": {"type": "string"}, "tipo": {"type": "string"}, "campo": {"type": "string"}, "valor": {"type": "string"}}), &[])},
         {"name": "read_note", "description": "Lê uma nota pelo nome (sem caminho).", "inputSchema": obj(json!({"nome": {"type": "string"}}), &["nome"])},
         {"name": "backlinks", "description": "Lista as notas que apontam para a nota dada (arquivo:linha).", "inputSchema": obj(json!({"nome": {"type": "string"}}), &["nome"])},
-        {"name": "validate", "description": "Valida o vault (ou uma nota): campos por tipo, taxonomia, links, datas do ciclo.", "inputSchema": obj(json!({"nome": {"type": "string"}}), &[])},
+        {"name": "validate", "description": "Valida o vault (ou uma nota): campos por tipo, taxonomia, links, tabelas dos ciclos (aula sem recurso, ciclo sem recuperação) e notas de correção.", "inputSchema": obj(json!({"nome": {"type": "string"}}), &[])},
         {"name": "get_habilidade", "description": "Devolve o texto de uma habilidade BNCC/CBTC pelo código (ex.: EF06LP04).", "inputSchema": obj(json!({"codigo": {"type": "string"}}), &["codigo"])},
+        {"name": "progress", "description": "Progresso de cada turma nos ciclos, lido das notas de semana: aulas dadas, adiadas e descartadas e a próxima aula do ciclo que ainda não tem linha. Só leitura.", "inputSchema": obj(json!({"turma": {"type": "string"}}), &[])},
         {"name": "plan_ciclo", "description": "Planeja um ciclo de aulas (sequência ordenada, sem datas). Sem `gravar` só devolve a proposta e avisos (habilidade ou recurso inexistente, ciclo sem prova); com gravar=true cria Acervo/Ciclos/Título.md sem sobrescrever. O ciclo é atemporal (16 aulas, sem ano nem turma); quem o põe num ano é o Planejamento do Ano. Antes, use search_notes (tipo=aula/texto/banco) e get_habilidade para escolher recursos e habilidades que existem.",
          "inputSchema": obj(json!({"titulo": {"type": "string"}, "objetivo": {"type": "string"}, "conteudos": {"type": "array", "items": {"type": "string"}}, "habilidades": {"type": "array", "items": {"type": "string"}}, "aulas": {"type": "array", "items": {"type": "object", "properties": {"conteudo": {"type": "string"}, "recurso": {"type": "string"}}, "required": ["conteudo"]}}, "gravar": {"type": "boolean"}}), &["titulo", "aulas"])},
         {"name": "create_note", "description": "Cria uma nota na pasta correta do vault (conforme o tipo) com o frontmatter mínimo do tipo. Não sobrescreve nada.", "inputSchema": obj(json!({"tipo": {"type": "string"}, "nome": {"type": "string"}}), &["tipo", "nome"])}

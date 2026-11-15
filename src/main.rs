@@ -9,7 +9,7 @@ use vault_core::validate::{validate, Severity};
 use vault_core::vault::Vault;
 
 fn usage() -> ExitCode {
-    eprintln!("uso:\n  vault validate <pasta>\n  vault reorganizar <pasta> [--ano 2026] [--raiz Escola] [--aplicar] [--detalhes]\n  vault migrar <pasta> [--aplicar]   (sem --aplicar só mostra o que mudaria)\n  vault margem <pasta> [--aplicar]   (aulas: [!tip] Dica para o professor vira [!margem]; sem --aplicar só mostra)\n  vault ciclos <pasta> [--aplicar]   (ciclos viram atemporais: Acervo/Ciclos/Título.md + Planejamento do Ano; sem --aplicar só mostra)\n  vault edit-cell <arquivo> <tabela> <linha> <coluna> <texto>   (índices a partir de 0)\n  vault historico <pasta> [--dias 30] [--limpar]   (históricos de notas excluídas; sem --limpar só lista)");
+    eprintln!("uso:\n  vault validate <pasta>\n  vault reorganizar <pasta> [--ano AAAA (padrão: ano atual)] [--raiz Escola] [--aplicar] [--detalhes]\n  vault migrar <pasta> [--aplicar]   (sem --aplicar só mostra o que mudaria)\n  vault margem <pasta> [--aplicar]   (aulas: [!tip] Dica para o professor vira [!margem]; sem --aplicar só mostra)\n  vault ciclos <pasta> [--aplicar]   (ciclos viram atemporais: Acervo/Ciclos/Título.md + Planejamento do Ano; sem --aplicar só mostra)\n  vault edit-cell <arquivo> <tabela> <linha> <coluna> <texto>   (índices a partir de 0)\n  vault progresso <pasta>   (aulas dadas por turma e ciclo, lidas das notas de semana)\n  vault historico <pasta> [--dias 30] [--limpar]   (históricos de notas excluídas; sem --limpar só lista)");
     ExitCode::from(2)
 }
 
@@ -34,7 +34,8 @@ fn main() -> ExitCode {
         Some("reorganizar") if args.len() >= 2 => {
             let root = PathBuf::from(&args[1]);
             let opt = |k: &str, d: &str| args.iter().position(|a| a == k).and_then(|i| args.get(i + 1)).cloned().unwrap_or(d.to_string());
-            let (ano, raiz) = (opt("--ano", "2026"), opt("--raiz", "Escola"));
+            let ano_atual = chrono::Local::now().format("%Y").to_string();
+            let (ano, raiz) = (opt("--ano", &ano_atual), opt("--raiz", "Escola"));
             let (aplicar, detalhes) = (args.iter().any(|a| a == "--aplicar"), args.iter().any(|a| a == "--detalhes"));
             let plan = match reorganizar::plan(&root, &ano, &raiz) {
                 Ok(p) => p,
@@ -185,6 +186,16 @@ fn main() -> ExitCode {
             };
             if let Some(raiz) = PathBuf::from(&args[1]).canonicalize().ok().and_then(|p| p.ancestors().find(|a| a.join(".historico").is_dir() || a.join("Acervo").is_dir()).map(|a| a.to_path_buf())) { let _ = historico::snapshot(&raiz, &PathBuf::from(&args[1]), true); }
             std::fs::write(&args[1], replace_cell(&text, cell, &args[5])).expect("escrita");
+            ExitCode::SUCCESS
+        }
+        Some("progresso") if args.len() == 2 => {
+            let v = match Vault::open(&PathBuf::from(&args[1])) {
+                Ok(v) => v,
+                Err(e) => { eprintln!("erro ao abrir o vault: {e}"); return ExitCode::from(2); }
+            };
+            let p = vault_core::semana::progresso(&v);
+            if p.is_empty() { println!("nenhuma aula de semana ligada a um ciclo"); }
+            for x in &p { println!("{x}"); }
             ExitCode::SUCCESS
         }
         Some("historico") if args.len() >= 2 => {

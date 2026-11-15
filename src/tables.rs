@@ -86,8 +86,24 @@ pub fn find_tables(text: &str) -> Vec<Table> {
     out
 }
 
+/// `|` dentro do texto da célula vira `\|` (senão a célula se parte em duas) e quebra de linha vira espaço.
+fn escape_cell(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut prev_backslash = false;
+    for c in s.chars() {
+        match c {
+            '|' if !prev_backslash => out.push_str("\\|"),
+            '\n' | '\r' => out.push(' '),
+            _ => out.push(c),
+        }
+        prev_backslash = c == '\\';
+    }
+    out
+}
+
 /// Substitui só o conteúdo de uma célula; o restante do arquivo fica idêntico, byte a byte.
 pub fn replace_cell(text: &str, cell: &Cell, new: &str) -> String {
+    let new = &escape_cell(new);
     let (a, b) = cell.raw;
     let raw = &text[a..b];
     if raw.trim().is_empty() {

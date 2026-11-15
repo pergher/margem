@@ -13,7 +13,7 @@ pub fn split(text: &str) -> Split {
     let none = Split { yaml: None, body_start: 0 };
     let mut lines = text.split_inclusive('\n');
     match lines.next() {
-        Some(l) if l.trim_end() == "---" => {}
+        Some(l) if l.trim_start_matches('\u{feff}').trim_end() == "---" => {} // BOM do Bloco de Notas é aceito
         _ => return none,
     }
     let mut offset = text.split_inclusive('\n').next().unwrap().len();

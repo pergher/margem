@@ -19,7 +19,7 @@ fn call(s: &Server, tool: &str, args: Value) -> (bool, String) {
 fn protocolo_basico() {
     let s = server(false);
     let r = s.handle(&json!({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})).unwrap();
-    assert_eq!(r["result"]["tools"].as_array().unwrap().len(), 7);
+    assert_eq!(r["result"]["tools"].as_array().unwrap().len(), 8);
     assert!(s.handle(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"})).is_none());
 }
 
@@ -124,4 +124,37 @@ fn plan_ciclo_propoe_sem_gravar_e_cria_sem_sobrescrever() {
     let (err, _) = call(&s, "plan_ciclo", g);
     assert!(err, "não pode sobrescrever");
     std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn cadeado_de_pasta_vale_com_o_servidor_iniciado_uma_pasta_acima() {
+    let dir = std::env::temp_dir().join(format!("mcp-acima-{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("Escola/Anos/2026/Relatorios")).unwrap();
+    std::fs::create_dir_all(dir.join("Escola/_sistema/notas")).unwrap();
+    std::fs::create_dir_all(dir.join("Escola/Acervo")).unwrap();
+    std::fs::write(dir.join("Escola/Anos/2026/Relatorios/Aluno Y.md"), "sem tipo, dados de aluno").unwrap();
+    std::fs::write(dir.join("Escola/_sistema/notas/Solta.md"), "veio de Correções").unwrap();
+    std::fs::write(dir.join("Escola/Acervo/Aberta.md"), "aberta").unwrap();
+    let s = Server { root: dir.clone(), expor_correcoes: false }; // raiz = pasta acima de `Escola`
+    assert!(call(&s, "read_note", json!({"nome": "Aluno Y"})).0, "relatório deveria estar oculto");
+    assert!(call(&s, "read_note", json!({"nome": "Solta"})).0, "nota solta de _sistema/notas deveria estar oculta");
+    assert!(!call(&s, "read_note", json!({"nome": "Aberta"})).0);
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
+fn progress_le_semanas_e_ciclos() {
+    let d = std::env::temp_dir().join(format!("vault-progress-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&d);
+    std::fs::create_dir_all(d.join("Acervo/Ciclos")).unwrap();
+    std::fs::create_dir_all(d.join("Anos/2026/Semanas")).unwrap();
+    std::fs::write(d.join("Acervo/Ciclos/Crase.md"), "---\ntipo: ciclo\n---\n# Crase\n\n## Aulas\n\n| # | Conteúdo | Recurso |\n|---|---|---|\n| 1 | Diagnóstico |  |\n| 2 | Regra |  |\n| 3 | Prova |  |\n").unwrap();
+    std::fs::write(d.join("Anos/2026/Semanas/Semana 2026-03-02.md"), "---\ntipo: semana\nano: 6\nrotulo: x\n---\n# S\n\n### 61\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| Diagnóstico ✓ |  | [[Crase]] 1 |\n| Regra ↷ |  | [[Crase]] 2 |\n").unwrap();
+    let s = Server { root: d.clone(), expor_correcoes: false };
+    let (err, t) = call(&s, "progress", json!({}));
+    let _ = std::fs::remove_dir_all(&d);
+    assert!(!err, "{t}");
+    assert!(t.contains("61 · Crase: 1/3 dadas, 1 adiadas"), "{t}");
+    assert!(t.contains("próxima sem linha: 3. Prova"), "{t}");
 }
