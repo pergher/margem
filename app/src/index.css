@@ -42,8 +42,10 @@
 /* ---------- editor / live preview ---------- */
 .cm-editor { height: 100%; background: transparent; }
 .cm-editor.cm-focused { outline: none; }
+/* números + texto formam um conjunto centralizado (sem os números soltos na borda da tela) */
+.cm-editor .cm-scroller { justify-content: center; }
 .cm-editor .cm-scroller { font-family: var(--f-texto, 'Source Serif 4 Variable', Georgia, serif); font-size: var(--tamanho-texto, 1.0625rem); line-height: 1.7; padding: 2.25rem 0 40vh; }
-.cm-editor .cm-content { font-family: var(--f-texto, 'Source Serif 4 Variable', Georgia, serif); max-width: 46rem; margin: 0 auto; padding: 0 1.5rem; caret-color: hsl(var(--primary)); }
+.cm-editor .cm-content { font-family: var(--f-texto, 'Source Serif 4 Variable', Georgia, serif); flex: 1 1 auto; max-width: 46rem; margin: 0; padding: 0 1.5rem; caret-color: hsl(var(--primary)); }
 .cm-cursor { border-left-color: hsl(var(--primary)) !important; }
 .cm-line { padding: 0; }
 .cm-selectionBackground, .cm-editor .cm-selectionBackground { background: hsl(var(--primary) / .18) !important; }
@@ -149,7 +151,7 @@
 *::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / .5); background-clip: padding-box; border: 2px solid transparent; }
 
 /* tabela editável */
-.cm-table-wrap { position: relative; }
+.cm-table-wrap { position: relative; display: flow-root; }
 .cm-table-wrap th, .cm-table-wrap td { outline: none; }
 .cm-table-wrap th:focus, .cm-table-wrap td:focus { background: hsl(var(--accent)); box-shadow: inset 0 0 0 2px hsl(var(--ring) / .5); white-space: pre-wrap; }
 .cm-table-bar { display: flex; gap: .25rem; justify-content: flex-end; height: 1.6rem; margin-bottom: .2rem; opacity: 0; transition: opacity .15s; font-family: var(--f-ui, 'Inter Variable', sans-serif); }
@@ -198,7 +200,8 @@
 .aula-ed .cm-lineNumbers .cm-gutterElement:nth-child(2).cm-g-h2 { padding-top: 0 !important; }
 
 /* ---- blocos didáticos: ```exemplo e ```sintaxe (lib/blocos.js) ---- */
-.cm-bloco { margin: .6rem 0; cursor: pointer; }
+/* widgets de bloco: sem margem vertical (o CodeMirror não a conta no mapa de alturas e o cursor vertical passa a pular linhas); folga por padding e margens dos filhos contidas */
+.cm-bloco { padding: .6rem 0; display: flow-root; cursor: pointer; }
 .ex-lista { list-style: none; padding: 0 !important; display: flex; flex-direction: column; gap: .7rem; }
 .ex-item { border: 1px solid hsl(var(--border)); border-radius: 10px; padding: .55rem .9rem; display: flex; flex-direction: column; gap: .25rem; }
 .ex-l { display: flex; gap: .8rem; align-items: baseline; }

@@ -1,7 +1,7 @@
 // Live preview de Markdown para CodeMirror 6: renderiza títulos, ênfase, listas, tarefas,
 // citações, callouts, tabelas, wikilinks e frontmatter; mostra o texto-fonte só onde está o cursor.
-import { Decoration, EditorView, ViewPlugin, WidgetType, GutterMarker, gutterLineClass } from "@codemirror/view";
-import { StateField, RangeSetBuilder } from "@codemirror/state";
+import { Decoration, EditorView, ViewPlugin, keymap, WidgetType, GutterMarker, gutterLineClass } from "@codemirror/view";
+import { StateField, RangeSetBuilder, EditorSelection } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { invoke, srcDeImagem } from "@/lib/api";
 import { htmlBloco, cabecalhoCerca } from "@/lib/blocos";
@@ -537,6 +537,31 @@ function build(view) {
   }
   return Decoration.set(out, true);
 }
+
+/** Faixas de blocos desenhados (exemplo/sintaxe, tabelas e frontmatter) em que as setas verticais devem entrar, e não saltar. */
+function faixasDeBloco(state) {
+  const out = [];
+  state.field(blockField).between(0, state.doc.length, (from, to, d) => {
+    const w = d.spec.widget;
+    if (w instanceof BlocoWidget || w instanceof PropsWidget || w instanceof TableWidget) out.push({ from, to });
+  });
+  return out;
+}
+
+/** Seta ↓/↑ que encontra um bloco desenhado: abre a fonte e põe o cursor na borda de entrada (↓ no início, ↑ no fim). */
+function entrarNoBloco(forward) {
+  return (view) => {
+    const sel = view.state.selection.main;
+    if (!sel.empty) return false;
+    const mov = view.moveVertically(sel, forward), alvo = mov.head;
+    for (const r of faixasDeBloco(view.state)) {
+      const pula = forward ? sel.head < r.from && alvo >= r.to : sel.head > r.to && alvo <= r.from;
+      if (pula) { view.dispatch({ selection: EditorSelection.cursor(forward ? r.from : r.to, 0, undefined, mov.goalColumn), scrollIntoView: true, userEvent: "select" }); return true; }
+    }
+    return false;
+  };
+}
+export const navegacaoBlocos = keymap.of([{ key: "ArrowDown", run: entrarNoBloco(true) }, { key: "ArrowUp", run: entrarNoBloco(false) }]);
 
 export const livePreview = [
   blockField,

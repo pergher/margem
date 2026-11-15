@@ -1,11 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, keymap, lineNumbers } from "@codemirror/view";
-import { EditorState, Text, Compartment } from "@codemirror/state";
+import { EditorState, Text, Compartment, Prec } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import { menuBarra } from "@/lib/menuBarra";
-import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate } from "@/lib/livePreview";
+import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate, navegacaoBlocos } from "@/lib/livePreview";
 
 // `numeros`: mostra a numeração das linhas; `linhaInicial`: número da linha em que o texto começa no arquivo (seções de uma aula).
 const gutter = (numeros, linhaInicial) => (numeros ? [lineNumbers({ formatNumber: (n) => String(n + linhaInicial) }), gutterAlinhado] : []);
@@ -24,6 +24,7 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, num
     doc, selection: { anchor },
     extensions: [
       history(), markdown({ extensions: [GFM] }), livePreview, menuBarra, EditorView.lineWrapping, comp.current.of(gutter(gutterAtual.current.numeros, gutterAtual.current.linhaInicial)),
+      Prec.high(navegacaoBlocos),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       EditorView.updateListener.of((u) => { if (u.docChanged && !silent.current) cb.current.onChange(u.state.doc); }),
       EditorView.domEventHandlers({
