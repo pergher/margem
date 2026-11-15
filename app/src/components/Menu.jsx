@@ -1,17 +1,19 @@
-import { House, CalendarDays, CalendarRange, BookText, CircleHelp, ClipboardCheck, BookOpen, HeartPulse, Settings, Sun, Moon } from "lucide-react";
+import { House, CalendarDays, CalendarRange, Repeat2, BookText, BookMarked, CircleHelp, ClipboardCheck, BookOpen, HeartPulse, Settings, Sun, Moon } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
 const PRINCIPAL = [
   { id: "hoje", nome: "Hoje", Icone: House, dica: "O dia: próximas aulas, correção em curso e documentos recentes" },
   { id: "semana", nome: "Semana", Icone: CalendarDays, dica: "As aulas da semana, turma por turma", sub: true },
-  { id: "ano", nome: "Ano e ciclos", Icone: CalendarRange, dica: "Os ciclos do ano e o andamento de cada um", sub: true },
+  { id: "ano", nome: "Ano", Icone: CalendarRange, dica: "Os ciclos do ano e o andamento de cada um", sub: true },
   { id: "aulas", nome: "Aulas", Icone: BookText, dica: "Os arquivos de Acervo/Aulas" },
+  { id: "ciclos", nome: "Ciclos", Icone: Repeat2, dica: "Todos os ciclos do Acervo e a criação de um novo" },
   { id: "questoes", nome: "Questões", Icone: CircleHelp, dica: "Bancos de questões, provas e montagem de prova" },
-  { id: "correcao", nome: "Correção", Icone: ClipboardCheck, dica: "Projetos a corrigir e já corrigidos" },
+  { id: "correcao", nome: "Correções", Icone: ClipboardCheck, dica: "Projetos a corrigir e já corrigidos" },
 ];
 const MAIS = [
-  { id: "diario", nome: "Diário e alunos", Icone: BookOpen },
+  { id: "gramatica", nome: "Gramática", Icone: BookMarked, dica: "Referência por tópico: Acervo/Gramática" },
+  { id: "diario", nome: "Diário", Icone: BookOpen, dica: "Diário de classe e notas de alunos" },
   { id: "saude", nome: "Saúde do vault", Icone: HeartPulse },
 ];
 

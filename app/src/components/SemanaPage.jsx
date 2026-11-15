@@ -69,13 +69,17 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
   const colunas = [...turmas, ...s.turmas.map((t) => t.turma).filter((t) => !turmas.includes(t))].map((turma) => s.turmas.find((t) => t.turma === turma) ?? { turma, aulas: [] });
   const todas = colunas.flatMap((t) => t.aulas), dadas = todas.filter((a) => a.dada).length, porDar = todas.filter((a) => !a.situacao).length, adiadas = todas.filter((a) => a.situacao === "pulada").length;
   const segAtual = segundaDe();
+  // A semana mostrada nem sempre é a de hoje (aos sábados a "atual" já é a que vem): dizer qual é.
+  const dSemana = /(\d{4})-(\d{2})-(\d{2})/.exec(s.name), hoje0 = new Date(new Date().setHours(0, 0, 0, 0));
+  const dias = dSemana ? Math.round((new Date(+dSemana[1], +dSemana[2] - 1, +dSemana[3]) - hoje0) / 864e5) : null;
+  const rotuloTempo = dias == null ? "" : dias > 7 ? "Semana futura" : dias > 0 ? "Próxima semana" : dias >= -6 ? "Esta semana" : "Semana passada";
   const faltaAtual = ehUltima && !focoPath && !items.some((i) => i.name === nomeSemana(segAtual)) && proximaSegunda(semanas).getTime() === segAtual.getTime();
 
   return (
     <div className="min-h-0 flex-1 overflow-auto p-8">
       <div className="mb-4 flex flex-wrap items-end gap-x-3 gap-y-2">
         <header>
-          <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
+          <div className="text-xs text-muted-foreground">{rotuloTempo}</div>
           <div className="mt-1 flex items-center gap-2">
             <h1 className="font-serif text-3xl font-semibold leading-tight">Semana de {s.rotulo || s.name}</h1>
             <div className="flex items-center">
@@ -131,7 +135,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
                       ? <button key={n} onClick={() => onOpen(existe(n).path)} className="mr-2 text-primary hover:underline">{n}</button>
                       : <span key={n} className="mr-2 text-warn">{n} (a criar)</span>) : <span className="text-muted-foreground">{a.recurso}</span>}</div>}
                   </div>
-                  <SituacaoAula situacao={a.situacao} onChange={(sit) => situar(t.turma, a.n, sit)} />
+                  <SituacaoAula compacto situacao={a.situacao} onChange={(sit) => situar(t.turma, a.n, sit)} />
                   <span className="flex w-10 shrink-0 items-center justify-end gap-1.5 text-muted-foreground">
                     {!a.cicloNome && cicloDe(t.turma) && <button title={`Promover a aula do ciclo ${cicloDe(t.turma).name}`} onClick={() => mexer(() => promoverAvulsa(s.path, t.turma, a.n, cicloDe(t.turma)))} className="hover:text-foreground"><ArrowUpToLine className="h-4 w-4" /></button>}
                     {!a.dada && <button title="Esvaziar este espaço" onClick={() => mexer(() => removerAulaSemana(s.path, t.turma, a.n))} className="hover:text-err"><X className="h-4 w-4" /></button>}

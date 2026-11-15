@@ -1,6 +1,7 @@
 // Lê `Anos/AAAA/Planejamento/Planejamento.md`: "## A fazer" (tarefas) e "## Sema" com uma tabela por turma ("### 61").
 // Em cada tabela a linha marcada com ✓ já foi dada; a primeira sem ✓ é a aula de hoje.
 import { invoke } from "@/lib/api";
+import { gravarVarios } from "@/lib/transacao";
 import { faseDaAula } from "@/lib/ciclos";
 import { anoDeTurmas } from "@/lib/utils";
 
@@ -201,7 +202,49 @@ async function editar(path, fn) {
   const text = await invoke("read_note", { path });
   await invoke("save_note", { path, text: fn(text) });
 }
-const reescrever = (text, fn) => { const s = parseSemanaNota(text); const nova = fn(s) ?? s; return text.replace(/^---\n[\s\S]*$/, renderSemana({ rotulo: s.rotulo, turmas: nova.turmas })); };
+/**
+ * Aplica `fn` ao estado da semana e devolve o texto com SÓ o que mudou: frontmatter, texto livre, linhas "Ciclo:" e as linhas de
+ * tabela que não foram tocadas ficam byte a byte como estavam. Linhas alteradas ou novas são geradas de novo; turma nova vira bloco novo no fim.
+ */
+const reescrever = (text, fn) => {
+  const s = parseSemanaNota(text);
+  const orig = new Map(s.turmas.map((t) => [t.turma, new Map(t.aulas.map((a) => [a.n, { ...a }]))]));
+  const nova = fn(s) ?? s;
+  const iguais = (a, o) => o && a.texto === o.texto && (a.recurso ?? "") === o.recurso && (a.situacao ?? null) === o.situacao && (a.cicloNome ?? null) === o.cicloNome && (a.cicloN ?? null) === o.cicloN;
+  const linhaDe = (a) => `| ${celula(a.texto)}${marcaDe(a)} | ${celula(a.recurso ?? "")} | ${refCiclo(a)} |`;
+  const linhas = text.split("\n");
+  const fmFim = /^---\n[\s\S]*?\n---(\n|$)/.exec(text)?.[0].split("\n").length - 1 || 0; // linhas do frontmatter
+  // blocos "### turma" do corpo: [início, fim) em linhas
+  const blocos = [];
+  for (let i = fmFim; i < linhas.length; i++) if (/^###\s+/.test(linhas[i])) { if (blocos.length) blocos.at(-1).fim = i; blocos.push({ turma: linhas[i].replace(/^###\s+/, "").trim(), ini: i, fim: linhas.length }); }
+  for (const b of blocos) { const prox = linhas.slice(b.ini + 1, b.fim).findIndex((l) => /^#{1,2}\s/.test(l)); if (prox >= 0) b.fim = b.ini + 1 + prox; }
+  const edicoes = []; // { de, ate, novas }: troca linhas [de, ate) por `novas`
+  const novos = [];
+  for (const t of nova.turmas) {
+    const bloco = blocos.find((b) => b.turma === t.turma);
+    if (!bloco) {
+      novos.push([`### ${t.turma}`, "", ...(t.cicloNome ? [`Ciclo: [[${t.cicloNome}]]`, ""] : []), "| Aula | Recurso | Ciclo |", "|---|---|---|", ...t.aulas.map(linhaDe)].join("\n"));
+      continue;
+    }
+    const tab = []; // índices das linhas de tabela do bloco
+    for (let i = bloco.ini + 1; i < bloco.fim; i++) if (linhas[i].trim().startsWith("|")) tab.push(i);
+    if (tab.length && tab.at(-1) - tab[0] + 1 !== tab.length) throw new Error(`a tabela da turma ${t.turma} tem texto no meio; ajuste a nota à mão para o app poder editá-la`);
+    const dados = tab.slice(2).filter((i) => linhas[i].split("|").slice(1, -1)[0]?.trim()); // linhas que viraram aula (mesma regra do parse)
+    const o = orig.get(t.turma);
+    const geradas = t.aulas.map((a) => (a.n && iguais(a, o.get(a.n)) ? linhas[dados[a.n - 1]] : linhaDe(a)));
+    if (tab.length < 2) { // sem tabela: cria cabeçalho no fim do bloco
+      let fim = bloco.fim; while (fim > bloco.ini + 1 && !linhas[fim - 1].trim()) fim--;
+      if (geradas.length) edicoes.push({ de: fim, ate: fim, novas: ["", "| Aula | Recurso | Ciclo |", "|---|---|---|", ...geradas] });
+    } else {
+      const de = tab[2] ?? tab[1] + 1, ate = (tab.at(-1)) + 1;
+      if (ate > de || geradas.length) edicoes.push({ de, ate: Math.max(ate, de), novas: geradas });
+    }
+  }
+  for (const e of edicoes.sort((x, y) => y.de - x.de)) linhas.splice(e.de, e.ate - e.de, ...e.novas);
+  let out = linhas.join("\n");
+  if (novos.length) out = out.replace(/\n*$/, "\n\n") + novos.join("\n\n") + "\n";
+  return out;
+};
 
 export const removerAulaSemana = (path, turma, n) => editar(path, (t) => reescrever(t, (s) => { const x = s.turmas.find((z) => z.turma === turma); x.aulas = x.aulas.filter((a) => a.n !== n); }));
 export const adicionarAvulsa = (path, turma, texto, recurso = "") => editar(path, (t) => reescrever(t, (s) => {
@@ -221,7 +264,8 @@ export const adicionarDoCiclo = (path, turma, aula) => editar(path, (t) => reesc
  * Mantém as notas de semana certas quando o ciclo muda: ao inserir uma aula na posição P, as linhas ligadas às aulas de P em diante
  * passam a apontar para N+1; ao remover a aula N, a linha ligada a ela vira avulsa e as seguintes apontam para N-1; ao mover uma aula, as ligações a acompanham.
  */
-export async function ajustarSemanasAoCiclo(items, cicloNome, { inserirEm = null, removida = null, movida = null }) {
+export async function planejarAjusteSemanas(items, cicloNome, { inserirEm = null, removida = null, movida = null }) {
+  const escritas = [];
   const alvo = cicloNome.toLowerCase();
   for (const it of items.filter((i) => /^Anos\/\d{4}\/Semanas\/[^/]+\.md$/.test(i.rel))) {
     let text;
@@ -240,8 +284,22 @@ export async function ajustarSemanasAoCiclo(items, cicloNome, { inserirEm = null
         else if (removida != null && a.cicloN > removida) { a.cicloN -= 1; mudou = true; }
       }
     });
-    if (mudou) await invoke("save_note", { path: it.path, text: novo });
+    if (mudou) escritas.push({ path: it.path, text: novo });
   }
+  return escritas;
+}
+
+/** Ajusta as semanas (texto calculado antes; gravação tudo-ou-nada). */
+export async function ajustarSemanasAoCiclo(items, cicloNome, ajuste) {
+  await gravarVarios(await planejarAjusteSemanas(items, cicloNome, ajuste));
+}
+
+/** Altera a tabela do ciclo e as semanas que apontam para ele numa operação só: nada é gravado se algum cálculo falhar. */
+export async function salvarCicloEAjustarSemanas(items, ciclo, acao, ajuste) {
+  const cicloText = await invoke("read_note", { path: ciclo.path });
+  const escritas = [{ path: ciclo.path, text: acao(cicloText) }];
+  if (ajuste) escritas.push(...await planejarAjusteSemanas(items, ciclo.name, ajuste));
+  await gravarVarios(escritas);
 }
 
 /** Promove uma aula avulsa a aula do fim do ciclo `ciclo` (objeto de parseCiclo) e liga a linha da semana a ela. */
@@ -251,6 +309,8 @@ export async function promoverAvulsa(path, turma, n, ciclo) {
   if (!a) throw new Error("aula não encontrada");
   const cicloText = await invoke("read_note", { path: ciclo.path });
   const pos = parseCiclo({ path: ciclo.path, name: ciclo.name }, cicloText).aulas.length + 1;
-  await invoke("save_note", { path: ciclo.path, text: inserirAula(cicloText, pos, a.texto) });
-  await invoke("save_note", { path, text: reescrever(text, (s) => { const x = s.turmas.find((z) => z.turma === turma).aulas.find((z) => z.n === n); x.cicloNome = ciclo.name; x.cicloN = pos; }) });
+  await gravarVarios([
+    { path: ciclo.path, text: inserirAula(cicloText, pos, a.texto) },
+    { path, text: reescrever(text, (s) => { const x = s.turmas.find((z) => z.turma === turma).aulas.find((z) => z.n === n); x.cicloNome = ciclo.name; x.cicloN = pos; }) },
+  ]);
 }

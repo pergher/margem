@@ -3,7 +3,9 @@
 import { Decoration, EditorView, ViewPlugin, WidgetType, GutterMarker, gutterLineClass } from "@codemirror/view";
 import { StateField, RangeSetBuilder } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
-import { invoke } from "@/lib/api";
+import { invoke, srcDeImagem } from "@/lib/api";
+import { htmlBloco, cabecalhoCerca } from "@/lib/blocos";
+import { acionarBotao } from "@/lib/blocoAcoes";
 
 const hide = Decoration.replace({});
 
@@ -100,11 +102,16 @@ function fetchEmbed(target, anchor) {
 /** Markdown reduzido para mostrar o conteúdo de uma nota embutida. */
 function embedHtml(text) {
   const out = [];
-  let fence = false;
+  let fence = null; // { cab, linhas } enquanto dentro de uma cerca
+  const fecha = () => { // exemplo/sintaxe viram o bloco desenhado; o resto fica como código
+    const html = fence.cab && htmlBloco(fence.cab.lang, fence.cab.opcoes, fence.linhas.join("\n"));
+    out.push(html ? `<div class="aula-md">${html}</div>` : fence.linhas.map((c) => `<div class="cm-embed-code">${inlineMd(c) || "&nbsp;"}</div>`).join(""));
+    fence = null;
+  };
   for (const raw of text.split("\n").slice(0, 80)) {
     const l = raw.replace(/\s*\^[\w-]+\s*$/, "");
-    if (/^\s*(```|~~~)/.test(l)) { fence = !fence; continue; }
-    if (fence) { out.push(`<div class="cm-embed-code">${inlineMd(l) || "&nbsp;"}</div>`); continue; }
+    if (/^\s*(```|~~~)/.test(l)) { if (fence) fecha(); else fence = { cab: cabecalhoCerca(l), linhas: [] }; continue; }
+    if (fence) { fence.linhas.push(raw); continue; }
     if (!l.trim()) { out.push('<div class="cm-embed-gap"></div>'); continue; }
     let m;
     if ((m = /^(#{1,6})\s+(.*)$/.exec(l))) out.push(`<div class="cm-embed-h">${inlineMd(m[2])}</div>`);
@@ -114,6 +121,7 @@ function embedHtml(text) {
     else if ((m = /^>\s?(.*)$/.exec(l))) out.push(`<div class="cm-embed-quote">${inlineMd(m[1].replace(/^\[![\w-]+\][+-]?\s*/, ""))}</div>`);
     else out.push(`<div>${inlineMd(l)}</div>`);
   }
+  if (fence) fecha();
   return out.join("");
 }
 
@@ -130,7 +138,7 @@ class EmbedWidget extends WidgetType {
       else if (r.kind === "image") {
         box.className = "cm-embed-box cm-embed-img";
         const img = document.createElement("img");
-        img.src = r.data; img.alt = r.name; img.draggable = false;
+        img.src = srcDeImagem(r); img.alt = r.name; img.draggable = false;
         if (this.size) img.style.width = this.size + "px";
         img.addEventListener("load", () => view.requestMeasure());
         box.append(img);
@@ -283,6 +291,24 @@ class TableWidget extends WidgetType {
 }
 
 /** Propriedades (frontmatter) como chips; campo vazio vira aviso "campo pendente". */
+/** Bloco didático (exemplo/sintaxe) desenhado no lugar do código; clicar abre a fonte para editar. */
+class BlocoWidget extends WidgetType {
+  constructor(html) { super(); this.html = html; }
+  eq(o) { return o.html === this.html; }
+  toDOM(view) {
+    const w = document.createElement("div");
+    w.className = "cm-bloco aula-md";
+    w.innerHTML = this.html;
+    w.addEventListener("mousedown", (e) => {
+      if (e.target.closest(".bl-btn")) { e.preventDefault(); acionarBotao(e.target); return; }
+      if (e.target.closest("label,input")) return; // alternar camadas não abre a fonte
+      e.preventDefault(); view.dispatch({ selection: { anchor: view.posAtDOM(w) + 1 }, scrollIntoView: true }); view.focus();
+    });
+    return w;
+  }
+  ignoreEvent() { return true; }
+}
+
 class PropsWidget extends WidgetType {
   constructor(text) { super(); this.text = text; }
   eq(o) { return o.text === this.text; }
@@ -319,6 +345,13 @@ class PropsWidget extends WidgetType {
 
 // ---------- decorações de bloco (StateField) ----------
 
+/** HTML do bloco didático (exemplo/sintaxe) de uma cerca fechada em [from, to], ou `null`. */
+function htmlDaCerca(doc, from, to) {
+  const a = doc.lineAt(from), z = doc.lineAt(to), c = cabecalhoCerca(a.text);
+  if (!c || z.number <= a.number || !/^\s*(```|~~~)\s*$/.test(z.text)) return null;
+  return htmlBloco(c.lang, c.opcoes, doc.sliceString(doc.line(a.number + 1).from, z.from).replace(/\n$/, ""));
+}
+
 function blockDecos(state) {
   const out = [];
   const fmEnd = frontmatterEnd(state.doc);
@@ -330,6 +363,10 @@ function blockDecos(state) {
       if (n.name === "Table" && n.from >= fmEnd && !touches(state, n.from, n.to)) {
         out.push(Decoration.replace({ widget: new TableWidget(state.doc.sliceString(n.from, n.to)), block: true }).range(n.from, n.to));
         return false;
+      }
+      if (n.name === "FencedCode" && n.from >= fmEnd && !touches(state, n.from, n.to)) {
+        const html = htmlDaCerca(state.doc, n.from, n.to);
+        if (html) { out.push(Decoration.replace({ widget: new BlocoWidget(html), block: true }).range(n.from, n.to)); return false; }
       }
     },
   });
@@ -483,7 +520,7 @@ function build(view) {
       const open = a + (embed ? 3 : 2);
       const active = T(a, b);
       if (active) {
-        out.push(Decoration.mark({ class: "cm-wikilink-raw", attributes: { "data-target": target } }).range(a, b));
+        out.push(Decoration.mark({ class: "cm-wikilink-raw", attributes: { "data-target": target, "data-anchor": anchor } }).range(a, b));
         continue;
       }
       if (embed) {
@@ -494,7 +531,7 @@ function build(view) {
       out.push(hide.range(a, open));
       let textFrom = open;
       if (pipe >= 0) { textFrom = open + pipe + 1; out.push(hide.range(open, textFrom)); }
-      out.push(Decoration.mark({ class: embed ? "cm-embed" : "cm-wikilink", attributes: { "data-target": target } }).range(textFrom, b - 2));
+      out.push(Decoration.mark({ class: embed ? "cm-embed" : "cm-wikilink", attributes: { "data-target": target, "data-anchor": anchor } }).range(textFrom, b - 2));
       out.push(hide.range(b - 2, b));
     }
   }

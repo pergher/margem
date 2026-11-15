@@ -35,7 +35,7 @@ export function CorrecoesPage({ items, onCorrigir, onTurma, onOpen, onRename, on
         const est = estatisticas(d);
         return {
           media: est.media, maximo: est.maximo,
-          id: it.path, path: it.path, pathAcao: it.path.replace(/\/[^/]+$/, ""), rel: it.rel, nome: it.pasta, pasta: "", fixo: true,
+          id: it.path, path: it.path, pathAcao: it.path.replace(/\/[^/]+$/, ""), rel: it.rel, nome: d.atividade?.trim() || it.pasta, nomeEdit: it.pasta, pasta: "", fixo: true,
           atividade: d.atividade, turma, mes: d.mes ?? "", letivo: it.rel.split("/")[1], total: d.alunos.length, feitas, feita: finalizado(d.status), aprovada: d.transcricao === "aprovada",
           busca: `${d.atividade ?? ""} ${turma} ${d.mes ?? ""} Turma ${turma}`,
         };

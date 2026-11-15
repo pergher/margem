@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { invoke } from "@/lib/api";
+import { invoke, srcDeImagem } from "@/lib/api";
 import { ArrowLeft, ChartColumn, Info, ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Search, AlertTriangle, CircleCheck, Download, ArrowRight } from "lucide-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
@@ -37,7 +37,7 @@ function Inline({ s, ver }) {
 // Liga/desliga uma marca de erro no texto: amostra da marca + contagem, sem rótulo longo (o nome vai no title).
 function Marca({ on, onClick, nome, n, children }) {
   return (
-    <button onClick={onClick} aria-pressed={on} aria-label={`${nome}: ${n}`} title={`${nome}: ${n} (${on ? "ocultar" : "mostrar"} no texto)`}
+    <button onClick={onClick} aria-pressed={on} aria-label={`${nome}: ${n}`} title={`${nome}: ${n} erro(s) marcados (clique para ${on ? "ocultar" : "mostrar"} no texto)`}
       className={"flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs tabular-nums hover:bg-accent/60 " + (on ? "text-foreground" : "text-muted-foreground opacity-50")}>
       {children}{n}
     </button>
@@ -60,7 +60,7 @@ function Foto({ nome, zoom, rot, lupa }) {
   }, [aberta]);
   useEffect(() => {
     setSrc(null);
-    if (nome) invoke("read_embed", { target: nome }).then((r) => setSrc(r?.kind === "image" ? r.data : null)).catch(() => setSrc(null));
+    if (nome) invoke("read_embed", { target: nome }).then((r) => setSrc(srcDeImagem(r))).catch(() => setSrc(null));
   }, [nome]);
   if (!nome) return <div className="p-4 text-xs text-muted-foreground">Sem foto.</div>;
   if (!src) return <div className="p-4 text-xs text-muted-foreground">{nome}: imagem não encontrada.</div>;
@@ -183,8 +183,8 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
       </header>
 
       {vista === "turma" ? <Turma d={d} est={est} rotulo={rotulo} nomes={nomes} setNomes={setNomes} onAluno={(i) => { setSel(i); setVista("aluno"); }} onTodas={() => baixar(`Devolutivas ${d.turma} - ${d.atividade}.md`, d.alunos.map((x) => devolutiva(d, x, nomes)).join("\n---\n\n"))} /> : (
-      <div className="flex min-h-0 flex-1">
-        <aside aria-label="Alunos" style={{ width: wLista }} className="flex shrink-0 flex-col">
+      <div className="flex min-h-0 flex-1 overflow-x-auto"> {/* em janela estreita as colunas encolhem até o mínimo e, abaixo disso, rola de lado */}
+        <aside aria-label="Alunos" style={{ width: wLista, minWidth: 130 }} className="flex shrink flex-col">
           <div className={CAB}>
             <span className="min-w-0 flex-1 truncate font-semibold">{d.alunos.length} produções{pend ? <span className="font-normal text-warn"> · {pend} marcas</span> : ""}</span>
             <button title={nomes ? "Ocultar nomes" : "Mostrar nomes"} aria-label={nomes ? "Ocultar nomes" : "Mostrar nomes"} onClick={() => setNomes(!nomes)} className="text-muted-foreground hover:text-foreground">{nomes ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
@@ -209,7 +209,7 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
         </aside>
         <ResizeHandle width={wLista} setWidth={setWLista} min={150} max={360} side="left" />
 
-        <section aria-label="Foto do manuscrito" style={{ width: wFoto }} className="flex shrink-0 flex-col bg-muted">
+        <section aria-label="Foto do manuscrito" style={{ width: wFoto, minWidth: 120 }} className="flex shrink flex-col bg-muted">
           <div className={CAB + " bg-background"}><span className="flex-1 truncate font-semibold">{a.foto ?? "Manuscrito"}</span>
             <button aria-label="Lupa" title="Lupa ao passar o mouse (foto sem girar)" onClick={() => setLupa(!lupa)} className={lupa ? "text-primary" : "text-muted-foreground hover:text-foreground"}><Search className="h-4 w-4" /></button>
             <button aria-label="Diminuir foto" onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))} className="text-muted-foreground hover:text-foreground"><ZoomOut className="h-4 w-4" /></button>
@@ -219,7 +219,7 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
         </section>
         <ResizeHandle width={wFoto} setWidth={setWFoto} min={200} max={700} side="left" />
 
-        <section aria-label="Transcrição" className="flex min-w-0 flex-1 flex-col">
+        <section aria-label="Transcrição" className="flex min-w-[260px] flex-1 flex-col">
           <div className={CAB}><span className="font-semibold">Transcrição</span>
             <span className="group relative">
               <button aria-label="Como marcar a transcrição" className="rounded-full p-1 text-muted-foreground hover:text-foreground focus-visible:text-foreground"><Info className="h-4 w-4" /></button>
@@ -233,8 +233,8 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
                 </p>
               </div>
             </span>
-                        <span className="ml-auto flex items-center"><Marca on={ver.orto} onClick={() => setVer({ ...ver, orto: !ver.orto })} nome="Ortografia" n={a.erros.orto}><span aria-hidden className="underline decoration-red-500 decoration-wavy decoration-1 underline-offset-4">ab</span></Marca>
-            <Marca on={ver.pont} onClick={() => setVer({ ...ver, pont: !ver.pont })} nome="Pontuação" n={a.erros.pont}><span aria-hidden className="rounded bg-sky-100 px-1 text-sky-900 dark:bg-sky-950 dark:text-sky-100">,</span></Marca></span>
+                        <span className="ml-auto flex items-center"><Marca on={ver.orto} onClick={() => setVer({ ...ver, orto: !ver.orto })} nome="Ortografia" n={a.erros.orto}><span aria-hidden className="underline decoration-red-500 decoration-wavy decoration-1 underline-offset-4">ab</span><span className="hidden xl:inline">ortografia</span></Marca>
+            <Marca on={ver.pont} onClick={() => setVer({ ...ver, pont: !ver.pont })} nome="Pontuação" n={a.erros.pont}><span aria-hidden className="rounded bg-sky-100 px-1 text-sky-900 dark:bg-sky-950 dark:text-sky-100">,</span><span className="hidden xl:inline">pontuação</span></Marca></span>
 </div>
           <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
             <div className="font-serif text-base leading-[1.75]">
@@ -245,7 +245,7 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
         </section>
 
         <ResizeHandle width={wAval} setWidth={setWAval} min={300} max={640} side="right" />
-        <section aria-label="Avaliação" style={{ width: wAval }} className="flex shrink-0 flex-col">
+        <section aria-label="Avaliação" style={{ width: wAval, minWidth: 280 }} className="flex shrink flex-col">
           <div className={CAB + " gap-x-3"}><span className="flex-1 font-semibold">Avaliação</span>
             <button onClick={() => copiar(devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">copiar devolutiva</button>
             <button onClick={() => baixar(nomeArq(a), devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">baixar</button></div>

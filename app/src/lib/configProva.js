@@ -28,7 +28,7 @@ export async function lerConfigProva(items) {
   const get = (k) => fm.entries.find((e) => e.key === k)?.value ?? "";
   const logoArquivo = get("logo");
   let logo = "";
-  if (logoArquivo) { try { const r = await invoke("read_embed", { target: logoArquivo }); if (r?.kind === "image") logo = r.data; } catch { /* logo sumiu: segue sem */ } }
+  if (logoArquivo) { try { const r = await invoke("read_embed", { target: logoArquivo, inline: true }); if (r?.kind === "image") logo = r.data; } catch { /* logo sumiu: segue sem */ } }
   return { escola: get("escola"), linha2: get("linha2"), logo, logoArquivo, logoNova: false, duasColunas: get("duas_colunas") === "true", limiteLinhas: Number(get("limite_linhas")) || 0 };
 }
 

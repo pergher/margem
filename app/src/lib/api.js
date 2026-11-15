@@ -1,5 +1,5 @@
 // Fora do Tauri (navegador em desenvolvimento) lê o vault de teste via servidor do Vite, somente leitura.
-import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { invoke as tauriInvoke, convertFileSrc } from "@tauri-apps/api/core";
 
 const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 export const isTauri = inTauri;
@@ -82,3 +82,6 @@ export const invoke = inTauri ? tauriInvoke : async (cmd, a = {}) => {
   if (cmd === "write_config") { localStorage.setItem("atalhos", a.text); return null; }
   throw new Error("comando desconhecido: " + cmd);
 };
+
+/** `src` de uma imagem devolvida por `read_embed`: data URL (navegador de desenvolvimento / `inline`) ou o caminho servido pelo protocolo asset. */
+export const srcDeImagem = (r) => (r?.kind !== "image" ? null : r.data ?? (r.path ? convertFileSrc(r.path) : null));

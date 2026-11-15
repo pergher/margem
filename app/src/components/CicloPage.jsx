@@ -3,7 +3,7 @@ import { invoke } from "@/lib/api";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { FASES, inserirAula, removerAula, moverAula, salvarAulas, editarCelula, salvarConteudos, salvarHabilidades, nomeComTitulo, reparse } from "@/lib/ciclos";
-import { ajustarSemanasAoCiclo } from "@/lib/semana";
+import { salvarCicloEAjustarSemanas } from "@/lib/semana";
 import { interpretarHabilidades } from "@/lib/bncc";
 import { Estado } from "@/components/ui/estado";
 
@@ -46,7 +46,7 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }
   const [novo, setNovo] = useState(null); // { pos, texto }
   const [erro, setErro] = useState("");
   const [arrasto, setArrasto] = useState(null); // { de, alvo }: aula arrastada e posição de inserção (1..N+1)
-  const aplicar = (acao, ajuste) => salvarAulas(c, acao).then(async (x) => { if (ajuste) await ajustarSemanasAoCiclo(items, c.name, ajuste); setErro(""); setNovo(null); onChange(x); }).catch((e) => setErro(String(e.message ?? e)));
+  const aplicar = (acao, ajuste) => salvarCicloEAjustarSemanas(items, c, acao, ajuste).then(async () => { const x = reparse(c, { path: c.path, name: c.name }, await invoke("read_note", { path: c.path })); setErro(""); setNovo(null); onChange(x); }).catch((e) => setErro(String(e.message ?? e)));
   const renomear = async (titulo) => {
     if (!titulo) return setErro("O título não pode ficar vazio.");
     try { const novo = await onRename(c.path, nomeComTitulo(c, titulo)); const nome = novo.split("/").pop().replace(/\.md$/, ""); onChange(reparse(c, { path: novo, name: nome }, await invoke("read_note", { path: novo }))); setErro(""); } catch (e) { setErro(String(e.message ?? e)); }
@@ -73,7 +73,7 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }
   return (
     <div className="flex min-h-0 flex-1">
       <aside aria-label="Dados do ciclo" style={{ width: wDados }} className="shrink-0 overflow-auto p-6">
-        <button onClick={onAno} className="mb-3 text-xs text-muted-foreground hover:text-foreground">← Ano e ciclos</button>
+        <button onClick={onAno} className="mb-3 text-xs text-muted-foreground hover:text-foreground">← Ciclos</button>
         <h1 className="mb-1.5 font-serif text-3xl font-semibold leading-tight">{onRename ? <Editavel label="Título do ciclo" valor={c.vazio ? "" : c.titulo} placeholder={c.titulo} onSave={renomear} inputClass="font-serif text-2xl font-semibold" /> : c.titulo}</h1>
         <div className="mb-5 text-xs leading-relaxed text-muted-foreground">
           {c.incluido ? `${c.ano}º ano · ${c.tri}º trimestre · ciclo ${c.ciclo}` : "Fora de um ano (não está no Planejamento)"}{c.sufixo ? ` · ${c.sufixo}` : ""}<br />{c.aulas.length} aulas

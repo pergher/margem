@@ -85,7 +85,7 @@ export function Explorador({
   onOpen, onRename, onMove, onDelete, onNovaPasta, onImportar, botoes, menuExtra, vazio, vazioPasta,
 }) {
   const [q, setQ] = useState("");
-  const [visao, setVisao] = useState(() => ler(`margem.${chave}.visao`, "grade"));
+  const [visao, setVisao] = useState(() => ler(`margem.${chave}.visao`, "lista"));
   const [ordem, setOrdem] = useState(() => ler(`margem.${chave}.ordem`, { por: "nome", desc: false }));
   const [sels, setSels] = useState({});        // filtroId -> [opcaoId]
   const [tgl, setTgl] = useState([]);          // alternadores ligados
@@ -232,7 +232,7 @@ export function Explorador({
       <header className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-3xl font-semibold leading-tight">{titulo}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">{subtitulo}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{subtitulo}<span className="ml-2 text-xs">· clique para selecionar, clique duas vezes para abrir</span></p>
         </div>
         {raiz && onNovaPasta && <button onClick={(e) => { e.stopPropagation(); novaPasta(); }} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"><FolderPlus className="h-4 w-4" />Nova pasta</button>}
         {onImportar && <button onClick={(e) => { e.stopPropagation(); arquivoRef.current?.click(); }} title="Adiciona arquivos .md do computador a esta pasta (ou arraste-os para a página)" className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"><Upload className="h-4 w-4" />Importar</button>}

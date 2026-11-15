@@ -39,7 +39,7 @@ export function QuestoesPage({ items, dirs, onOpen, onRefresh, aba, setAba, text
   const lista = useMemo(() => (dados ?? []).map((x) => {
     if (x.b !== undefined) { // banco
       const { it, b } = x, nq = b ? b.textos.reduce((s, t) => s + t.questoes.length, 0) + b.independentes.length : null;
-      return { id: it.path, path: it.path, rel: it.rel, nome: it.name, pasta: it.rel.split("/").slice(2, -1).join("/"), tipo_: "banco", anos: b?.ano ? [String(b.ano)] : [], nq, nTextos: b?.textos.length ?? 0, lido: !!b, busca: b ? b.textos.map((t) => t.titulo ?? "").join(" ") : "" };
+      return { id: it.path, path: it.path, rel: it.rel, nome: b?.titulo?.trim() || it.name, nomeEdit: it.name, pasta: it.rel.split("/").slice(2, -1).join("/"), tipo_: "banco", anos: b?.ano ? [String(b.ano)] : [], nq, nTextos: b?.textos.length ?? 0, lido: !!b, busca: b ? b.textos.map((t) => t.titulo ?? "").join(" ") : "" };
     }
     const { it, fm, corpo } = x, turma = prop(fm, "turma"), letivo = it.rel.split("/")[1];
     return { id: it.path, path: it.path, rel: it.rel, nome: it.name, pasta: "", fixo: true, tipo_: "prova", turma, anos: /^[6-9]/.test(turma) ? [turma[0]] : [], letivo, data: prop(fm, "data"), valor: prop(fm, "valor"), nq: (prop(fm, "questoes").match(/\d+/g) ?? []).length, lido: true, busca: `${turma} ${letivo}`, trecho: corpo.replace(/[#*>\[\]]/g, "").trim().slice(0, 200) };

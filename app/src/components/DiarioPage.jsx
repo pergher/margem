@@ -3,9 +3,12 @@ import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
-import { lerSemanas } from "@/lib/semana";
+import { lerSemanas, rotuloDe } from "@/lib/semana";
 import { ESTADOS, listarDiarios, listarAlunos, lerMeta, criarDiario, criarAluno, inserirOcorrencia, mudarEstado, ocorrenciasDoDiario, aulasDoDiario, turmasDe } from "@/lib/diario";
 import { Estado, Vazio } from "@/components/ui/estado";
+
+// "2026-09-21" -> "21 a 25 de setembro"; rótulos que não são datas ficam como estão.
+const dataLegivel = (t) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((t ?? "").trim()); return m ? rotuloDe(new Date(+m[1], +m[2] - 1, +m[3])).replace(/ de ([A-Za-zçÇ]+)/g, (x) => x.toLowerCase()) : t; };
 
 // "Paulo Pergher" -> "Pa. Pe." (duas letras do primeiro e do último nome)
 const abreviar = (nome) => { const p = nome.trim().split(/\s+/); return (p.length > 1 ? [p[0], p[p.length - 1]] : p).map((x) => x.slice(0, 2) + ".").join(" "); };
@@ -42,7 +45,7 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath }) {
         <div className="flex-1" />
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={ocultar} onChange={(e) => setOcultar(e.target.checked)} />ocultar nomes</label>
       </div>
-      <div className="mb-4 text-xs text-muted-foreground">Dados sensíveis: estas pastas ficam bloqueadas no MCP (o Claude não lê o diário nem as arquivos de aluno).</div>
+      <div className="mb-4 text-xs text-muted-foreground">Dados sensíveis: o Claude não tem acesso ao diário nem às fichas de alunos.</div>
       {erro && <Estado tipo="err" className="mb-3 text-sm">Erro: {erro} <button className="underline" onClick={() => setErro("")}>ok</button></Estado>}
       {!turma ? <Vazio titulo="Nenhuma turma encontrada ainda">Crie uma semana ou um aluno e a turma aparece aqui.</Vazio>
         : aba === "diario"
@@ -78,15 +81,15 @@ function ListaDiarios({ diarios, onEditar, onNovo, falha }) {
     return () => { vivo = false; };
   }, [diarios.map((d) => d.path).join("|")]);
   return (
-    <div className="max-w-3xl">
+    <div>
       <button onClick={onNovo} className="mb-4 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground hover:text-foreground">+ Novo diário</button>
       {itens == null && <div className="text-sm text-muted-foreground">Lendo…</div>}
       {itens?.length === 0 && <div className="text-sm text-muted-foreground">Nenhum diário desta turma.</div>}
-      <div className="flex flex-col gap-2">
+      <div className="grid gap-2 lg:grid-cols-2 2xl:grid-cols-3">
         {itens?.slice().reverse().flatMap(({ d, aulas }) => aulas.map((a, i) => (
           <div key={d.path + i} className="group rounded-lg border px-3 py-2 text-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{a.semana} · {a.aula}</span>
+              <span>{dataLegivel(a.semana)} · {a.aula}</span>
               <button onClick={() => onEditar(d.path)} className="ml-auto text-primary opacity-0 hover:underline group-hover:opacity-100">editar (Markdown)</button>
             </div>
             <div>{[a.tema, a.corpo].filter(Boolean).join(" — ")}</div>

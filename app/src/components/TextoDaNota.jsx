@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { invoke } from "@/lib/api";
+import { invoke, srcDeImagem } from "@/lib/api";
 import { parseFm } from "@/lib/frontmatter";
 import { Estado, Carregando, Erro } from "@/components/ui/estado";
 
 function Img({ alvo }) {
   const [src, setSrc] = useState(null);
-  useEffect(() => { invoke("read_embed", { target: alvo }).then((r) => setSrc(r?.kind === "image" ? r.data : null)).catch(() => setSrc(null)); }, [alvo]);
+  useEffect(() => { invoke("read_embed", { target: alvo }).then((r) => setSrc(srcDeImagem(r))).catch(() => setSrc(null)); }, [alvo]);
   return src ? <img src={src} alt={alvo} className="my-2 max-w-full rounded border bg-white" /> : <div className="text-xs text-muted-foreground">{alvo}: imagem não encontrada.</div>;
 }
 const inline = (l) => l.split(/(\*\*[^*]+\*\*|\[\[[^\]]+\]\])/).map((x, i) => x.startsWith("**") ? <b key={i}>{x.slice(2, -2)}</b> : x.startsWith("[[") ? <span key={i} className="text-primary">{x.slice(2, -2).split("|").pop()}</span> : x);

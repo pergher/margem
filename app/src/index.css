@@ -190,15 +190,47 @@
 .banco-ed .aula-ed .cm-editor .cm-scroller { padding: 0; }
 .banco-ed .aula-ed .cm-editor .cm-content { min-height: 0; }
 
-/* ---------- estilo dos ícones (Configurações → Aparência → Ícones) ---------- */
-/* `:where()` deixa o estilo global fraco o bastante para as amostras (.icones-*) o vencerem. */
-:where(html[data-icones="fino"]) .lucide, .icones-fino .lucide { stroke-width: 1.25; }
-:where(html[data-icones="duotone"]) .lucide, .icones-duotone .lucide { stroke-width: 1.75; fill: currentColor; fill-opacity: .18; }
-/* Setas, "x", "ok" e símbolos de linha aberta não têm miolo: sem preenchimento. */
-:where(html[data-icones="duotone"]) :is(.lucide-chevron-down, .lucide-chevron-up, .lucide-chevron-left, .lucide-chevron-right, .lucide-x, .lucide-check, .lucide-plus, .lucide-minus, .lucide-arrow-left, .lucide-arrow-right, .lucide-search, .lucide-loader-circle, .lucide-maximize-2, .lucide-list-tree, .lucide-pen-line, .lucide-star, .lucide-zoom-in, .lucide-zoom-out, .lucide-rotate-cw, .lucide-eye, .lucide-eye-off),
-.icones-duotone :is(.lucide-search, .lucide-pen-line) { fill: none; }
-.icones-padrao .lucide { stroke-width: 1.6; fill: none; }
+/* ---------- ícones: traço fino (parecido com Phosphor Light) em todo o app ---------- */
+.lucide { stroke-width: 1.25; }
 
 /* Editor de seção: o título `##` que abre a seção não precisa do respiro de cima (o cabeçalho da página já separa). */
 .aula-ed .cm-content > .cm-line:first-child.cm-h2 { padding-top: 0 !important; }
 .aula-ed .cm-lineNumbers .cm-gutterElement:nth-child(2).cm-g-h2 { padding-top: 0 !important; }
+
+/* ---- blocos didáticos: ```exemplo e ```sintaxe (lib/blocos.js) ---- */
+.cm-bloco { margin: .6rem 0; cursor: pointer; }
+.ex-lista { list-style: none; padding: 0 !important; display: flex; flex-direction: column; gap: .7rem; }
+.ex-item { border: 1px solid hsl(var(--border)); border-radius: 10px; padding: .55rem .9rem; display: flex; flex-direction: column; gap: .25rem; }
+.ex-l { display: flex; gap: .8rem; align-items: baseline; }
+.ex-r { flex: none; width: 5.2rem; font-family: var(--f-ui, sans-serif); font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: hsl(var(--muted-foreground)); }
+.ex-errado .ex-r { color: hsl(var(--err)); } .ex-certo .ex-r { color: hsl(var(--ok)); }
+.ex-porque { font-size: .92em; color: hsl(var(--muted-foreground)); }
+.ex-erro, .ex-ok { background: none; color: inherit; font-weight: 600; text-underline-offset: 3px; text-decoration-thickness: 2px; }
+.ex-erro { text-decoration: underline wavy hsl(var(--err)); }
+.ex-ok { text-decoration: underline solid hsl(var(--ok)); }
+.ex-resp { margin-top: .5rem; border-bottom: 1px solid hsl(var(--border)); padding-bottom: 1.1rem; font-family: var(--f-ui, sans-serif); font-size: .78rem; color: hsl(var(--muted-foreground)); }
+.ex-item .ex-resp { margin-left: 6rem; }
+.sx-bloco { display: flex; flex-direction: column; gap: 1.1rem; }
+.sx-camadas { display: flex; gap: 1rem; font-family: var(--f-ui, sans-serif); font-size: .75rem; color: hsl(var(--muted-foreground)); }
+.sx-camadas label { display: flex; align-items: center; gap: .3rem; cursor: pointer; }
+.sx-frase { font-size: 1.3em; display: flex; flex-wrap: wrap; align-items: flex-start; row-gap: .6rem; line-height: 1.4; }
+.sx-c { display: inline-flex; flex-wrap: wrap; align-items: flex-start; }
+.sx-g { --cor: hsl(var(--chart-1, var(--primary))); display: inline-flex; flex-direction: column; margin: 0 1px; }
+.sx-h1 { --cor: hsl(var(--chart-2, var(--ok))); } .sx-h2 { --cor: hsl(var(--chart-3, var(--warn))); }
+.sx-h3 { --cor: hsl(var(--chart-4, var(--err))); } .sx-h4 { --cor: hsl(var(--chart-5, var(--muted-foreground))); }
+.sx-t { white-space: pre-wrap; }
+.sx-l { border-top: 2px solid var(--cor); color: var(--cor); font-family: var(--f-ui, sans-serif); font-size: .78rem; font-weight: 600; line-height: 1.3; padding-top: 2px; text-align: center; white-space: nowrap; }
+.sx-k > .sx-l { border-top-style: dotted; } .sx-o > .sx-l { border-top-style: double; border-top-width: 4px; }
+/* camada desligada: some o rótulo e a linha, o texto continua */
+.sx-bloco:has(input[data-camada="f"]:not(:checked)) .sx-f > .sx-l,
+.sx-bloco:has(input[data-camada="k"]:not(:checked)) .sx-k > .sx-l,
+.sx-bloco:has(input[data-camada="o"]:not(:checked)) .sx-o > .sx-l { visibility: hidden; height: 0; padding: 0; border: 0; }
+.sx-frase-ex { font-size: 1.05em; }
+.bl { position: relative; }
+.bl-acoes { position: absolute; top: -.2rem; right: 0; display: flex; gap: .3rem; opacity: 0; transition: opacity .15s; z-index: 1; }
+.bl:hover .bl-acoes, .bl:focus-within .bl-acoes { opacity: 1; }
+.bl-btn { font-family: var(--f-ui, sans-serif); font-size: .7rem; padding: .15rem .5rem; border: 1px solid hsl(var(--border)); border-radius: 6px; background: hsl(var(--background)); color: hsl(var(--muted-foreground)); cursor: pointer; }
+.bl-btn:hover { color: hsl(var(--foreground)); background: hsl(var(--accent)); }
+.cm-tooltip-autocomplete { border: 1px solid hsl(var(--border)) !important; border-radius: 8px; background: hsl(var(--popover, var(--background))) !important; font-family: var(--f-ui, sans-serif); font-size: .85rem; overflow: hidden; }
+.cm-tooltip-autocomplete ul li[aria-selected] { background: hsl(var(--accent)) !important; color: hsl(var(--accent-foreground, var(--foreground))) !important; }
+.cm-completionDetail { margin-left: .8em; color: hsl(var(--muted-foreground)); font-style: normal; }

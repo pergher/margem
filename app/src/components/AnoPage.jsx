@@ -1,7 +1,7 @@
-import { CircleCheck, Plus } from "lucide-react";
+import { CircleCheck, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PlanejarCicloDialog } from "@/components/PlanejarCicloDialog";
-import { FASES, lerCiclos, incluirCicloNoAno } from "@/lib/ciclos";
+import { FASES, lerCiclos, incluirCicloNoAno, tirarCicloDoAno } from "@/lib/ciclos";
 import { lerSemanas } from "@/lib/semana";
 import { lerTurmas } from "@/lib/turmas";
 import { corTurma } from "@/lib/cores";
@@ -79,6 +79,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
   const semAulas = ciclos.filter((c) => !c.aulas.length);
   const codigos = {}; for (const c of ciclos) (codigos[`${c.ano}${c.tri}${c.ciclo}`] ??= []).push(c);
   const repetidos = Object.entries(codigos).filter(([, l]) => l.length > 1);
+  const tirar = (c) => tirarCicloDoAno(items, c, anoLetivo).then(() => setTick((t) => t + 1)).catch((e) => setErro(String(e?.message ?? e)));
   const Lista = ({ lista, vazio }) => lista.length
     ? <div className="flex flex-wrap gap-1.5">{lista.map((c) => <button key={c.path} onClick={() => onCiclo(c)} title={c.name} className="rounded-md border px-2 py-0.5 text-xs hover:bg-accent">{c.incluido ? `${c.ano}${c.tri}${c.ciclo}` : c.name}</button>)}</div>
     : <div className="text-xs text-muted-foreground">{vazio}</div>;
@@ -89,8 +90,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
       {dialogo}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <header>
-          <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
-          <h1 className="mt-1 font-serif text-3xl font-semibold leading-tight">Planejamento {anoLetivo}</h1>
+          <h1 className="font-serif text-3xl font-semibold leading-tight">Ano <span className="text-muted-foreground">{anoLetivo}</span></h1>
           <p className="mt-1 text-sm text-muted-foreground">{ciclos.length - fora.length} ciclos no ano{fora.length > 0 && ` · ${fora.length} fora de um ano`} · posição por trimestre, sem datas; o andamento vem das aulas ✓ nas notas de semana</p>
         </header>
         <div className="flex-1" /><button onClick={() => setPlan(true)} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"><Plus className="h-4 w-4" />Planejar ciclo</button>
@@ -122,7 +122,8 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
                       {lista.map((c) => {
                         const prog = progresso(c).filter((x) => !filtro || x.turma === filtro), sit = situacao(prog);
                         return (
-                          <button key={c.path} onClick={() => onCiclo(c)} title={c.name} className="flex w-full flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 text-left transition-colors hover:bg-accent/50">
+                          <div key={c.path} className="flex items-center gap-2 transition-colors hover:bg-accent/50">
+                          <button onClick={() => onCiclo(c)} title={c.name} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 text-left">
                             <span className="w-9 shrink-0 text-xs tabular-nums text-muted-foreground">{c.ano}{c.tri}{c.ciclo}</span>
                             <span className="min-w-[14rem] flex-1">
                               <span className="block text-sm font-medium leading-snug">{c.titulo}</span>
@@ -134,6 +135,8 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
                                 <span className="mt-0.5 block text-muted-foreground">{prog.map((x) => `turma ${x.turma}: ${x.dadas} de ${x.total}`).join(" · ")}</span></> : <span className="text-muted-foreground">sem turma</span>}
                             </span>
                           </button>
+                          {!c.legado && <button onClick={() => tirar(c)} title="Tirar do ano (o ciclo continua no Acervo)" aria-label={`Tirar ${c.titulo} do ano`} className="mr-1 inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><X aria-hidden className="h-3 w-3" />Tirar</button>}
+                          </div>
                         );
                       })}
                       {!lista.length && <div className="py-2.5 text-xs text-muted-foreground">A planejar</div>}

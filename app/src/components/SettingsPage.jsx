@@ -8,7 +8,6 @@ import { FONTES, TAMANHOS_TEXTO } from "@/lib/fontes";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { FORMAS } from "@/lib/forma";
-import { ICONES } from "@/lib/icones";
 import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atualizar";
 import { lerLogo } from "@/lib/configProva";
 import { lerTurmas, gravarTurmas, turmasDeTexto, AULAS_PADRAO } from "@/lib/turmas";
@@ -220,7 +219,7 @@ function Atualizacoes() {
 }
 
 
-function Aparencia({ tema: { icones, setIcones, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques } }) {
+function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques } }) {
   const f = FONTES[fonte] ?? Object.values(FONTES)[0];
   const tamanhos = Object.entries(TAMANHOS_TEXTO).map(([px, nome]) => ({ id: Number(px), nome }));
   // Prévia única: mostra, juntas, as escolhas de tema, fonte, tamanho, ícones, forma, cores e callouts.
@@ -244,7 +243,7 @@ function Aparencia({ tema: { icones, setIcones, temaClaro, setTemaClaro, temaEsc
       <div className="mt-3 rounded-md bg-muted px-2 py-1 text-[0.8em]" style={{ fontFamily: f.mono }}>- [ ] Identificar o narrador</div>
       <div className="mt-4 flex items-center justify-between gap-3">
         <span className="inline-flex min-h-9 items-center rounded-md bg-primary px-4 text-sm text-primary-foreground">Salvar</span>
-        <div className={cn("flex gap-2.5 text-muted-foreground", "icones-" + icones)}>
+        <div className={"flex gap-2.5 text-muted-foreground"}>
           {[House, BookText, CircleHelp, ClipboardCheck, Search, Settings].map((Ic, i) => <Ic key={i} aria-hidden className="h-5 w-5" />)}
         </div>
       </div>
@@ -274,9 +273,6 @@ function Aparencia({ tema: { icones, setIcones, temaClaro, setTemaClaro, temaEsc
       </Grupo>
       <Grupo titulo="Tamanho do texto" nota="No editor.">
         <Opcoes rotulo="Tamanho do texto" valor={tamanhoTexto} onPick={setTamanhoTexto} opcoes={tamanhos} />
-      </Grupo>
-      <Grupo titulo="Ícones" nota="Estilo do traço, em todo o app.">
-        <Opcoes rotulo="Estilo dos ícones" valor={icones} onPick={setIcones} opcoes={Object.entries(ICONES).map(([id, i]) => ({ id, nome: i.nome }))} />
       </Grupo>
       <Grupo titulo="Forma e densidade" nota="Cantos dos botões e cartões e espaço entre os elementos.">
         <Opcoes rotulo="Forma e densidade" valor={forma} onPick={setForma} opcoes={Object.entries(FORMAS).map(([id, fm]) => ({ id, nome: fm.nome }))} />

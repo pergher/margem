@@ -4,6 +4,7 @@ import { EditorState, Text, Compartment } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
+import { menuBarra } from "@/lib/menuBarra";
 import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate } from "@/lib/livePreview";
 
 // `numeros`: mostra a numeração das linhas; `linhaInicial`: número da linha em que o texto começa no arquivo (seções de uma aula).
@@ -15,29 +16,32 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, num
   cb.current = { onChange, onSave, onLink };
   const silent = useRef(false);
 
-  useEffect(() => {
-    view.current = new EditorView({
-      parent: host.current,
-      state: EditorState.create({
-        doc: "",
-        extensions: [
-          history(), markdown({ extensions: [GFM] }), livePreview, EditorView.lineWrapping, comp.current.of(gutter(numeros, linhaInicial)),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
-          EditorView.updateListener.of((u) => { if (u.docChanged && !silent.current) cb.current.onChange(u.state.doc); }),
-          EditorView.domEventHandlers({
-            mousedown(e) {
-              const rendered = e.target.closest?.(".cm-wikilink");
-              const raw = e.target.closest?.(".cm-wikilink-raw");
-              if (rendered || (raw && (e.ctrlKey || e.metaKey))) {
-                e.preventDefault();
-                cb.current.onLink((rendered || raw).dataset.target);
-                return true;
-              }
-            },
-          }),
-        ],
+  const gutterAtual = useRef({ numeros, linhaInicial });
+  gutterAtual.current = { numeros, linhaInicial };
+
+  // Estado novo por nota: o histórico de desfazer começa vazio, então Ctrl+Z nunca devolve o texto de outra nota.
+  const novoEstado = (doc, anchor = 0) => EditorState.create({
+    doc, selection: { anchor },
+    extensions: [
+      history(), markdown({ extensions: [GFM] }), livePreview, menuBarra, EditorView.lineWrapping, comp.current.of(gutter(gutterAtual.current.numeros, gutterAtual.current.linhaInicial)),
+      keymap.of([...defaultKeymap, ...historyKeymap]),
+      EditorView.updateListener.of((u) => { if (u.docChanged && !silent.current) cb.current.onChange(u.state.doc); }),
+      EditorView.domEventHandlers({
+        mousedown(e) {
+          const rendered = e.target.closest?.(".cm-wikilink");
+          const raw = e.target.closest?.(".cm-wikilink-raw");
+          if (rendered || (raw && (e.ctrlKey || e.metaKey))) {
+            e.preventDefault();
+            cb.current.onLink((rendered || raw).dataset.target, (rendered || raw).dataset.anchor || "");
+            return true;
+          }
+        },
       }),
-    });
+    ],
+  });
+
+  useEffect(() => {
+    view.current = new EditorView({ parent: host.current, state: novoEstado("") });
     const h = host.current, open = (e) => cb.current.onLink(e.detail);
     h.addEventListener("cm-open-link", open);
     return () => { h.removeEventListener("cm-open-link", open); view.current.destroy(); };
@@ -48,9 +52,11 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, num
   useImperativeHandle(ref, () => ({
     getText: () => view.current.state.doc.toString(),
     setText: (t) => {
+      const fm = fmEnd(Text.of(t.split("\n")));
       silent.current = true;
-      view.current.dispatch({ changes: { from: 0, to: view.current.state.doc.length, insert: t }, selection: { anchor: fmEnd(Text.of(t.split("\n"))) ? Math.min(fmEnd(Text.of(t.split("\n"))) + 1, t.length) : 0 }, scrollIntoView: true });
+      view.current.setState(novoEstado(t, fm ? Math.min(fm + 1, t.length) : 0));
       silent.current = false;
+      view.current.dispatch({ scrollIntoView: true });
       view.current.contentDOM.blur(); // sem foco, nada fica com a fonte aberta ao abrir a nota
     },
     /** Troca o texto mudando só o trecho diferente; segue o fluxo normal (onChange, desfazer). */

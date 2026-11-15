@@ -74,7 +74,7 @@ export async function lerCiclos(items) {
   const anoLetivo = anos.sort().pop() ?? null;
   const plan = anoLetivo ? planejamentoDoAno(items, anoLetivo) : null;
   const linhas = plan ? lerLinhasPlanejamento(await invoke("read_note", { path: plan.path }).catch(() => "")) : {};
-  const alvo = items.filter((i) => /^Acervo\/Ciclos\/[^/]+\.md$/.test(i.rel) || (LEGADO.test(i.rel) && LEGADO.exec(i.rel)[1] === anoLetivo));
+  const alvo = items.filter((i) => /^Acervo\/Ciclos\/.+\.md$/.test(i.rel) || (LEGADO.test(i.rel) && LEGADO.exec(i.rel)[1] === anoLetivo));
   const list = await Promise.all(alvo.map(async (i) => {
     try {
       const c = parseCiclo(i, await invoke("read_note", { path: i.path }));
@@ -192,4 +192,23 @@ export async function salvarAulas(ciclo, acao) {
   const text = await invoke("read_note", { path: ciclo.path });
   await invoke("save_note", { path: ciclo.path, text: acao(text) });
   return reparse(ciclo, { path: ciclo.path, name: ciclo.name }, await invoke("read_note", { path: ciclo.path }));
+}
+
+/** Modelo de um ciclo novo: 16 aulas em branco para preencher (a tabela `## Aulas` precisa existir para editar). */
+export function modeloCiclo() {
+  const linhas = Array.from({ length: 16 }, (_, i) => `| ${i + 1} |  |  |`).join("\n");
+  return `---\ntipo: ciclo\n---\n## Conteúdos\n\n- \n\n## Habilidades\n\n\n## Aulas\n\n| # | Conteúdo | Recurso |\n| --- | --- | --- |\n${linhas}\n`;
+}
+
+/** Cria `Acervo/Ciclos/<Título>.md` com o modelo; devolve o caminho (erro se já existir um com esse nome). */
+export async function criarCicloVazio(items, titulo, pasta = "") {
+  const nome = titulo.replace(/\[\[|\]\]/g, "").replace(/[\\/:*?"<>|#^]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+  if (!nome) throw new Error("O ciclo não tem título.");
+  const igual = items.find((i) => i.name.toLowerCase() === nome.toLowerCase());
+  if (igual) throw new Error(`Já existe uma nota chamada “${igual.name}”.`);
+  const root = items[0].path.slice(0, -items[0].rel.length);
+  await invoke("create_folder", { dir: root + "Acervo/", name: "Ciclos" }).catch(() => {});
+  const path = await invoke("create_note", { dir: root + "Acervo/Ciclos/" + (pasta ? pasta + "/" : ""), name: nome });
+  await invoke("save_note", { path, text: modeloCiclo() });
+  return path;
 }

@@ -21,12 +21,10 @@ import App from "./App";
 import { ToastProvider } from "@/components/ui/estado";
 import { aplicarTema, aplicarEstiloCallout, lerTemas } from "./lib/temas";
 import { aplicarFonte, fonteSalva } from "./lib/fontes";
-import { aplicarIcones } from "./lib/icones";
 import { aplicarForma } from "./lib/forma";
 // Evita o "flash" do tema errado antes do React montar.
 try { const t = lerTemas(); aplicarTema(t.claro, t.escuro, JSON.parse(localStorage.getItem("tema") || '"light"') === "dark"); } catch { /* tema padrão */ }
 try { aplicarFonte(fonteSalva(), JSON.parse(localStorage.getItem("tamanhoTexto") || "17")); } catch { /* padrão */ }
-try { aplicarIcones(JSON.parse(localStorage.getItem("icones") || '"padrao"')); } catch { /* padrão */ }
 try { aplicarForma(JSON.parse(localStorage.getItem("forma") || '"padrao"')); } catch { /* padrão */ }
 try { aplicarEstiloCallout(JSON.parse(localStorage.getItem("estiloCallout") || '"preenchido"')); } catch { /* padrão */ }
 createRoot(document.getElementById("root")).render(<ToastProvider><App /></ToastProvider>);

@@ -8,13 +8,14 @@ import { Anos } from "@/components/ui/Anos";
 import { cn } from "@/lib/utils";
 
 
-const SITUACOES = [
+export const SITUACOES = [
   { id: "pendente", nome: "Pendente", ponto: "bg-muted-foreground/50" },
   { id: "andamento", nome: "Em andamento", ponto: "bg-warn" },
   { id: "finalizado", nome: "Finalizada", ponto: "bg-ok" },
 ];
 const sit = (id) => SITUACOES.find((s) => s.id === id) ?? SITUACOES[0];
-const ANOS = ["6", "7", "8", "9"];
+export const ANOS = ["6", "7", "8", "9"];
+export const quando = (s) => (s ? new Date(s * 1000).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).replace(",", "") : "—");
 
 /** Metadados de uma aula, lidos do frontmatter e do corpo: ano(s), situação, assuntos, seções e um trecho para a prévia. */
 export function metaDe(texto) {
@@ -34,7 +35,7 @@ export function metaDe(texto) {
   };
 }
 
-function Situacao({ id, className }) {
+export function Situacao({ id, className }) {
   const s = sit(id);
   return <span className={cn("inline-flex items-center gap-1.5 text-xs text-muted-foreground", className)}><span aria-hidden className={cn("h-2 w-2 rounded-full", s.ponto)} />{s.nome}</span>;
 }
@@ -92,13 +93,14 @@ export function AulasPage({ items, dirs, onOpen, onCreate, pasta, setPasta, onRe
         { id: "sit", opcoes: SITUACOES.map((s) => ({ id: s.id, nome: s.nome, ponto: s.ponto })), de: (i) => [i.situacao] },
       ]}
       alternadores={[{ id: "mapa", nome: "Com mindmap", Icone: Network, teste: (i) => i.mindmap }]}
-      ordens={[{ id: "ano", nome: "Ano", chave: (i) => i.anos[0] ?? "9z" }, { id: "situacao", nome: "Situação", chave: (i) => String(SITUACOES.findIndex((s) => s.id === i.situacao)) }]}
+      ordens={[{ id: "ano", nome: "Ano", chave: (i) => i.anos[0] ?? "9z" }, { id: "situacao", nome: "Situação", chave: (i) => String(SITUACOES.findIndex((s) => s.id === i.situacao)) }, { id: "modificado", nome: "Modificado em", chave: (i) => String(i.modified ?? 0).padStart(12, "0") }]}
       faixa={(i) => i.anos.map(corAno)}
       previa={(i) => <p className="text-[11px] leading-relaxed text-muted-foreground">{i.carregada ? (i.trecho || "Aula ainda sem texto.") : "…"}</p>}
       meta={(i) => <><Situacao id={i.situacao} /><Anos anos={i.anos} />{i.mindmap && <Network aria-label="Tem mindmap" className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.6} />}{i.atividades && <ListChecks aria-label="Tem atividades" className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.6} />}</>}
       colunas={[
         { id: "ano", nome: "Ano", w: "w-20", ordem: "ano", render: (i) => (i.anos.length ? <Anos anos={i.anos} /> : <span className="text-xs text-muted-foreground">—</span>) },
         { id: "sit", nome: "Situação", w: "w-32", ordem: "situacao", render: (i) => <Situacao id={i.situacao} /> },
+        { id: "mod", nome: "Modificado em", w: "w-36", ordem: "modificado", render: (i) => <span className="text-xs text-muted-foreground">{quando(i.modified)}</span> },
         { id: "sec", nome: "Seções", w: "w-14", render: (i) => <span className="flex items-center gap-1.5 text-muted-foreground">{i.mindmap && <Network aria-label="Tem mindmap" className="h-3.5 w-3.5" strokeWidth={1.6} />}{i.atividades && <ListChecks aria-label="Tem atividades" className="h-3.5 w-3.5" strokeWidth={1.6} />}</span> },
       ]}
       onOpen={(i) => onOpen(i.path)} onRename={onRename} onMove={onMove} onDelete={onDelete} onNovaPasta={onNovaPasta} onImportar={importar}

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { marked } from "marked";
+import { html } from "@/lib/aulaHtml";
+import { PainelGramatica } from "@/components/PainelGramatica";
 import { invoke } from "@/lib/api";
 import { parseAula, mermaidDe, secoesBrutas, trocarSecao, dadosDaAula } from "@/lib/aula";
+import { acionarBotao } from "@/lib/blocoAcoes";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { lerCiclos } from "@/lib/ciclos";
-import { ChevronDown, ChevronRight, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Presentation } from "lucide-react";
 import { Chips, Text } from "@/components/RightPanel";
 import { Editor } from "@/components/Editor";
 import { Carregando, Erro } from "@/components/ui/estado";
@@ -30,23 +32,11 @@ function variaveisMermaid() {
   return v;
 }
 
-const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-const LABEL = { tip: "Dica", professor: "Dica para o professor", note: "Nota", abstract: "Resumo", info: "Informação", warning: "Atenção", attention: "Atenção", example: "Exemplo", question: "Pergunta", important: "Importante" };
-marked.use({
-  gfm: true,
-  renderer: {
-    html: ({ text }) => esc(text), // sem HTML cru vindo do arquivo
-    blockquote(token) {
-      const inner = this.parser.parse(token.tokens), m = /^<p>\[!([\w-]+)\][+-]?\s*/.exec(inner);
-      return m ? `<div class="aula-callout aula-callout-${m[1].toLowerCase()}"><div class="aula-callout-t">${LABEL[m[1].toLowerCase()] ?? m[1]}</div>${inner.replace(m[0], "<p>")}</div>` : `<blockquote>${inner}</blockquote>`;
-    },
-  },
-});
-const html = (md) => marked.parse(md.replace(/!?\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2").replace(/!?\[\[([^\]]+)\]\]/g, "$1"));
+export { html };
 
 function Markdown({ md }) {
   const h = useMemo(() => html(md), [md]);
-  return <div className="aula-md" dangerouslySetInnerHTML={{ __html: h }} />;
+  return <div className="aula-md" onClick={(e) => { acionarBotao(e.target); }} dangerouslySetInnerHTML={{ __html: h }} />;
 }
 
 /** Mapa mental em Mermaid (carregado só quando a aba é aberta). Se o código falhar, mostra o texto-fonte. */
@@ -67,6 +57,18 @@ function Mindmap({ codigo }) {
   return <div className="overflow-auto rounded-xl border bg-background p-3 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
+/** Só monta os filhos quando o bloco chega perto da tela (o Mermaid de seções lá embaixo não pesa na abertura). */
+function QuandoVisivel({ children, altura = 120 }) {
+  const ref = useRef(null), [ver, setVer] = useState(typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    if (ver || !ref.current) return;
+    const o = new IntersectionObserver(([e]) => { if (e.isIntersecting) { setVer(true); o.disconnect(); } }, { rootMargin: "300px" });
+    o.observe(ref.current);
+    return () => o.disconnect();
+  }, [ver]);
+  return ver ? children : <div ref={ref} style={{ minHeight: altura }} />;
+}
+
 /** Seção editável com o mesmo editor ao vivo do modo Markdown; `onChange(md)` recebe o corpo da seção. */
 export function EditorSecao({ md, onChange, onSave, onLink, numeros, linhaInicial }) {
   const ref = useRef(null);
@@ -75,9 +77,9 @@ export function EditorSecao({ md, onChange, onSave, onLink, numeros, linhaInicia
 }
 
 /** Abas minimalistas: texto com filete sob a ativa; a linha que corre sob todas separa o cabeçalho do editor. */
-export function Abas({ rotulo, abas, atual, onSelect, extra }) {
+export function Abas({ rotulo, abas, atual, onSelect, extra, mt = "mt-5" }) {
   return (
-    <div role="tablist" aria-label={rotulo} className="mt-5 flex flex-wrap items-end gap-x-1 border-b">
+    <div role="tablist" aria-label={rotulo} className={cn(mt, "flex flex-wrap items-end gap-x-1 border-b")}>
       {abas.map((x) => (
         <button key={x.id} role="tab" aria-selected={atual === x} onClick={() => onSelect(x)}
           className={cn("-mb-px flex h-9 items-center rounded-t-md border-b-2 px-3 text-sm transition-colors", atual === x ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:bg-accent/60 hover:text-foreground")}>{x.nome}</button>
@@ -170,7 +172,13 @@ function useCiclosDaAula(items, nome) {
 /** Visão de uma aula do acervo: abas (objetivos, habilidades, conteúdo, mindmap, atividades) e as anotações na margem. */
 export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename, info, items }) {
   const [t, setT] = useState(textoInicial ?? null), [erro, setErro] = useState(""), [aba, setAba] = useState(null);
-  const [propsAbertas, setPropsAbertas] = useState(false);
+  const [propsAbertas, setPropsAbertas] = useState(false), [vista, setVista] = useState(null);
+  const [apresentar, setApresentar] = useState(() => { try { return localStorage.getItem("margem.aula.apresentacao") === "1"; } catch { return false; } });
+  const rolagem = useRef(null);
+  const [gram, setGram] = useState(null); // gramática aberta no painel lateral: { item, anchor }
+  const gramaticas = (nome) => { const n = nome.split("/").pop().trim().toLowerCase(); return items?.find((i) => /^Acervo\/Gram[aá]tica\//.test(i.rel) && i.name.toLowerCase() === n) ?? null; };
+  // `[[Crase]]` de uma gramática abre no painel; os demais links seguem o caminho de sempre.
+  const aoLink = (alvo, ancora = "") => { const it = gramaticas(alvo); if (it) setGram({ item: it, anchor: ancora }); else onLink(alvo, ancora); };
   const ciclosDaAula = useCiclosDaAula(items, item.name);
   const texto = useRef(textoInicial ?? null), semLer = useRef(textoInicial != null), pend = useRef(null), timer = useRef(null), caminho = useRef(item.path);
   caminho.current = item.path;
@@ -178,7 +186,9 @@ export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename
     clearTimeout(timer.current);
     const p = pend.current; if (!p || texto.current == null) return;
     pend.current = null;
-    const novo = trocarSecao(texto.current, p.id, p.md);
+    // várias seções podem estar pendentes (página única): de trás para frente, para um `##` novo não deslocar as demais
+    let novo = texto.current;
+    Object.keys(p.md).sort((x, y) => +y.slice(1) - +x.slice(1)).forEach((id) => { novo = trocarSecao(novo, id, p.md[id]); });
     texto.current = novo; setT(novo);
     try { await invoke("save_note", { path: p.path, text: novo }); } catch (e) { setErro(String(e)); }
   };
@@ -199,23 +209,53 @@ export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename
       if (re.test(x)) await invoke("save_note", { path: novoPath, text: x.replace(re, `# ${novoNome}`) });
     } catch { /* sem ajuste do título interno */ }
   };
-  const editar = (id, md) => { pend.current = { id, md, path: caminho.current }; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
+  const editar = (id, md) => { pend.current = { path: caminho.current, md: { ...(pend.current?.path === caminho.current ? pend.current.md : {}), [id]: md } }; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
   const a = useMemo(() => (t == null ? null : parseAula(t)), [t]);
-  useEffect(() => { setAba(null); }, [item.path]);
+  useEffect(() => { setAba(null); setVista(null); }, [item.path]);
+  const alternar = async () => { await gravar(); const v = !apresentar; setApresentar(v); try { localStorage.setItem("margem.aula.apresentacao", v ? "1" : "0"); } catch { /* sem armazenamento */ } };
+  // Destaque da seção atual ao rolar: a última cujo topo já passou da barra fixa.
+  const aoRolar = () => {
+    const r = rolagem.current; if (!r || apresentar) return;
+    const topo = r.getBoundingClientRect().top + 90, fim = r.scrollTop + r.clientHeight >= r.scrollHeight - 4;
+    const els = [...r.querySelectorAll("[data-sec]")];
+    const el = fim ? els[els.length - 1] : els.filter((e) => e.getBoundingClientRect().top <= topo).pop() ?? els[0];
+    setVista(el?.dataset.sec ?? null);
+  };
+  const ir = async (x) => {
+    await gravar();
+    if (apresentar) { setAba(x.id); return; }
+    setVista(x.id); rolagem.current?.querySelector(`[data-sec="${x.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   if (erro) return <Erro>{erro}</Erro>;
   if (!a) return <Carregando>Lendo a aula…</Carregando>;
 
   const abas = [...(a.intro ? [{ id: "intro", nome: "Introdução", md: a.intro }] : []), ...a.secoes];
-  const atual = abas.find((x) => x.id === aba) ?? abas.find((x) => x.tipo === "conteudo") ?? abas[0];
-  const brutas = secoesBrutas(texto.current ?? t), bruta = atual && brutas.find((x) => x.id === atual.id);
+  const brutas = secoesBrutas(texto.current ?? t);
+  const padrao = abas.find((x) => x.tipo === "conteudo") ?? abas[0];
+  const atual = apresentar ? (abas.find((x) => x.id === aba) ?? padrao) : (abas.find((x) => x.id === vista) ?? abas[0]);
   const chips = [a.meta.status, a.meta.ano && `${a.meta.ano}º ano`, a.meta.assuntos].filter(Boolean);
   const dados = dadosDaAula(a, t);
   const Seta = propsAbertas ? ChevronDown : ChevronRight;
+  const mostradas = apresentar ? (atual ? [atual] : []) : abas;
+  const secao = (x) => {
+    const bruta = brutas.find((b) => b.id === x.id);
+    return (
+      <section key={x.id} data-sec={x.id} aria-label={x.nome} className="scroll-mt-16 pb-10 last:pb-4">
+        {bruta ? (
+          <>
+            {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
+            {mermaidDe(x.md) && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={mermaidDe(x.md)} /></QuandoVisivel></div>}
+            <EditorSecao key={`${item.path}:${x.id}:${brutas.length}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
+          </>
+        ) : <><p className="mb-2 text-xs text-muted-foreground">Este trecho (antes do primeiro ##) se edita no modo Markdown.</p><Markdown md={x.md} /></>}
+      </section>
+    );
+  };
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
-      {/* Aula (largura limitada para leitura) + Margem (o resto da largura) */}
-      <div className="grid items-stretch gap-x-10 px-8 py-8" style={{ gridTemplateColumns: "minmax(0, 48rem) minmax(15rem, 1fr)" }}>
-        <div className="col-start-1 row-start-1 min-w-0">
+    <div className="flex min-h-0 flex-1">
+    <div ref={rolagem} onScroll={aoRolar} className="min-h-0 min-w-0 flex-1 overflow-auto">
+      <div className="px-8 pt-8">
+        <div className="max-w-3xl">
           <div className="text-xs text-muted-foreground">Aula do acervo</div>
           <TituloEditavel nome={item.name} onRename={onRename ? renomear : null} />
           <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -223,21 +263,22 @@ export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename
             <button onClick={() => setPropsAbertas(!propsAbertas)} aria-expanded={propsAbertas} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Seta className="h-3.5 w-3.5" />Propriedades</button>
           </div>
           {propsAbertas && <Propriedades texto={texto.current ?? t} onSet={mudarProp} status={info?.status?.length ? info.status : STATUS} />}
-          <Abas rotulo="Partes da aula" abas={abas} atual={atual} onSelect={async (x) => { await gravar(); setAba(x.id); }} />
         </div>
-        <div className="col-start-1 row-start-2 min-w-0 pt-6">
-          <div>
-            {bruta && (
-              <>
-                {atual.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
-                {mermaidDe(atual.md) && <div className="mb-4"><Mindmap codigo={mermaidDe(atual.md)} /></div>}
-                <EditorSecao key={`${item.path}:${atual.id}`} md={bruta.md} onChange={(md) => editar(atual.id, md)} onSave={gravar} onLink={onLink} numeros={numeros} linhaInicial={bruta.linha0} />
-              </>)}
-            {atual && !bruta && <><p className="mb-2 text-xs text-muted-foreground">Este trecho (antes do primeiro ##) se edita no modo Markdown.</p><Markdown md={atual.md} /></>}
-            {!atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
-          </div>
+      </div>
+      {/* Sumário: chips que ficam presos no topo ao rolar; na página única levam à seção, na apresentação trocam a seção mostrada */}
+      <nav aria-label="Sumário da aula" className="sticky top-0 z-10 bg-background/95 px-8 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        <div className="max-w-3xl">
+          <Abas rotulo="Partes da aula" abas={abas} atual={atual} onSelect={ir} mt="mt-0"
+            extra={<button onClick={alternar} aria-pressed={apresentar} title="Mostra uma seção por vez, para projetar" className={cn("mb-1 ml-auto flex h-7 items-center gap-1.5 rounded-md px-2 text-xs", apresentar ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><Presentation className="h-3.5 w-3.5" />Apresentação</button>} />
         </div>
-        <aside aria-label="Margem" className="col-start-2 row-start-2 min-w-0 space-y-6 pt-6">
+      </nav>
+      {/* Aula (largura limitada para leitura) + Margem (o resto da largura) */}
+      <div className="grid items-start gap-x-10 px-8 pb-8" style={{ gridTemplateColumns: gram ? "minmax(0, 1fr)" : "minmax(0, 48rem) minmax(15rem, 1fr)" }}>
+        <div className="col-start-1 row-start-1 min-w-0 pt-6">
+          {mostradas.map(secao)}
+          {!atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
+        </div>
+        <aside aria-label="Margem" className={cn("min-w-0 space-y-6 pt-6", gram ? "col-start-1 row-start-2" : "sticky top-16 col-start-2 row-start-1 max-h-[calc(100vh-5rem)] overflow-auto")}>
           <section className="flex flex-col gap-3 border-l-2 border-err pl-4">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Na margem</h2>
             {a.notas.length === 0
@@ -262,6 +303,8 @@ export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename
           </section>
         </aside>
       </div>
+    </div>
+    {gram && <PainelGramatica item={gram.item} anchor={gram.anchor} gramaticas={gramaticas} onNavegar={(it, anchor) => setGram({ item: it, anchor })} onAbrir={onLink} onFechar={() => setGram(null)} />}
     </div>
   );
 }

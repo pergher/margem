@@ -8,7 +8,7 @@ const CODIGOS = {
   "sem-tipo": "Arquivos sem tipo", "tipo-desconhecido": "Tipo desconhecido", "campo-vazio": "Campos vazios ou ausentes", "campo-obsoleto": "Campos obsoletos",
   "link-quebrado": "Links quebrados", "ancora-quebrada": "Âncoras quebradas", "marca-pendente": "Marcas de transcrição pendentes", "valor-invalido": "Valores inválidos",
   "conteudo-desconhecido": "Conteúdos fora do vocabulário", "aguardando-revisao": "Transcrições aguardando revisão", "total-diverge": "Total diverge da soma",
-  "nota-fora-da-rubrica": "Nota fora da rubrica", "sem-recuperacao": "Ciclo sem recuperação", "data-invalida": "Datas inválidas", "aula-sem-recurso": "Aulas sem recurso", yaml: "Frontmatter inválido",
+  "nota-fora-da-rubrica": "Nota fora da rubrica", "sem-recuperacao": "Ciclo sem recuperação", "data-invalida": "Datas inválidas", "aula-sem-recurso": "Aulas sem recurso", yaml: "Frontmatter inválido", "arquivo-ilegivel": "Arquivos que não são UTF-8 (ignorados)", "nome-repetido": "Notas com nome repetido",
 };
 const COR = { erro: "text-err", aviso: "text-warn", info: "text-muted-foreground" };
 
@@ -33,6 +33,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
   const toast = useToast();
   const [filtro, setFiltro] = useState("");
   const [aberto, setAberto] = useState({});
+  const [comInfo, setComInfo] = useState(false); // avisos de nível "info" ficam escondidos até pedir
   const [valores, setValores] = useState({});
   const carregar = () => invoke("vault_health").then(setLista).catch((e) => setErro(String(e)));
   useEffect(() => { carregar(); }, []);
@@ -41,11 +42,12 @@ export function SaudePage({ items, onOpen, onRefresh }) {
   const grupos = useMemo(() => {
     const f = filtro.trim().toLowerCase(), g = {};
     for (const x of lista ?? []) {
+      if (!comInfo && x.severity === "info") continue;
       if (f && !(`${x.note} ${x.msg}`.toLowerCase().includes(f))) continue;
       (g[x.code] ??= []).push(x);
     }
     return Object.entries(g).sort((a, b) => b[1].length - a[1].length);
-  }, [lista, filtro]);
+  }, [lista, filtro, comInfo]);
 
   if (erro) return <Erro>Erro: {erro}</Erro>;
   if (!lista) return <div className="p-8 text-sm text-muted-foreground">Verificando o vault…</div>;
@@ -81,14 +83,16 @@ export function SaudePage({ items, onOpen, onRefresh }) {
     return null;
   }
 
-  const total = lista.length, erros = lista.filter((x) => x.severity === "erro").length;
+  const visiveis = lista.filter((x) => comInfo || x.severity !== "info"), infos = lista.length - visiveis.length;
+  const total = visiveis.length, erros = visiveis.filter((x) => x.severity === "erro").length;
   return (
     <div className="min-h-0 flex-1 overflow-auto p-8">
       <div className="mb-1 flex flex-wrap items-baseline gap-3">
         <h1 className="font-serif text-3xl font-semibold">Saúde do vault</h1>
-        <span className="text-xs text-muted-foreground">{total} aviso(s){erros ? `, ${erros} erro(s)` : ""} · {lista.length ? Object.keys(Object.fromEntries(lista.map((x) => [x.code, 1]))).length : 0} tipos de problema</span>
+        <span className="text-xs text-muted-foreground">{total} aviso(s){erros ? `, ${erros} erro(s)` : ""} · {new Set(visiveis.map((x) => x.code)).size} tipos de problema</span>
         <div className="flex-1" />
         <input value={filtro} onChange={(e) => setFiltro(e.target.value)} placeholder="Filtrar por arquivo ou texto" aria-label="Filtrar avisos" className="w-56 rounded border bg-background px-2 py-1 text-sm" />
+        {(infos > 0 || comInfo) && <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={comInfo} onChange={(e) => setComInfo(e.target.checked)} />Mostrar observações{!comInfo && ` (${infos})`}</label>}
         <button onClick={() => { setLista(null); carregar(); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Verificar de novo</button>
       </div>
       <div className="mb-5 text-xs text-muted-foreground">Cada grupo é um tipo de problema; clique no nome do arquivo para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias (reversível pela lixeira .lixeira).</div>
@@ -101,7 +105,7 @@ export function SaudePage({ items, onOpen, onRefresh }) {
               <span className="w-5 text-muted-foreground">{aberto[code] ? "▾" : "▸"}</span>
               <span className="font-medium">{CODIGOS[code] ?? code}</span>
               <span className={cn("rounded-full bg-muted px-2 text-xs", COR[xs[0].severity])}>{xs.length}</span>
-              <span className="text-xs text-muted-foreground">{xs[0].severity}</span>
+              <span className="text-xs text-muted-foreground">{{ erro: "erro", aviso: "aviso", info: "observação" }[xs[0].severity] ?? xs[0].severity}</span>
             </button>
             {aberto[code] && (
               <ul className="border-t px-4 py-1 text-xs">
@@ -122,13 +126,6 @@ export function SaudePage({ items, onOpen, onRefresh }) {
         ))}
       </div>
 
-      <div className="mt-6 rounded-xl bg-muted p-4 text-xs">
-        <div className="mb-1 font-semibold">Aplicar no vault real (sempre com simulação e cópia antes)</div>
-        <div className="leading-7 text-muted-foreground">
-          1. Copie a pasta do vault (ex.: <code>cp -r Escola Escola-antes</code>). 2. Simule: <code>vault reorganizar &lt;pasta&gt;</code> e <code>vault migrar &lt;pasta&gt;</code> (sem <code>--aplicar</code> só mostram o que mudaria).
-          3. Confira o resultado e só então rode com <code>--aplicar</code>. 4. Volte aqui e clique em “Verificar de novo”.
-        </div>
-      </div>
     </div>
   );
 }
