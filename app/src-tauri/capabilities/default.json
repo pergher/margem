@@ -1,1 +1,1 @@
-{ "identifier": "default", "windows": ["main"], "permissions": ["core:default", "dialog:default", "updater:default", "process:allow-restart"] }
+{ "identifier": "default", "windows": ["main"], "permissions": ["core:default", "core:window:allow-destroy", "dialog:default", "updater:default", "process:allow-restart"] }

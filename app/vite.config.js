@@ -20,7 +20,7 @@ function devVault() {
       s.middlewares.use("/__vault", (req, res) => {
         const u = new URL(req.url, "http://x");
         const send = (o) => { res.setHeader("content-type", "application/json"); res.end(JSON.stringify(o)); };
-        if (u.pathname === "/list") return send(walk(root).map((p) => ({ name: path.basename(p, ".md"), path: p, rel: path.relative(root, p).split(path.sep).join("/") })));
+        if (u.pathname === "/list") return send(walk(root).map((p) => ({ name: path.basename(p, ".md"), path: p, rel: path.relative(root, p).split(path.sep).join("/"), modified: Math.floor(fs.statSync(p).mtimeMs / 1000) })));
         const p = path.resolve(u.searchParams.get("path") || "");
         if (u.pathname === "/read" && p.startsWith(root)) { if (!fs.existsSync(p)) { res.statusCode = 404; return res.end(); } return send(fs.readFileSync(p, "utf8")); }
         if (u.pathname === "/search") {
@@ -65,7 +65,7 @@ function devVault() {
           }
         }
         if (u.pathname === "/info") {
-          const REQ = { aula: ["ano", "status"], plano: ["ano", "trimestre"], ciclo: ["turma", "objetivo", "inicio", "fim", "status"], texto: ["titulo", "autor", "genero", "fonte"], banco: ["ano", "conteudos", "textos"], prova: ["turma", "data", "questoes", "valor"], correcao: ["turma", "mes", "atividade", "status"] };
+          const REQ = { aula: ["ano", "status"], plano: ["ano", "trimestre"], ciclo: [], planejamento: ["ano_letivo"], diario: ["ano", "turma", "semana", "transcricao"], aluno: ["ano", "turma"], semana: ["ano", "rotulo"], calendario: ["inicio", "fim", "feriados", "turmas"], texto: ["titulo", "autor", "genero", "fonte", "dominio_publico", "foco", "conteudos", "alertas"], banco: ["ano", "conteudos", "conteudos_excluidos", "textos"], prova: ["turma", "data", "questoes", "valor"], correcao: ["turma", "mes", "atividade", "rubrica", "status", "transcricao"] }; // espelha `required_fields` de src/validate.rs
           const name = path.basename(p, ".md");
           const text = fs.existsSync(p) ? fs.readFileSync(p, "utf8") : "";
           const tipo = /^tipo:\s*(\S+)/m.exec(text.split(/\n---/)[0])?.[1] ?? null;

@@ -6,11 +6,17 @@ use serde::Serialize;
 use tauri::{Manager, State};
 use vault_core::vault::Vault;
 
-struct App { root_cell: Mutex<PathBuf>, vault: Mutex<Option<Vault>> }
+/// Trava o Mutex mesmo que outro comando tenha dado pânico com ele aberto: um erro isolado não derruba todos os comandos seguintes.
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> { m.lock().unwrap_or_else(|e| e.into_inner()) }
+
+/// Última versão (hash do texto) que o app leu ou gravou de cada nota: serve para notar que o arquivo mudou por fora.
+type Vistos = Mutex<std::collections::HashMap<PathBuf, u64>>;
+
+struct App { root_cell: Mutex<PathBuf>, vault: Mutex<Option<Vault>>, vistos: Vistos }
 
 impl App {
-    fn new(root: PathBuf) -> Self { App { root_cell: Mutex::new(root), vault: Mutex::new(None) } }
-    fn root(&self) -> PathBuf { self.root_cell.lock().unwrap().clone() }
+    fn new(root: PathBuf) -> Self { App { root_cell: Mutex::new(root), vault: Mutex::new(None), vistos: Mutex::new(Default::default()) } }
+    fn root(&self) -> PathBuf { lock(&self.root_cell).clone() }
 }
 
 /// Caminho para o JS: sempre com `/` (o Windows aceita) e sem o prefixo `\\?\`.
@@ -21,11 +27,11 @@ fn canon(p: &Path) -> std::io::Result<PathBuf> { dunce::canonicalize(p) }
 fn simp(p: &Path) -> PathBuf { dunce::simplified(p).to_path_buf() }
 
 #[derive(Serialize)]
-struct Item { name: String, path: String, rel: String, tipo: Option<String> }
+struct Item { name: String, path: String, rel: String, tipo: Option<String>, /** última modificação, em segundos desde 1970 */ modified: Option<u64> }
 
 fn load(app: &App) -> Result<(), String> {
     let v = Vault::open(&app.root()).map_err(|e| e.to_string())?;
-    *app.vault.lock().unwrap() = Some(v);
+    *lock(&app.vault) = Some(v);
     Ok(())
 }
 
@@ -58,10 +64,11 @@ fn agendar_reabertura() -> Result<(), String> {
 #[tauri::command]
 fn list_notes(app: State<App>) -> Result<Vec<Item>, String> {
     load(&app)?;
-    let g = app.vault.lock().unwrap();
+    let g = lock(&app.vault);
     Ok(g.as_ref().unwrap().notes.iter().map(|n| Item {
         name: n.name.clone(), path: slash(&n.path),
         rel: n.path.strip_prefix(&app.root()).unwrap_or(&n.path).to_string_lossy().replace('\\', "/"), tipo: n.tipo().map(String::from),
+        modified: std::fs::metadata(&n.path).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_secs()),
     }).collect())
 }
 
@@ -79,9 +86,65 @@ fn inside_ext(root: &Path, p: &str, exts: &[&str]) -> Result<PathBuf, String> {
     if p.starts_with(&root) && p.extension().is_some_and(|x| exts.iter().any(|e| x == *e)) { Ok(p) } else { Err("fora do vault".into()) }
 }
 
+fn hash_texto(t: &str) -> u64 {
+    use std::hash::{Hash, Hasher};
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    t.hash(&mut h);
+    h.finish()
+}
+
+/// Grava sem deixar o arquivo pela metade: escreve num temporário ao lado e troca pelo original (uma queda no meio
+/// mantém a versão antiga inteira).
+fn gravar_atomico(p: &Path, text: &str) -> Result<(), String> {
+    use std::io::Write;
+    let nome = p.file_name().ok_or("caminho inválido")?.to_string_lossy();
+    let tmp = p.with_file_name(format!("{nome}.margem-tmp"));
+    let r = (|| -> std::io::Result<()> {
+        let mut f = std::fs::File::create(&tmp)?;
+        f.write_all(text.as_bytes())?;
+        f.sync_all()?;
+        std::fs::rename(&tmp, p)
+    })();
+    if let Err(e) = r { let _ = std::fs::remove_file(&tmp); return Err(e.to_string()); }
+    Ok(())
+}
+
+/// Grava a nota, recusando (erro que começa com `conflito:`) se o arquivo mudou no disco desde que o app o viu pela última vez.
+/// Com `forcar`, sobrescreve; `antes` roda logo antes de gravar (aqui: guardar a versão do disco no histórico).
+fn gravar_nota(vistos: &Vistos, p: &Path, text: &str, forcar: bool, antes: impl FnOnce(bool)) -> Result<(), String> {
+    let no_disco = std::fs::read_to_string(p).ok();
+    let conhecido = lock(vistos).get(p).copied();
+    let mudou = matches!((&no_disco, conhecido), (Some(d), Some(h)) if hash_texto(d) != h);
+    if mudou && !forcar { return Err("conflito: o arquivo foi alterado fora do Margem desde a última leitura".into()); }
+    antes(mudou);
+    gravar_atomico(p, text)?;
+    lock(vistos).insert(p.to_path_buf(), hash_texto(text));
+    Ok(())
+}
+
 #[tauri::command]
 fn read_note(app: State<App>, path: String) -> Result<String, String> {
-    std::fs::read_to_string(inside(&app, &path)?).map_err(|e| e.to_string())
+    let p = inside(&app, &path)?;
+    let t = std::fs::read_to_string(&p).map_err(|e| e.to_string())?;
+    lock(&app.vistos).insert(p, hash_texto(&t));
+    Ok(normalizar(t))
+}
+
+/// Para as telas: sem BOM e com fim de linha `\n` (o editor já trabalha assim; as telas leem frontmatter e tabelas por `\n`).
+/// O arquivo em disco só muda se o usuário salvar a nota.
+fn normalizar(t: String) -> String {
+    let t = t.strip_prefix('\u{feff}').map(str::to_string).unwrap_or(t);
+    if t.contains('\r') { t.replace("\r\n", "\n") } else { t }
+}
+
+/// Já existe outra nota com este nome (em qualquer pasta)? Os links resolvem por nome, então repetir deixa `[[nome]]` ambíguo.
+fn nome_em_uso(app: &App, nome: &str, exceto: Option<&Path>) -> Result<Option<String>, String> {
+    let root = app.root();
+    let v = Vault::open(&root).map_err(|e| e.to_string())?;
+    let exceto = exceto.and_then(|p| canon(p).ok());
+    Ok(v.notes.iter()
+        .find(|n| n.name.trim().to_lowercase() == nome.trim().to_lowercase() && canon(&n.path).ok() != exceto)
+        .map(|n| n.path.strip_prefix(&root).unwrap_or(&n.path).to_string_lossy().replace('\\', "/")))
 }
 
 /// Arquivo auxiliar `.json` dentro do vault (ex.: `_dados.json` de uma correção); `None` se não existir.
@@ -110,10 +173,11 @@ fn save_attachment(app: State<App>, dir: String, name: String, data: Vec<u8>) ->
 use vault_core::historico::{hist_dir, hist_ids, mover_historico, snapshot};
 
 #[tauri::command]
-fn save_note(app: State<App>, path: String, text: String) -> Result<(), String> {
+fn save_note(app: State<App>, path: String, text: String, force: Option<bool>) -> Result<(), String> {
     let p = inside(&app, &path)?;
-    let _ = snapshot(&root_of(&app)?, &p, false); // falha no histórico nunca impede de salvar
-    std::fs::write(p, text).map_err(|e| e.to_string())
+    let root = root_of(&app)?;
+    // falha no histórico nunca impede de salvar; ao sobrescrever uma mudança externa, a versão do disco sempre vai para o histórico
+    gravar_nota(&app.vistos, &p, &text, force.unwrap_or(false), |externa| { let _ = snapshot(&root, &p, externa); })
 }
 
 #[derive(Serialize)]
@@ -142,13 +206,14 @@ fn restore_version(app: State<App>, path: String, id: String) -> Result<String, 
     let texto = std::fs::read_to_string(versao_path(&app, &path, &id)?).map_err(|e| e.to_string())?;
     let p = inside(&app, &path)?;
     snapshot(&root_of(&app)?, &p, true)?;
-    std::fs::write(&p, &texto).map_err(|e| e.to_string())?;
+    gravar_atomico(&p, &texto)?;
+    lock(&app.vistos).insert(p, hash_texto(&texto));
     Ok(texto)
 }
 
 #[tauri::command]
 fn resolve_link(app: State<App>, target: String) -> Option<String> {
-    let g = app.vault.lock().unwrap();
+    let g = lock(&app.vault);
     g.as_ref()?.resolve(&target).map(|n| slash(&n.path))
 }
 
@@ -172,10 +237,11 @@ fn valid_name(n: &str) -> Result<&str, String> {
 #[derive(Serialize)]
 struct Changed { path: String, links: usize }
 
-/// Troca `[[antigo]]` por `[[novo]]` em todas as notas (por nome, como o vault resolve).
-fn rewrite_name(app: &App, old: &str, new: &str) -> Result<usize, String> {
+/// Reescritas de `[[antigo]]` → `[[novo]]` em todas as notas (por nome, como o vault resolve): (caminho, texto original, texto novo, links trocados).
+/// Só calcula; quem grava é `aplicar_reescritas`, que desfaz tudo se uma gravação falhar.
+fn planejar_links(app: &App, old: &str, new: &str) -> Result<Vec<(PathBuf, String, String, usize)>, String> {
     let v = Vault::open(&app.root()).map_err(|e| e.to_string())?;
-    let mut total = 0;
+    let mut plano = vec![];
     for n in &v.notes {
         let Ok(text) = std::fs::read_to_string(&n.path) else { continue };
         let mut feitos = 0;
@@ -184,9 +250,36 @@ fn rewrite_name(app: &App, old: &str, new: &str) -> Result<usize, String> {
             let stem = last.strip_suffix(".md").unwrap_or(last);
             if stem.eq_ignore_ascii_case(old) { feitos += 1; Some(format!("{dir}{new}")) } else { None }
         });
-        if feitos > 0 { let _ = snapshot(&canon(&app.root()).unwrap_or_else(|_| app.root()), &canon(&n.path).unwrap_or_else(|_| n.path.clone()), true); std::fs::write(&n.path, out).map_err(|e| e.to_string())?; total += feitos; }
+        if feitos > 0 { plano.push((n.path.clone(), text, out, feitos)); }
     }
-    Ok(total)
+    Ok(plano)
+}
+
+/// Grava as reescritas (com histórico de cada nota). Se alguma falhar, devolve as já gravadas ao texto original.
+fn aplicar_reescritas(app: &App, plano: &[(PathBuf, String, String, usize)]) -> Result<usize, String> {
+    let root = canon(&app.root()).unwrap_or_else(|_| app.root());
+    let mut feitas = 0;
+    for (k, (path, _, novo, _)) in plano.iter().enumerate() {
+        let _ = snapshot(&root, &canon(path).unwrap_or_else(|_| path.clone()), true);
+        if let Err(e) = gravar_atomico(path, novo) {
+            for (p, orig, _, _) in &plano[..k] { let _ = gravar_atomico(p, orig); lock(&app.vistos).insert(p.clone(), hash_texto(orig)); }
+            return Err(format!("{e} (nenhuma nota foi alterada)"));
+        }
+        lock(&app.vistos).insert(path.clone(), hash_texto(novo));
+        feitas += plano[k].3;
+    }
+    Ok(feitas)
+}
+
+/// `rename` que também aceita trocar só maiúsculas/minúsculas (no Windows `Antes.md` → `antes.md` conta como "já existe"): passa por um nome temporário.
+fn renomear_fs(from: &Path, to: &Path) -> Result<(), String> {
+    let so_caixa = from != to && from.to_string_lossy().to_lowercase() == to.to_string_lossy().to_lowercase();
+    if so_caixa {
+        let tmp = from.with_file_name(format!(".renomeando-{}", std::process::id()));
+        std::fs::rename(from, &tmp).map_err(|e| e.to_string())?;
+        if let Err(e) = std::fs::rename(&tmp, to) { let _ = std::fs::rename(&tmp, from); return Err(e.to_string()); }
+        Ok(())
+    } else { std::fs::rename(from, to).map_err(|e| e.to_string()) }
 }
 
 #[tauri::command]
@@ -196,6 +289,7 @@ fn create_note(app: State<App>, dir: String, name: String) -> Result<String, Str
     if !d.is_dir() { return Err("destino não é pasta".into()); }
     let p = d.join(format!("{name}.md"));
     if p.exists() { return Err(format!("já existe: {name}.md")); }
+    if let Some(onde) = nome_em_uso(&app, &name, None)? { return Err(format!("já existe uma nota com esse nome em {onde}; os links [[{name}]] ficariam ambíguos")); }
     std::fs::write(&p, format!("# {name}\n")).map_err(|e| e.to_string())?;
     Ok(slash(&p))
 }
@@ -218,10 +312,19 @@ fn rename_entry(app: State<App>, path: String, name: String) -> Result<Changed, 
     let is_note = from.is_file();
     if is_note && from.extension().map_or(true, |x| x != "md") { return Err("só notas .md".into()); }
     let to = from.with_file_name(if is_note { format!("{name}.md") } else { name.clone() });
-    if to != from && to.exists() { return Err("já existe um item com esse nome".into()); }
-    std::fs::rename(&from, &to).map_err(|e| e.to_string())?;
+    let so_caixa = to != from && to.to_string_lossy().to_lowercase() == from.to_string_lossy().to_lowercase();
+    if to != from && !so_caixa && to.exists() { return Err("já existe um item com esse nome".into()); }
+    if is_note { if let Some(onde) = nome_em_uso(&app, &name, Some(&from))? { return Err(format!("já existe uma nota com esse nome em {onde}; os links [[{name}]] ficariam ambíguos")); } }
+    let antigo = from.file_stem().unwrap().to_string_lossy().to_string();
+    renomear_fs(&from, &to)?;
     mover_historico(&root_of(&app)?, &from, &to);
-    let links = if is_note { rewrite_name(&app, &from.file_stem().unwrap().to_string_lossy(), &name)? } else { 0 };
+    // Os links são calculados depois de renomear (o vault já enxerga o nome novo); se gravar falhar, desfaz tudo, inclusive o renome.
+    let links = if is_note {
+        match planejar_links(&app, &antigo, &name).and_then(|p| aplicar_reescritas(&app, &p)) {
+            Ok(n) => n,
+            Err(e) => { let _ = renomear_fs(&to, &from); mover_historico(&root_of(&app)?, &to, &from); return Err(format!("não renomeou: {e}")); }
+        }
+    } else { 0 };
     Ok(Changed { path: slash(&to), links })
 }
 
@@ -235,6 +338,7 @@ fn move_entry(app: State<App>, path: String, dir: String) -> Result<Changed, Str
     let to = d.join(from.file_name().unwrap());
     if to == from { return Ok(Changed { path: path.clone(), links: 0 }); }
     if to.exists() { return Err("já existe um item com esse nome no destino".into()); }
+    if from.is_file() { if let Some(onde) = nome_em_uso(&app, &from.file_stem().unwrap().to_string_lossy(), Some(&from))? { return Err(format!("já existe uma nota com esse nome em {onde}; os links ficariam ambíguos")); } }
     std::fs::rename(&from, &to).map_err(|e| e.to_string())?;
     mover_historico(&root_of(&app)?, &from, &to);
     Ok(Changed { path: slash(&to), links: 0 })
@@ -281,7 +385,7 @@ struct Saude { note: String, line: usize, severity: &'static str, code: &'static
 fn vault_health(app: State<App>) -> Result<Vec<Saude>, String> {
     use vault_core::validate::{validate, Severity};
     load(&app)?;
-    let g = app.vault.lock().unwrap();
+    let g = lock(&app.vault);
     let v = g.as_ref().unwrap();
     Ok(validate(v).into_iter().map(|i| Saude {
         note: i.note, line: i.line, code: i.code, msg: i.msg,
@@ -298,13 +402,13 @@ struct Info { issues: Vec<Aviso>, backlinks: Vec<Back>, tipo: Option<String>, re
 /// notas que apontam para ela e os campos obrigatórios do seu `tipo`.
 #[tauri::command]
 fn note_info(app: State<App>, path: String) -> Result<Info, String> {
-    use vault_core::validate::{required_fields, validate, Severity, STATUS};
+    use vault_core::validate::{required_fields, validate_note, Severity, STATUS};
     let p = inside(&app, &path)?;
     let name = p.file_stem().unwrap().to_string_lossy().to_string();
     load(&app)?;
-    let g = app.vault.lock().unwrap();
+    let g = lock(&app.vault);
     let v = g.as_ref().unwrap();
-    let issues = validate(v).into_iter().filter(|i| i.note == name).map(|i| Aviso {
+    let issues = validate_note(v, &name).into_iter().map(|i| Aviso {
         line: i.line, code: i.code, msg: i.msg,
         severity: match i.severity { Severity::Error => "erro", Severity::Warning => "aviso", Severity::Info => "info" },
     }).collect();
@@ -342,7 +446,7 @@ fn search_text(app: State<App>, query: String, limit: Option<usize>) -> Result<V
     let terms: Vec<String> = fold(&query).split_whitespace().map(String::from).collect();
     if terms.is_empty() { return Ok(vec![]); }
     load(&app)?;
-    let g = app.vault.lock().unwrap();
+    let g = lock(&app.vault);
     let mut hits = vec![];
     for n in &g.as_ref().unwrap().notes {
         let low = fold(&n.text);
@@ -405,14 +509,14 @@ fn section(body: &str, anchor: Option<&str>) -> String {
     lines[i..end].join("\n")
 }
 
-/// Conteúdo de `![[alvo]]`: imagem (data URL), nota (texto sem frontmatter) ou arquivo de outro tipo.
+/// Conteúdo de `![[alvo]]`: imagem (caminho, ou data URL com `inline`), nota (texto sem frontmatter) ou arquivo de outro tipo.
 #[tauri::command]
-fn read_embed(app: State<App>, target: String, anchor: Option<String>) -> Result<Option<serde_json::Value>, String> {
+fn read_embed(app: State<App>, target: String, anchor: Option<String>, inline: Option<bool>) -> Result<Option<serde_json::Value>, String> {
     use serde_json::json;
     let last = target.rsplit('/').next().unwrap_or(&target).trim().to_string();
     if !last.contains('.') || last.to_lowercase().ends_with(".md") {
         load(&app)?;
-        let g = app.vault.lock().unwrap();
+        let g = lock(&app.vault);
         let Some(n) = g.as_ref().unwrap().resolve(&target) else { return Ok(None) };
         let text = section(n.body(), anchor.as_deref());
         let text: String = text.chars().take(20000).collect();
@@ -423,6 +527,8 @@ fn read_embed(app: State<App>, target: String, anchor: Option<String>) -> Result
     let mime = match ext.as_str() { "png" => "image/png", "jpg" | "jpeg" => "image/jpeg", "gif" => "image/gif", "webp" => "image/webp", "svg" => "image/svg+xml", _ => "" };
     let name = f.file_name().unwrap().to_string_lossy().to_string();
     if mime.is_empty() || f.metadata().map_or(true, |m| m.len() > 12_000_000) { return Ok(Some(json!({ "kind": "file", "name": name }))); }
+    // Padrão: só o caminho (a tela carrega pelo protocolo `asset:`, sem base64 pela ponte). `inline` pede o data URL (logo da prova, exportações).
+    if !inline.unwrap_or(false) { return Ok(Some(json!({ "kind": "image", "name": name, "path": slash(&f) }))); }
     let data = std::fs::read(&f).map_err(|e| e.to_string())?;
     Ok(Some(json!({ "kind": "image", "name": name, "data": format!("data:{mime};base64,{}", base64(&data)) })))
 }
@@ -442,7 +548,7 @@ fn read_config(h: tauri::AppHandle) -> Result<Option<String>, String> {
 fn write_config(h: tauri::AppHandle, text: String) -> Result<(), String> {
     let p = config_path(&h)?;
     if let Some(d) = p.parent() { std::fs::create_dir_all(d).map_err(|e| e.to_string())?; }
-    std::fs::write(p, text).map_err(|e| e.to_string())
+    gravar_atomico(&p, &text)
 }
 
 /// Arquivo onde o app guarda a pasta do vault escolhida pelo usuário.
@@ -463,6 +569,11 @@ fn get_vault_root(app: State<App>) -> Option<String> {
     if r.as_os_str().is_empty() { None } else { Some(slash(&r)) }
 }
 
+/// O protocolo `asset:` só serve arquivos da pasta do vault (escopo dinâmico; o `tauri.conf.json` começa com escopo vazio).
+fn liberar_imagens(h: &tauri::AppHandle, root: &Path) {
+    if !root.as_os_str().is_empty() { let _ = h.asset_protocol_scope().allow_directory(root, true); }
+}
+
 /// Guarda a pasta escolhida e passa a usá-la.
 #[tauri::command]
 fn set_vault_root(h: tauri::AppHandle, app: State<App>, path: String) -> Result<String, String> {
@@ -471,8 +582,9 @@ fn set_vault_root(h: tauri::AppHandle, app: State<App>, path: String) -> Result<
     let f = root_file(&h)?;
     if let Some(d) = f.parent() { std::fs::create_dir_all(d).map_err(|e| e.to_string())?; }
     std::fs::write(&f, serde_json::json!({ "raiz": p.to_string_lossy() }).to_string()).map_err(|e| e.to_string())?;
-    *app.root_cell.lock().unwrap() = p.clone();
-    *app.vault.lock().unwrap() = None;
+    *lock(&app.root_cell) = p.clone();
+    *lock(&app.vault) = None;
+    liberar_imagens(&h, &p);
     Ok(slash(&p))
 }
 
@@ -489,6 +601,7 @@ fn main() {
             let root = env_root.clone().or_else(|| saved_root(app.handle())).unwrap_or_else(|| {
                 if cfg!(debug_assertions) { PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/vault")) } else { PathBuf::new() }
             });
+            liberar_imagens(app.handle(), &root);
             app.manage(App::new(root));
             Ok(())
         })
@@ -533,7 +646,9 @@ mod tests {
         std::fs::write(d.join("A/Velha.md"), "x").unwrap();
         std::fs::write(d.join("B.md"), "ver [[Velha]] e [[A/velha#t|alias]] e [[Outra]]").unwrap();
         let app = App::new(d.clone());
-        assert_eq!(rewrite_name(&app, "Velha", "Nova").unwrap(), 2);
+        let plano = planejar_links(&app, "Velha", "Nova").unwrap();
+        assert_eq!(std::fs::read_to_string(d.join("B.md")).unwrap(), "ver [[Velha]] e [[A/velha#t|alias]] e [[Outra]]", "planejar não grava");
+        assert_eq!(aplicar_reescritas(&app, &plano).unwrap(), 2);
         assert_eq!(std::fs::read_to_string(d.join("B.md")).unwrap(), "ver [[Nova]] e [[A/Nova#t|alias]] e [[Outra]]");
         assert!(inside_any(&app, d.to_str().unwrap()).is_err());
         assert!(inside_any(&app, "/etc").is_err());
@@ -550,5 +665,77 @@ mod tests {
         let t = "# A\nx\n## B\ny\n## C\nw\n\nz\nbloco ^id1\n";
         assert_eq!(section(t, Some("b")), "## B\ny");
         assert_eq!(section(t, Some("^id1")), "z\nbloco");
+    }
+
+    fn tmpdir(n: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("margem-{n}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        d
+    }
+
+    #[test]
+    fn grava_por_atomico_sem_deixar_temporario() {
+        let d = tmpdir("atomico");
+        let p = d.join("n.md");
+        gravar_atomico(&p, "um").unwrap();
+        gravar_atomico(&p, "dois").unwrap();
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "dois");
+        assert_eq!(std::fs::read_dir(&d).unwrap().count(), 1);
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn recusa_gravar_sobre_mudanca_externa() {
+        let d = tmpdir("conflito");
+        let p = d.join("n.md");
+        let vistos: Vistos = Mutex::new(Default::default());
+        std::fs::write(&p, "original").unwrap();
+        // nota nunca lida pelo app: grava normalmente
+        gravar_nota(&vistos, &p, "a", false, |_| {}).unwrap();
+        // lida/gravada pelo app e inalterada: grava
+        gravar_nota(&vistos, &p, "b", false, |_| {}).unwrap();
+        // outro programa altera o arquivo: recusa e não toca no disco
+        std::fs::write(&p, "externo").unwrap();
+        let e = gravar_nota(&vistos, &p, "c", false, |_| panic!("não deveria gravar")).unwrap_err();
+        assert!(e.starts_with("conflito:"), "{e}");
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "externo");
+        // com `forcar`, sobrescreve e avisa que havia mudança externa
+        let mut externa = false;
+        gravar_nota(&vistos, &p, "c", true, |x| externa = x).unwrap();
+        assert!(externa);
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "c");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn normaliza_bom_e_crlf_na_leitura() {
+        assert_eq!(normalizar("\u{feff}---\r\na: 1\r\n---\r\n".into()), "---\na: 1\n---\n");
+        assert_eq!(normalizar("sem\nmudança".into()), "sem\nmudança");
+    }
+
+    #[test]
+    fn reescrita_com_falha_desfaz_as_ja_gravadas() {
+        let d = tmpdir("rollback");
+        let (a, b) = (d.join("a.md"), d.join("b.md"));
+        std::fs::write(&a, "[[X]]").unwrap();
+        std::fs::write(&b, "[[X]]").unwrap();
+        let app = App::new(d.clone());
+        // a segunda gravação falha: o destino é uma pasta, não dá para criar o temporário/renomear sobre ela
+        let ruim = d.join("pasta.md");
+        std::fs::create_dir(&ruim).unwrap();
+        let plano = vec![(a.clone(), "[[X]]".to_string(), "[[Y]]".to_string(), 1), (ruim, "x".into(), "y".into(), 1), (b.clone(), "[[X]]".into(), "[[Y]]".into(), 1)];
+        assert!(aplicar_reescritas(&app, &plano).is_err());
+        assert_eq!(std::fs::read_to_string(&a).unwrap(), "[[X]]");
+        assert_eq!(std::fs::read_to_string(&b).unwrap(), "[[X]]");
+    }
+
+    #[test]
+    fn renomear_so_a_caixa_passa_pelo_temporario() {
+        let d = tmpdir("caixa");
+        std::fs::write(d.join("Antes.md"), "x").unwrap();
+        renomear_fs(&d.join("Antes.md"), &d.join("antes.md")).unwrap();
+        let nomes: Vec<_> = std::fs::read_dir(&d).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().to_string()).collect();
+        assert_eq!(nomes, vec!["antes.md"]);
     }
 }
