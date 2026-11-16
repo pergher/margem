@@ -40,3 +40,6 @@ export async function gravarTurmas(items, ano, { turmas, aulas }) {
   if (!parseFm(t).entries.some((e) => e.key === "tipo")) t = setProp(t, "tipo", "configuracao");
   await invoke("save_note", { path, text: t });
 }
+
+/** Sugestão para o ano seguinte: cada turma sobe um ano escolar (61 → 71) e as do 9º ano saem. Turmas com outro formato ficam como estão. */
+export const sugerirTurmasDoProximoAno = (turmas) => turmas.flatMap((t) => (/^9\d/.test(t) ? [] : /^[678]\d/.test(t) ? [String(Number(t[0]) + 1) + t.slice(1)] : [t]));

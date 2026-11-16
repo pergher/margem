@@ -12,24 +12,24 @@ export function useNavegacao() {
   const [gramaticaPasta, setGramaticaPasta] = useState(""); // pasta aberta em Gramática
   const [correcaoFoco, setCorrecaoFoco] = useState(null);
   const [correcaoVista, setCorrecaoVista] = useState("aluno"); // vista com que a Correção abre: "aluno" ou "turma"
-  const [questoesAba, setQuestoesAba] = useState("bancos");
-  const [questoesPasta, setQuestoesPasta] = useState(""); // pasta aberta em Questões
+  const [recursosAba, setRecursosAba] = useState("bancos");
+  const [recursosPasta, setRecursosPasta] = useState(""); // pasta aberta em Recursos
   const [textoAtiv, setTextoAtiv] = useState(null);
 
   const irAno = () => { setInicioModo("ano"); setPage("semana"); };
-  const irMontarProva = () => { setQuestoesAba("montar"); setPage("questoes"); };
+  const irMontarProva = () => { setRecursosAba("montar"); setPage("recursos"); };
   const irAulas = (pasta) => { setAulasPasta(pasta); setPage("aulas"); };
-  const irQuestoes = (pasta) => { setQuestoesPasta(pasta); setQuestoesAba("bancos"); setPage("questoes"); };
+  const irRecursos = (pasta) => { setRecursosPasta(pasta); setRecursosAba("bancos"); setPage("recursos"); };
   // Menu lateral: cada área abre na sua tela inicial.
   const irSecao = (id) => {
     if (id === "hoje" || id === "semana" || id === "ano") { setInicioModo(id); setPage("semana"); }
     else if (id === "correcao") { setCorrecaoFoco(null); setPage("correcao"); }
-    else { if (id === "aulas") setAulasPasta(""); if (id === "gramatica") setGramaticaPasta(""); if (id === "ciclos") setCiclosPasta(""); if (id === "questoes") { setQuestoesPasta(""); setQuestoesAba("bancos"); } setPage(id); }
+    else { if (id === "aulas") setAulasPasta(""); if (id === "gramatica") setGramaticaPasta(""); if (id === "ciclos") setCiclosPasta(""); if (id === "recursos") { setRecursosPasta(""); setRecursosAba("bancos"); } setPage(id); }
   };
 
   return {
     page, setPage, ciclo, setCiclo, inicioModo, setInicioModo, inicioModoRaw: setInicioModoState, aulasPasta, setAulasPasta, ciclosPasta, setCiclosPasta, gramaticaPasta, setGramaticaPasta,
-    correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, questoesAba, setQuestoesAba, questoesPasta, setQuestoesPasta,
-    textoAtiv, setTextoAtiv, irAno, irMontarProva, irAulas, irQuestoes, irSecao,
+    correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, recursosAba, setRecursosAba, recursosPasta, setRecursosPasta,
+    textoAtiv, setTextoAtiv, irAno, irMontarProva, irAulas, irRecursos, irSecao,
   };
 }

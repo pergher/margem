@@ -9,6 +9,7 @@ export const ACTIONS = [
   { id: "focus", label: "Modo foco (esconde menus e barras)", def: "Ctrl+Shift+F" },
   { id: "back", label: "Voltar na navegação", def: "Alt+ArrowLeft" },
   { id: "forward", label: "Avançar na navegação", def: "Alt+ArrowRight" },
+  { id: "toggleNumeros", label: "Mostrar/ocultar a numeração das linhas", def: "Ctrl+Alt+L" },
   { id: "insertTable", label: "Inserir tabela", def: "Ctrl+Alt+T" },
   { id: "zoomIn", label: "Aumentar zoom", def: "Ctrl+=" },
   { id: "zoomOut", label: "Diminuir zoom", def: "Ctrl+-" },

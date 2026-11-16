@@ -31,6 +31,7 @@ Regras para toda nota nova. Notas antigas são convertidas pelo comando `vault m
 | `ciclo` | (nenhum: atemporal) | objetivo, sufixo, habilidades, conteudos, status, textos_sala, textos_prova, tags |
 | `calendario` | inicio, fim, feriados, turmas | recessos |
 | `texto` | titulo, autor, genero, fonte, dominio_publico, foco, conteudos, alertas | publicacao, link, imagem, tags |
+| `oficina` | (nenhum) | titulo, anos, conteudo, tags |
 | `banco` | ano, conteudos, conteudos_excluidos, textos | |
 | `prova` | turma, data, questoes, valor | |
 | `semana` | ano, rotulo | — |
@@ -82,7 +83,7 @@ Regra: dado que o app lê e grava mora **na nota a que pertence**, em tabela ou 
 |---|---|---|
 | critérios e notas de uma redação | nota da correção, `### Avaliação` de cada aluno | tabela `Critério \| Nota \| Comentário`; "Nota final" é a última linha |
 | pesos e gradação dos critérios | `_dados.json` na pasta da correção | `peso`, `gradacao`, níveis dos descritores (só leitura para o app) |
-| ocorrências de aluno | diário da turma, seção `## Aula N — texto` | linha `- [[Nome]] — texto`; a nota do aluno não guarda cópia, o app junta lendo os diários |
+| ocorrências de aluno | diário da turma, seção `## Aula N — texto` | linha `- [[Nome]] — #etiqueta texto`; a nota do aluno não guarda cópia, o app junta lendo os diários. Etiquetas: `#conversa` `#produtividade` `#espelho` `#andando` `#briga` `#celular` `#positivo` (sem etiqueta, a página Diário sugere pelo texto e marca como “sugerido”) |
 | situação da aula | nota de semana | marca no fim da célula *Aula* (ver acima) |
 | habilidades/códigos BNCC | nota do ciclo | texto da habilidade com o código no início (ex.: `EF69LP…`); sem campo próprio por ora |
 
@@ -166,9 +167,33 @@ A aula (`tipo: aula`, `Acervo/Aulas/…`) não tem "plano de aula" separado. A v
 - Conteúdo: texto do próprio professor (resumo e organização), não cópia de gramática publicada. Nada de aluno, turma ou data aqui.
 - Código: `app/src/lib/gramatica.js` (modelo, `parseGramatica`, avisos); exemplos fictícios em `docs/modelos/Gramática/` (4 tópicos) e `docs/modelos/Aula fictícia - Crase na prática.md`, que mostra a aula citando a gramática. Os testes conferem que cada arquivo segue o modelo.
 
+## Recursos (2026-11-15)
+
+A tela **Recursos** (antes "Questões") reúne o que a aula usa e que mora no Acervo. "Recurso" é o mesmo nome da coluna *Recurso* da nota de semana e do aviso `aula-sem-recurso`: tudo o que uma aula pode apontar.
+
+| tipo de recurso | onde fica | `tipo` | o que a lista mostra |
+|---|---|---|---|
+| Texto | `Acervo/Textos/` (imagens em `Acervo/Textos/imagens/`, fora da lista) | `texto` | título, autor, gênero e começo do texto; filtro por gênero |
+| Banco de questões | `Acervo/Questoes/` | `banco` | nº de questões e de textos-base; "Montar prova com este banco" |
+| Prova | `Anos/AAAA/Provas/` | `prova` | turma, data, nº de questões e valor; fica na raiz e não se move |
+| Oficina (jogo, dinâmica) | `Acervo/Oficinas/` | `oficina` (as antigas, `jogo didático`, seguem aceitas na lista) | título e começo do texto |
+
+- A lista abre na raiz do `Acervo` e só mostra as pastas `Textos`, `Questoes` e `Oficinas`; `Aulas`, `Ciclos` e `Gramática` têm tela própria. Cada pasta aceita subpastas, mover, renomear e arrastar.
+- Filtros: tipo, ano (6 a 9), gênero (lido de `genero` nas fichas de texto) e ano letivo (só provas, quando há mais de um). A busca olha título, autor, gênero, tags e conteúdos.
+- Campos lidos da ficha de texto: `titulo` (ou `title`), `autor` (ou `author`), `genero`, `ano`/`anos`, `foco`, `tags`, `conteudos`. Oficina: `titulo`, `anos`, `conteudo`. Campo vazio só deixa o dado de fora do cartão.
+- **Novo** (botão no alto): *Novo texto*, *Nova oficina*, *Novo banco de questões* e *Montar prova*. Os três primeiros pedem só o nome e criam a nota com o modelo na pasta do tipo (na subpasta aberta, se você estiver dentro da pasta do tipo); se já existe nota com o nome, abrem a existente. Modelos em `app/src/lib/recursos.js`: o texto traz o frontmatter completo da ficha e a seção `## Texto`; a oficina, `anos`, `conteudo` e as seções Material, Como fazer e Variações; o banco, `ano` vazio (preencher em Propriedades), um `## Texto 1` com `### Questões sobre o Texto 1` e `## Questões independentes`. Também há "Novo texto", "Nova oficina" e "Novo banco de questões" na paleta de comandos. O `create_note` do MCP grava `tipo: oficina` em `Acervo/Oficinas`.
+- "Atividade a partir deste texto" (menu de contexto de um texto) abre a montagem de prova com o texto escolhido. **Montar prova** continua sendo um botão da tela.
+- Nome interno: a página é `recursos` (`RecursosPage.jsx`; estado `recursosAba`/`recursosPasta`, ação `irRecursos`). O que não mudou: as pastas e os `tipo`, as chaves de frontmatter `questoes` (da prova) e o código de leitura de bancos (`lib/prova.js`).
+- Ainda sem tela: habilidades BNCC/CBTC, códigos de conteúdo (`_codigos.md`), calendário e relatórios.
+
 ## Ciclos e Planejamento do Ano (decisão de 2026-11-14)
 
 - **Ciclo** = conjunto de 16 aulas (gêneros textuais e conteúdos da língua), atemporal como a Aula: `Acervo/Ciclos/<Título>.md`, `tipo: ciclo`, nome só com o título. Não tem ano, trimestre, ordem nem turma. Um Projeto de escrita também pode ser um ciclo.
 - **Planejamento do Ano** = plano anual que contém os ciclos: `Anos/AAAA/Planejamento AAAA.md`, `tipo: planejamento`, `ano_letivo: AAAA`, tabela `Ano | Trimestre | Ordem | Ciclo` (`| 6 | 2 | 1 | [[Crase]] |`). É ele quem põe o ciclo num ano; a turma só entra quando as aulas do ciclo vão para as semanas.
 - A tela **Ano e ciclos** lê essa tabela; os ciclos de `Acervo/Ciclos` que nenhum Planejamento usa aparecem em "Fora de um ano", com o botão Incluir.
 - Migração do formato antigo (`Anos/AAAA/Planejamento/ATC - Título - PR.md`): `vault ciclos <pasta>` simula; `--aplicar` move os ciclos, tira `ano/trimestre/ciclo` do frontmatter (guarda o sufixo PR/PT/TG em `sufixo`), reescreve os `[[links]]` e cria o Planejamento do Ano. Título repetido ganha o sufixo ou o código; ciclo sem título vira `Ciclo NNN`. O app ainda lê o formato antigo enquanto o vault não for migrado.
+
+## Enunciado da produção (`tipo: correcao`)
+
+O que foi pedido aos alunos fica na própria nota `Transcrições e devolutivas.md`, numa seção `## Enunciado` logo antes do primeiro aluno (gênero, tema, extensão, estrutura, material de apoio). O app mostra a seção, recolhida, no alto da Visão da turma e da correção (Produções → abrir o lote), com "Adicionar/Editar" e "Copiar", e a seção não conta como aluno. Ao montar o pedido de avaliação para o Gemini/ChatGPT, copie o enunciado dali em vez de redigi-lo de novo (o MCP não lê `Correcoes/`).
+

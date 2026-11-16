@@ -39,7 +39,8 @@ export function parseCorrecao(text, dados = null) {
     return { n: i + 1, nome, foto, texto, criterios, final, total, marcas: (texto.match(MARCAS) ?? []).length, erros: contarErros(texto) };
   });
   const { pesos, niveis, gradacao } = pesosDe(dados);
-  return { pesos, niveis, gradacao, transcricao: prop("transcricao"), media: Number(/Média:\s*(\d+(?:[.,]\d+)?)/.exec(legenda)?.[1]?.replace(",", ".")) || 6, maxCriterio: maximoCriterio(legenda), turma: prop("turma"), mes: prop("mês") || prop("mes"), atividade: prop("atividade"), status: prop("status"), legenda: legenda.trim(), alunos };
+  const enunciado = (blocos.find((b) => /^Enunciado\s*$/.test(b.split("\n")[0])) ?? "").split("\n").slice(1).join("\n").trim();
+  return { enunciado, pesos, niveis, gradacao, transcricao: prop("transcricao"), media: Number(/Média:\s*(\d+(?:[.,]\d+)?)/.exec(legenda)?.[1]?.replace(",", ".")) || 6, maxCriterio: maximoCriterio(legenda), turma: prop("turma"), mes: prop("mês") || prop("mes"), atividade: prop("atividade"), status: prop("status"), legenda: legenda.trim(), alunos };
 }
 
 export const listaCorrecoes = (items) => items
@@ -144,4 +145,19 @@ export async function gravarNota(path, alunoNome, criterio, valor) {
 export async function aprovarTranscricao(path, estado = "aprovada") {
   const t = await invoke("read_note", { path });
   await invoke("save_note", { path, text: setProp(t, "transcricao", estado) });
+}
+
+/** Troca (ou cria, antes do 1º aluno; ou remove, se vazio) a seção `## Enunciado` da nota. */
+export function editarEnunciado(text, enunciado) {
+  const novo = String(enunciado ?? "").trim();
+  const secao = novo ? `## Enunciado\n\n${novo}\n\n` : "";
+  const re = /^## Enunciado[ \t]*\n[\s\S]*?(?=^## |(?![\s\S]))/m;
+  if (re.test(text)) return text.replace(re, secao);
+  if (!novo) return text;
+  const i = text.search(/^## /m);
+  return i < 0 ? text.replace(/\s*$/, "\n\n") + secao.trimEnd() + "\n" : text.slice(0, i) + secao + text.slice(i);
+}
+export async function gravarEnunciado(path, enunciado) {
+  const t = await invoke("read_note", { path });
+  await invoke("save_note", { path, text: editarEnunciado(t, enunciado) });
 }

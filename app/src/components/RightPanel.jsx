@@ -96,7 +96,7 @@ function Links({ info, onOpen, onGoLine }) {
 const quando = (ts) => new Date(ts * 1000).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 // Versões antigas da nota (guardadas ao salvar, no máx. uma a cada 10 min). Clique = comparar com o texto atual; Restaurar guarda o atual antes.
-function Historico({ path, text, onRestore, tick }) {
+export function Historico({ path, text, onRestore, tick }) {
   const [vers, setVers] = useState(null);
   const [sel, setSel] = useState(null); // { id, texto }
   const [erro, setErro] = useState("");

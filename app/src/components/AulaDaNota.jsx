@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { html } from "@/lib/aulaHtml";
 import { PainelGramatica } from "@/components/PainelGramatica";
 import { invoke } from "@/lib/api";
@@ -6,8 +7,8 @@ import { parseAula, mermaidDe, secoesBrutas, trocarSecao, dadosDaAula } from "@/
 import { acionarBotao } from "@/lib/blocoAcoes";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { lerCiclos } from "@/lib/ciclos";
-import { ChevronDown, ChevronRight, Plus, Presentation } from "lucide-react";
-import { Chips, Text } from "@/components/RightPanel";
+import { ChevronDown, Plus, StickyNote } from "lucide-react";
+import { Chips, Text, Historico } from "@/components/RightPanel";
 import { Editor } from "@/components/Editor";
 import { Carregando, Erro } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
@@ -72,7 +73,7 @@ function QuandoVisivel({ children, altura = 120 }) {
 /** Seção editável com o mesmo editor ao vivo do modo Markdown; `onChange(md)` recebe o corpo da seção. */
 export function EditorSecao({ md, onChange, onSave, onLink, numeros, linhaInicial }) {
   const ref = useRef(null);
-  useEffect(() => { ref.current?.setText(md); }, []); // só ao abrir: depois, quem manda é o editor
+  useEffect(() => { ref.current?.setText(md, false); }, []); // só ao abrir: depois, quem manda é o editor
   return <div className="aula-ed"><Editor ref={ref} onChange={(doc) => onChange(doc.toString())} onSave={onSave} onLink={onLink} numeros={numeros} linhaInicial={linhaInicial} /></div>;
 }
 
@@ -89,7 +90,7 @@ export function Abas({ rotulo, abas, atual, onSelect, extra, mt = "mt-5" }) {
   );
 }
 
-const STATUS = ["pendente", "andamento", "finalizado", "arquivado"];
+export const STATUS = ["pendente", "andamento", "finalizado", "arquivado"];
 const LISTAS = ["assuntos", "tags", "turmas", "habilidades"];
 
 /** Título que vira campo ao clicar (renomeia o arquivo); Enter grava, Esc cancela. */
@@ -117,15 +118,15 @@ export function TituloEditavel({ nome, onRename, rotulo = "aula" }) {
 }
 
 /** Propriedades (frontmatter) da aula, editáveis aqui mesmo. */
-function Propriedades({ texto, onSet, status }) {
+export function Propriedades({ texto, onSet, status }) {
   const fm = parseFm(texto), [novo, setNovo] = useState(null);
   const linhas = fm.entries.filter((e) => e.key !== "tipo");
   return (
-    <div className="mt-3 rounded-lg border bg-muted/30 p-3">
-      <div className="grid gap-x-4 gap-y-2.5 sm:grid-cols-2">
+    <div>
+      <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2.5">
         {linhas.map((e) => (
-          <div key={e.key} className={LISTAS.includes(e.key) || e.items ? "sm:col-span-2" : undefined}>
-            <div className="mb-1 text-xs uppercase tracking-wide text-muted-foreground">{e.key}</div>
+          <Fragment key={e.key}>
+            <div className="pt-1 text-xs capitalize text-muted-foreground">{e.key}</div>
             {e.items || LISTAS.includes(e.key)
               ? <Chips items={e.items ?? []} onChange={(it) => onSet(e.key, it)} />
               : e.key === "status"
@@ -138,7 +139,7 @@ function Propriedades({ texto, onSet, status }) {
                       <option value="">—</option>{["6", "7", "8", "9"].map((x) => <option key={x} value={x}>{x}º ano</option>)}
                     </select>
                   : <Text value={e.value} onCommit={(v) => onSet(e.key, v)} />}
-          </div>
+          </Fragment>
         ))}
       </div>
       {novo === null
@@ -150,7 +151,7 @@ function Propriedades({ texto, onSet, status }) {
   );
 }
 
-function Dado({ nome, children, aviso }) {
+export function Dado({ nome, children, aviso }) {
   return <div className="flex items-baseline justify-between gap-3 text-sm"><span className="text-muted-foreground">{nome}</span><span className={cn("text-right font-medium", aviso && "text-warn")}>{children}</span></div>;
 }
 
@@ -169,11 +170,81 @@ function useCiclosDaAula(items, nome) {
   return lista;
 }
 
+/** Casca do painel lateral das visões personalizadas: abas Ficha e Conexões (com selo de avisos) e a área rolável. */
+export function PainelShell({ rotulo, aba, setAba, avisos = 0, ficha, conexoes }) {
+  return (
+    <aside aria-label={rotulo} className="flex h-full w-80 shrink-0 flex-col border-l bg-muted/50">
+      <div role="tablist" className="flex shrink-0 gap-1 border-b px-3 pt-2">
+        {[["ficha", "Ficha"], ["conexoes", "Conexões"]].map(([id, nome]) => (
+          <button key={id} role="tab" aria-selected={aba === id} onClick={() => setAba(id)}
+            className={cn("-mb-px h-9 border-b-2 px-3 text-sm", aba === id ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground")}>
+            {nome}{id === "conexoes" && avisos > 0 && <span className="ml-1.5 rounded-full bg-warn px-1.5 text-[10px] leading-4 text-white">{avisos}</span>}
+          </button>
+        ))}
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto px-4 py-4"><div className="space-y-6">{aba === "ficha" ? ficha : conexoes}</div></div>
+    </aside>
+  );
+}
+
+export const TituloPainel = ({ children }) => <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{children}</h3>;
+
+/** Avisos, menções (backlinks) e histórico: a parte "Conexões" comum a todas as visões. */
+export function ConexoesComuns({ info, onOpen, path, texto, onRestore, histTick, nome }) {
+  return (
+    <>
+      {info?.issues?.length > 0 && <section><TituloPainel>Avisos ({info.issues.length})</TituloPainel>
+        <ul className="space-y-1 text-xs">{info.issues.map((i, k) => <li key={k}><span className="text-muted-foreground">linha {i.line} · </span>{i.msg}</li>)}</ul></section>}
+      <section><TituloPainel>Mencionad{nome === "banco" ? "o" : "a"} em ({info?.backlinks?.length ?? 0})</TituloPainel>
+        {!info?.backlinks?.length ? <p className="text-sm text-muted-foreground">Nenhum arquivo aponta para {nome === "banco" ? "este banco" : "esta aula"}.</p>
+          : info.backlinks.map((b) => (
+            <button key={b.path} onClick={() => onOpen(b.path)} title={b.rel} className="-mx-2 flex w-[calc(100%+1rem)] flex-col rounded-md px-2 py-1.5 text-left hover:bg-accent">
+              <span className="truncate text-sm">{b.name}</span><span className="truncate text-xs text-muted-foreground">{b.rel.split("/").slice(0, -1).join(" / ")}</span>
+            </button>))}
+      </section>
+      <section><TituloPainel>Histórico</TituloPainel>
+        <div className="-mx-2 flex flex-col"><Historico path={path} text={texto} onRestore={onRestore} tick={histTick} /></div>
+      </section>
+    </>
+  );
+}
+
+/** Painel lateral da aula: Ficha (propriedades e dados) e Conexões (ciclos, menções, avisos, histórico). */
+function PainelAula({ aba, setAba, texto, onSet, status, dados, ciclos, info, onOpen, path, onRestore, histTick }) {
+  return (
+    <PainelShell rotulo="Painel da aula" aba={aba} setAba={setAba} avisos={info?.issues?.length ?? 0}
+      ficha={<>
+        <section><TituloPainel>Propriedades</TituloPainel><Propriedades texto={texto} onSet={onSet} status={status} /></section>
+        <section aria-label="Dados da aula" className="flex flex-col gap-1.5">
+          <TituloPainel>Dados</TituloPainel>
+          <Dado nome="Mindmap" aviso={!dados.mindmap}>{dados.mindmap ? "sim" : "não tem"}</Dado>
+          <Dado nome="Objetivos">{dados.objetivos}</Dado>
+          <Dado nome="Habilidades (BNCC)">{dados.habilidades}</Dado>
+          <Dado nome="Atividades" aviso={!dados.atividades}>{dados.atividades}</Dado>
+          <Dado nome="Conteúdo"><span className="whitespace-nowrap">{dados.palavras} palavras · ~{Math.max(1, Math.round(dados.palavras / 200))} min</span></Dado>
+          {dados.imagens > 0 && <Dado nome="Imagens">{dados.imagens}</Dado>}
+          {dados.links > 0 && <Dado nome="Links para notas">{dados.links}</Dado>}
+          {dados.faltam.length > 0 && <p className="mt-1 text-xs text-warn">Seções vazias: {dados.faltam.map((id) => ({ objetivos: "Objetivos", habilidades: "Habilidades", conteudo: "Conteúdo", atividades: "Atividades" })[id]).join(", ")}.</p>}
+        </section>
+      </>}
+      conexoes={<>
+        <section><TituloPainel>Usada em</TituloPainel>
+          {ciclos == null ? <p className="text-sm text-muted-foreground">…</p> : ciclos.length
+            ? <ul className="list-disc pl-5 text-sm">{ciclos.map((c) => <li key={c.nome}>{c.nome}</li>)}</ul>
+            : <p className="text-sm text-warn">Nenhum ciclo usa esta aula.</p>}
+        </section>
+        <ConexoesComuns info={info} onOpen={onOpen} path={path} texto={texto} onRestore={onRestore} histTick={histTick} nome="aula" />
+      </>} />
+  );
+}
+
 /** Visão de uma aula do acervo: abas (objetivos, habilidades, conteúdo, mindmap, atividades) e as anotações na margem. */
-export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename, info, items }) {
-  const [t, setT] = useState(textoInicial ?? null), [erro, setErro] = useState(""), [aba, setAba] = useState(null);
-  const [propsAbertas, setPropsAbertas] = useState(false), [vista, setVista] = useState(null);
-  const [apresentar, setApresentar] = useState(() => { try { return localStorage.getItem("margem.aula.apresentacao") === "1"; } catch { return false; } });
+export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, onRename, info, items, painel, setPainel, onRestore, histTick }) {
+  const [t, setT] = useState(textoInicial ?? null), [erro, setErro] = useState("");
+  const [abaPainel, setAbaPainel] = useState("ficha"), [vista, setVista] = useState(null), [prog, setProg] = useState(0), [rev, setRev] = useState(0);
+  const [margem, setMargem] = useState(() => { try { return localStorage.getItem("margem.aula.margem") !== "0"; } catch { return true; } });
+  const [slot, setSlot] = useState(null); // lugar, no cabeçalho do app, onde o sumário se junta aos breadcrumbs
+  useEffect(() => { setSlot(document.getElementById("slot-barra-aula")); }, []);
   const rolagem = useRef(null);
   const [gram, setGram] = useState(null); // gramática aberta no painel lateral: { item, anchor }
   const gramaticas = (nome) => { const n = nome.split("/").pop().trim().toLowerCase(); return items?.find((i) => /^Acervo\/Gram[aá]tica\//.test(i.rel) && i.name.toLowerCase() === n) ?? null; };
@@ -211,19 +282,21 @@ export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename
   };
   const editar = (id, md) => { pend.current = { path: caminho.current, md: { ...(pend.current?.path === caminho.current ? pend.current.md : {}), [id]: md } }; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
   const a = useMemo(() => (t == null ? null : parseAula(t)), [t]);
-  useEffect(() => { setAba(null); setVista(null); }, [item.path]);
-  const alternar = async () => { await gravar(); const v = !apresentar; setApresentar(v); try { localStorage.setItem("margem.aula.apresentacao", v ? "1" : "0"); } catch { /* sem armazenamento */ } };
+  useEffect(() => { setVista(null); }, [item.path]);
   // Destaque da seção atual ao rolar: a última cujo topo já passou da barra fixa.
   const aoRolar = () => {
-    const r = rolagem.current; if (!r || apresentar) return;
+    const r = rolagem.current; if (!r) return;
+    setProg(r.scrollHeight > r.clientHeight ? r.scrollTop / (r.scrollHeight - r.clientHeight) : 0);
     const topo = r.getBoundingClientRect().top + 90, fim = r.scrollTop + r.clientHeight >= r.scrollHeight - 4;
     const els = [...r.querySelectorAll("[data-sec]")];
     const el = fim ? els[els.length - 1] : els.filter((e) => e.getBoundingClientRect().top <= topo).pop() ?? els[0];
     setVista(el?.dataset.sec ?? null);
   };
+  const alternarMargem = () => { const v = !margem; setMargem(v); try { localStorage.setItem("margem.aula.margem", v ? "1" : "0"); } catch { /* sem armazenamento */ } };
+  const restaurar = (novo) => { onRestore?.(novo); texto.current = novo; setT(novo); setRev((n) => n + 1); };
+  const verFicha = () => { setAbaPainel("ficha"); setPainel(true); };
   const ir = async (x) => {
     await gravar();
-    if (apresentar) { setAba(x.id); return; }
     setVista(x.id); rolagem.current?.querySelector(`[data-sec="${x.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   if (erro) return <Erro>{erro}</Erro>;
@@ -231,80 +304,80 @@ export function AulaDaNota({ item, tick, onLink, textoInicial, numeros, onRename
 
   const abas = [...(a.intro ? [{ id: "intro", nome: "Introdução", md: a.intro }] : []), ...a.secoes];
   const brutas = secoesBrutas(texto.current ?? t);
-  const padrao = abas.find((x) => x.tipo === "conteudo") ?? abas[0];
-  const atual = apresentar ? (abas.find((x) => x.id === aba) ?? padrao) : (abas.find((x) => x.id === vista) ?? abas[0]);
-  const chips = [a.meta.status, a.meta.ano && `${a.meta.ano}º ano`, a.meta.assuntos].filter(Boolean);
+  const atual = abas.find((x) => x.id === vista) ?? abas[0];
   const dados = dadosDaAula(a, t);
-  const Seta = propsAbertas ? ChevronDown : ChevronRight;
-  const mostradas = apresentar ? (atual ? [atual] : []) : abas;
+  const notasDe = (x) => (x.id === "intro" ? a.introNotas : x.notas) ?? [];
+  const aoLado = margem && !gram && a.notas.length > 0; // sem anotações, o texto fica sozinho e centralizado
+  const largura = aoLado ? "60.5rem" : "44rem"; // texto (44rem) + vão (2.5rem) + margem (14rem)
   const secao = (x) => {
-    const bruta = brutas.find((b) => b.id === x.id);
+    const bruta = brutas.find((b) => b.id === x.id), notas = margem ? notasDe(x) : [];
     return (
-      <section key={x.id} data-sec={x.id} aria-label={x.nome} className="scroll-mt-16 pb-10 last:pb-4">
-        {bruta ? (
-          <>
-            {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
-            {mermaidDe(x.md) && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={mermaidDe(x.md)} /></QuandoVisivel></div>}
-            <EditorSecao key={`${item.path}:${x.id}:${brutas.length}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
-          </>
-        ) : <><p className="mb-2 text-xs text-muted-foreground">Este trecho (antes do primeiro ##) se edita no modo Markdown.</p><Markdown md={x.md} /></>}
+      <section key={x.id} data-sec={x.id} aria-label={x.nome} className={cn("scroll-mt-4 pb-10 first:pt-8 last:pb-4", x.id === "intro" && "pb-2", aoLado && "grid items-start gap-x-10")} style={aoLado ? { gridTemplateColumns: "minmax(0, 44rem) 14rem" } : undefined}>
+        <div className="min-w-0">
+          {bruta ? (
+            <>
+              {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
+              {mermaidDe(x.md) && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={mermaidDe(x.md)} /></QuandoVisivel></div>}
+              <EditorSecao key={`${item.path}:${x.id}:${brutas.length}:${rev}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
+            </>
+          ) : <Markdown md={x.md} />}
+        </div>
+        {notas.length > 0 && (
+          <aside aria-label={`Na margem: ${x.nome}`} className={cn("flex min-w-0 flex-col gap-3", aoLado ? "pt-10" : "mt-3")}>
+            {notas.map((n, i) => <div key={i} className="border-l-2 border-err pl-3 text-sm text-muted-foreground"><Markdown md={n} /></div>)}
+          </aside>
+        )}
       </section>
     );
   };
+  const statusLista = info?.status?.length ? info.status : STATUS;
+  const meta = [a.meta.ano && `${a.meta.ano}º ano`, a.meta.assuntos].filter(Boolean);
   return (
     <div className="flex min-h-0 flex-1">
-    <div ref={rolagem} onScroll={aoRolar} className="min-h-0 min-w-0 flex-1 overflow-auto">
-      <div className="px-8 pt-8">
-        <div className="max-w-3xl">
-          <div className="text-xs text-muted-foreground">Aula do acervo</div>
-          <TituloEditavel nome={item.name} onRename={onRename ? renomear : null} />
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            {chips.map((c) => <span key={c} className="rounded-full bg-accent px-2.5 py-0.5 text-xs">{c}</span>)}
-            <button onClick={() => setPropsAbertas(!propsAbertas)} aria-expanded={propsAbertas} className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Seta className="h-3.5 w-3.5" />Propriedades</button>
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* Sumário e botão Margem entram no cabeçalho do app, ao lado dos breadcrumbs; a linha fina abaixo mostra quanto da aula já foi lido */}
+      {slot && createPortal(
+        <>
+          <nav aria-label="Sumário da aula" className="flex min-w-0 items-center gap-0.5 overflow-x-auto border-l pl-3">
+            <div role="tablist" aria-label="Partes da aula" className="flex gap-0.5">
+              {abas.map((x) => (
+                <button key={x.id} role="tab" aria-selected={atual === x} onClick={() => ir(x)}
+                  className={cn("h-7 shrink-0 whitespace-nowrap rounded-md px-2.5 text-xs", atual === x ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>{x.nome}</button>
+              ))}
+            </div>
+          </nav>
+          <div className="flex-1" />
+          <button onClick={alternarMargem} aria-pressed={margem} title={margem ? "Esconder as anotações da margem" : "Mostrar as anotações da margem (callout > [!margem])"} className={cn("flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs", margem ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><StickyNote className="h-3.5 w-3.5" />Margem</button>
+        </>, slot)}
+      <div role="progressbar" aria-label="Progresso de leitura" aria-valuenow={Math.round(prog * 100)} aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div className="h-full bg-primary transition-[width] duration-100" style={{ width: `${prog * 100}%` }} /></div>
+      <div ref={rolagem} onScroll={aoRolar} className="min-h-0 min-w-0 flex-1 overflow-auto">
+        <div className="px-8 pt-8">
+          <div className="mx-auto" style={{ maxWidth: largura }}>
+            <div className="text-xs text-muted-foreground">Aula do acervo</div>
+            <TituloEditavel nome={item.name} onRename={onRename ? renomear : null} />
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+              <label className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-accent py-0.5 pl-2.5 pr-2 text-xs font-medium text-foreground hover:bg-accent/70 focus-within:ring-2 focus-within:ring-ring" title="Clique para mudar o status">
+                <span className={cn("h-1.5 w-1.5 rounded-full", a.meta.status === "finalizado" ? "bg-ok" : a.meta.status ? "bg-warn" : "bg-muted-foreground")} />
+                {a.meta.status || "sem status"}<ChevronDown className="h-3 w-3 text-muted-foreground" />
+                <select aria-label="Status da aula" value={a.meta.status} onChange={(e) => mudarProp("status", e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
+                  {!statusLista.includes(a.meta.status) && <option value={a.meta.status}>{a.meta.status || "sem status"}</option>}
+                  {statusLista.map((x) => <option key={x} value={x}>{x}</option>)}
+                </select>
+              </label>
+              {meta.map((m) => <span key={m}>{m}</span>)}
+              <button onClick={verFicha} className="font-medium text-primary hover:underline">Ver ficha</button>
+            </div>
           </div>
-          {propsAbertas && <Propriedades texto={texto.current ?? t} onSet={mudarProp} status={info?.status?.length ? info.status : STATUS} />}
         </div>
-      </div>
-      {/* Sumário: chips que ficam presos no topo ao rolar; na página única levam à seção, na apresentação trocam a seção mostrada */}
-      <nav aria-label="Sumário da aula" className="sticky top-0 z-10 bg-background/95 px-8 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="max-w-3xl">
-          <Abas rotulo="Partes da aula" abas={abas} atual={atual} onSelect={ir} mt="mt-0"
-            extra={<button onClick={alternar} aria-pressed={apresentar} title="Mostra uma seção por vez, para projetar" className={cn("mb-1 ml-auto flex h-7 items-center gap-1.5 rounded-md px-2 text-xs", apresentar ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><Presentation className="h-3.5 w-3.5" />Apresentação</button>} />
-        </div>
-      </nav>
-      {/* Aula (largura limitada para leitura) + Margem (o resto da largura) */}
-      <div className="grid items-start gap-x-10 px-8 pb-8" style={{ gridTemplateColumns: gram ? "minmax(0, 1fr)" : "minmax(0, 48rem) minmax(15rem, 1fr)" }}>
-        <div className="col-start-1 row-start-1 min-w-0 pt-6">
-          {mostradas.map(secao)}
+        <div className="mx-auto px-8 pb-8 pt-4" style={{ maxWidth: `calc(${largura} + 4rem)` }}>
+          {abas.map(secao)}
           {!atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
         </div>
-        <aside aria-label="Margem" className={cn("min-w-0 space-y-6 pt-6", gram ? "col-start-1 row-start-2" : "sticky top-16 col-start-2 row-start-1 max-h-[calc(100vh-5rem)] overflow-auto")}>
-          <section className="flex flex-col gap-3 border-l-2 border-err pl-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Na margem</h2>
-            {a.notas.length === 0
-              ? <p className="text-sm text-muted-foreground">Sem anotações. Escreva uma em Markdown com <code>&gt; [!margem]</code>.</p>
-              : a.notas.map((n, i) => <div key={i} className="text-sm"><Markdown md={n} /></div>)}
-          </section>
-          <section aria-label="Dados da aula" className="flex flex-col gap-1.5 border-l-2 border-border pl-4">
-            <h2 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Dados da aula</h2>
-            <Dado nome="Mindmap" aviso={!dados.mindmap}>{dados.mindmap ? "sim" : "não tem"}</Dado>
-            <Dado nome="Objetivos">{dados.objetivos}</Dado>
-            <Dado nome="Habilidades (BNCC)">{dados.habilidades}</Dado>
-            <Dado nome="Atividades" aviso={!dados.atividades}>{dados.atividades}</Dado>
-            <Dado nome="Conteúdo"><span className="whitespace-nowrap">{dados.palavras} palavras · ~{Math.max(1, Math.round(dados.palavras / 200))} min</span></Dado>
-            {dados.imagens > 0 && <Dado nome="Imagens">{dados.imagens}</Dado>}
-            {dados.links > 0 && <Dado nome="Links para notas">{dados.links}</Dado>}
-            <div className="text-sm"><span className="text-muted-foreground">Usada em</span>
-              {ciclosDaAula == null ? <span className="ml-2">…</span> : ciclosDaAula.length
-                ? <ul className="mt-0.5 list-disc pl-5">{ciclosDaAula.map((c) => <li key={c.nome}>{c.nome}</li>)}</ul>
-                : <span className="float-right font-medium text-warn">nenhum ciclo</span>}
-            </div>
-            {dados.faltam.length > 0 && <p className="mt-1 text-xs text-warn">Seções vazias: {dados.faltam.map((id) => ({ objetivos: "Objetivos", habilidades: "Habilidades", conteudo: "Conteúdo", atividades: "Atividades" })[id]).join(", ")}.</p>}
-          </section>
-        </aside>
       </div>
     </div>
-    {gram && <PainelGramatica item={gram.item} anchor={gram.anchor} gramaticas={gramaticas} onNavegar={(it, anchor) => setGram({ item: it, anchor })} onAbrir={onLink} onFechar={() => setGram(null)} />}
+    {gram
+      ? <PainelGramatica item={gram.item} anchor={gram.anchor} gramaticas={gramaticas} onNavegar={(it, anchor) => setGram({ item: it, anchor })} onAbrir={onLink} onFechar={() => setGram(null)} />
+      : painel && <PainelAula aba={abaPainel} setAba={setAbaPainel} texto={texto.current ?? t} onSet={mudarProp} status={info?.status?.length ? info.status : STATUS} dados={dados} ciclos={ciclosDaAula} info={info} onOpen={onOpen} path={item.path} onRestore={restaurar} histTick={histTick} />}
     </div>
   );
 }

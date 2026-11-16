@@ -51,7 +51,7 @@ pub fn required_fields(tipo: &str) -> Option<&'static [&'static str]> {
         "banco" => &["ano", "conteudos", "conteudos_excluidos", "textos"],
         "prova" => &["turma", "data", "questoes", "valor"],
         "correcao" => &["turma", "mes", "atividade", "rubrica", "status", "transcricao"],
-        "rubrica" | "taxonomia" | "configuracao" => &[],
+        "rubrica" | "taxonomia" | "configuracao" | "oficina" => &[],
         "habilidades-bncc" | "habilidades-cbtc" => &["ano"],
         _ => return None,
     })

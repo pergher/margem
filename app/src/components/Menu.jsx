@@ -1,4 +1,4 @@
-import { House, CalendarDays, CalendarRange, Repeat2, BookText, BookMarked, CircleHelp, ClipboardCheck, BookOpen, HeartPulse, Settings, Sun, Moon } from "lucide-react";
+import { House, CalendarDays, CalendarRange, Repeat2, BookText, BookMarked, Library, ClipboardCheck, BookOpen, HeartPulse, Settings, Sun, Moon } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
@@ -8,8 +8,8 @@ const PRINCIPAL = [
   { id: "ano", nome: "Ano", Icone: CalendarRange, dica: "Os ciclos do ano e o andamento de cada um", sub: true },
   { id: "aulas", nome: "Aulas", Icone: BookText, dica: "Os arquivos de Acervo/Aulas" },
   { id: "ciclos", nome: "Ciclos", Icone: Repeat2, dica: "Todos os ciclos do Acervo e a criação de um novo" },
-  { id: "questoes", nome: "Questões", Icone: CircleHelp, dica: "Bancos de questões, provas e montagem de prova" },
-  { id: "correcao", nome: "Correções", Icone: ClipboardCheck, dica: "Projetos a corrigir e já corrigidos" },
+  { id: "recursos", nome: "Recursos", Icone: Library, dica: "Textos, bancos de questões, provas e oficinas do acervo" },
+  { id: "correcao", nome: "Produções", Icone: ClipboardCheck, dica: "Produções dos alunos: a corrigir e já corrigidas" },
 ];
 const MAIS = [
   { id: "gramatica", nome: "Gramática", Icone: BookMarked, dica: "Referência por tópico: Acervo/Gramática" },

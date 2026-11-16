@@ -6,19 +6,19 @@ import { Menu } from "@/components/Menu";
 import { Editor } from "@/components/Editor";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { Outline } from "@/components/Outline";
+import { TocBarra } from "@/components/TocBarra";
 import { RightPanel } from "@/components/RightPanel";
 import { setProp, lineStart } from "@/lib/frontmatter";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SearchModal } from "@/components/SearchModal";
 import { EntryDialog } from "@/components/EntryDialog";
 import { InicioPage } from "@/components/InicioPage";
-import { QuestoesPage } from "@/components/QuestoesPage";
+import { RecursosPage } from "@/components/RecursosPage";
 import { GramaticasPage } from "@/components/GramaticasPage";
 import { AulasPage } from "@/components/AulasPage";
 import { CiclosPage } from "@/components/CiclosPage";
 import { CorrecoesPage } from "@/components/CorrecoesPage";
 import { ProvaDaNota } from "@/components/ProvaDaNota";
-import { TextoDaNota } from "@/components/TextoDaNota";
 import { ErrosComuns } from "@/components/ErrosComunsDialog";
 import { AulaDaNota } from "@/components/AulaDaNota";
 import { BancoDaNota } from "@/components/BancoDaNota";
@@ -37,10 +37,12 @@ import { useNavegacao } from "@/lib/useNavegacao";
 import { criarAula } from "@/lib/aula";
 import { criarCicloVazio } from "@/lib/ciclos";
 import { criarGramatica } from "@/lib/gramatica";
+import { RECURSOS, criarRecurso } from "@/lib/recursos";
 import { lembrarRecente } from "@/lib/recentes";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
+const NOMES_REC = { Questoes: "Questões" };
 import { loadFromDisk, loadOverrides, effective, comboOf, pretty, handlers, ACTIONS } from "@/lib/shortcuts";
 
 function RailButton({ label, active, onClick, disabled, size = "lg", children }) {
@@ -67,7 +69,7 @@ export default function App() {
   const ed = useRef(null);
   const P = usePreferencias(() => ed.current?.remeasure());
   const { dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, destaques, setDestaques, numeros, setNumeros, forma, setForma, zoom, setZoom, outlineW, setOutlineW, showSide, setShowSide, showOutline, setShowOutline, panelTab, setPanelTab } = P;
-  const { page, setPage, ciclo, setCiclo, inicioModo, setInicioModo, inicioModoRaw, aulasPasta, setAulasPasta, ciclosPasta, setCiclosPasta, gramaticaPasta, setGramaticaPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, questoesAba, setQuestoesAba, questoesPasta, setQuestoesPasta, textoAtiv, setTextoAtiv, irAno, irMontarProva, irAulas, irQuestoes, irSecao } = useNavegacao();
+  const { page, setPage, ciclo, setCiclo, inicioModo, setInicioModo, inicioModoRaw, aulasPasta, setAulasPasta, ciclosPasta, setCiclosPasta, gramaticaPasta, setGramaticaPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, recursosAba, setRecursosAba, recursosPasta, setRecursosPasta, textoAtiv, setTextoAtiv, irAno, irMontarProva, irAulas, irRecursos, irSecao } = useNavegacao();
   const hist = useRef({ stack: [], idx: -1 });
   const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo } = useNotaAberta({ ed, setStatus, setPage, setItems });
 
@@ -108,7 +110,7 @@ export default function App() {
   }, [vaultRoot]);
   // Histórico de navegação: cada passo é uma nota ({ k: "nota", path }) ou uma tela do app ({ k: "pag", page, … }), para o
   // Voltar/Avançar também refazerem listagens (ex.: a pasta aberta em Aulas), não só arquivos.
-  const chaveEntrada = (e) => e.k === "nota" ? "n:" + e.path : `p:${e.page}|${e.aulasPasta}|${e.inicioModo}|${e.correcaoFoco}|${e.questoesAba}|${e.questoesPasta}|${e.ciclo?.path ?? ""}`;
+  const chaveEntrada = (e) => e.k === "nota" ? "n:" + e.path : `p:${e.page}|${e.aulasPasta}|${e.inicioModo}|${e.correcaoFoco}|${e.recursosAba}|${e.recursosPasta}|${e.ciclo?.path ?? ""}`;
   const empurrar = (e) => {
     const h = hist.current;
     if (h.idx >= 0 && chaveEntrada(h.stack[h.idx]) === chaveEntrada(e)) return;
@@ -128,13 +130,13 @@ export default function App() {
     h.idx = i; setNavTick((n) => n + 1);
     const e = h.stack[i];
     if (e.k === "nota") await load(e.path);
-    else { setAulasPasta(e.aulasPasta); inicioModoRaw(e.inicioModo); setCorrecaoFoco(e.correcaoFoco); setQuestoesAba(e.questoesAba); setQuestoesPasta(e.questoesPasta ?? ""); setCiclo(e.ciclo); await save(); setPage(e.page); }
+    else { setAulasPasta(e.aulasPasta); inicioModoRaw(e.inicioModo); setCorrecaoFoco(e.correcaoFoco); setRecursosAba(e.recursosAba); setRecursosPasta(e.recursosPasta ?? ""); setCiclo(e.ciclo); await save(); setPage(e.page); }
   };
   // Toda mudança de tela (ou de pasta em Aulas, aba, etc.) vira um passo do histórico.
   useEffect(() => {
     if (page === "editor") return;
-    empurrar({ k: "pag", page, aulasPasta, inicioModo, correcaoFoco, questoesAba, questoesPasta, ciclo });
-  }, [page, aulasPasta, inicioModo, correcaoFoco, questoesAba, questoesPasta, ciclo]); // eslint-disable-line react-hooks/exhaustive-deps
+    empurrar({ k: "pag", page, aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo });
+  }, [page, aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo]); // eslint-disable-line react-hooks/exhaustive-deps
   const canBack = hist.current.idx > 0, canFwd = hist.current.idx < hist.current.stack.length - 1;
   const link = async (t) => {
     const p = await invoke("resolve_link", { target: t });
@@ -166,6 +168,10 @@ export default function App() {
   const novaGramatica = (pasta = "") => setDialog({ title: "Nova gramática", input: true, okLabel: "Criar", onOk: async (name) => {
     const p = await criarGramatica(items, { topico: name, pasta: typeof pasta === "string" ? pasta : "" }); await refresh(); open(p);
   } });
+  const novoRecurso = (tipo) => setDialog({ title: RECURSOS[tipo].dialogo, input: true, okLabel: "Criar", onOk: async (name) => {
+    const sub = recursosPasta.split("/")[0] === RECURSOS[tipo].pasta ? recursosPasta.split("/").slice(1).join("/") : ""; // dentro da pasta do tipo, cria na subpasta aberta
+    const p = await criarRecurso(items, tipo, { nome: name, pasta: sub }); await refresh(); open(p);
+  } });
   const createNote = (dir) => setDialog({ title: "Novo arquivo", input: true, okLabel: "Criar", onOk: async (name) => {
     const p = await invoke("create_note", { dir, name }); await refresh(); open(p);
   } });
@@ -195,6 +201,7 @@ export default function App() {
       insertTable: () => { if (cur.current && kb.current.page === "editor") ed.current.insertTable(); },
       toggleSide: () => setShowSide((v) => !v),
       focus: () => setFoco((v) => !v),
+      toggleNumeros: () => setNumeros((v) => !v),
       back: () => kb.current.go(-1),
       forward: () => kb.current.go(1),
       zoomIn: () => zoomBy(0.1),
@@ -241,16 +248,20 @@ export default function App() {
     { id: "p-ciclos", label: "Ir para Ciclos", hint: "lista novo", run: () => irSecao("ciclos") },
     { id: "p-aulas", label: "Ir para Aulas", hint: "acervo planos", run: () => irSecao("aulas") },
     { id: "p-gramatica", label: "Ir para Gramática", hint: "regra tópico referência", run: () => irSecao("gramatica") },
-    { id: "p-questoes", label: "Ir para Questões", hint: "banco provas", run: () => irSecao("questoes") },
-    { id: "p-correcao", label: "Ir para Correção", hint: "redações produções", run: () => irSecao("correcao") },
+    { id: "p-recursos", label: "Ir para Recursos", hint: "textos banco questões provas oficinas acervo", run: () => irSecao("recursos") },
+    { id: "p-correcao", label: "Ir para Produções", hint: "redações correção trabalhos", run: () => irSecao("correcao") },
     { id: "p-prova", label: "Ir para Montar prova", run: irMontarProva },
     { id: "p-nova-aula", label: "Nova aula", hint: "criar modelo", run: () => novaAula() },
+    { id: "p-novo-texto", label: "Novo texto", hint: "criar ficha acervo recurso", run: () => novoRecurso("texto") },
+    { id: "p-nova-oficina", label: "Nova oficina", hint: "criar jogo dinâmica recurso", run: () => novoRecurso("oficina") },
+    { id: "p-novo-banco", label: "Novo banco de questões", hint: "criar questões recurso", run: () => novoRecurso("banco") },
     { id: "p-nova-gramatica", label: "Nova gramática", hint: "criar modelo tópico", run: () => novaGramatica() },
     { id: "p-config", label: "Ir para Configurações", run: () => setPage("config") },
     { id: "buscar", label: "Buscar arquivo", keys: pretty(keys.search), run: () => setSearchOpen(true) },
     { id: "salvar", label: "Salvar agora", keys: pretty(keys.save), run: () => save() },
     { id: "tabela", label: "Inserir tabela", keys: pretty(keys.insertTable), run: () => { if (cur.current) { setPage("editor"); setTimeout(() => ed.current?.insertTable(), 50); } } },
     { id: "nota", label: "Novo arquivo", hint: "criar", run: () => createNote(items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length - 1) : "") },
+    { id: "numeros", label: "Mostrar/ocultar a numeração das linhas", keys: pretty(keys.toggleNumeros), run: () => setNumeros((v) => !v) },
     { id: "foco", label: "Modo foco (esconde menus e barras)", keys: pretty(keys.focus), run: () => setFoco((v) => !v) },
     { id: "lado", label: "Reduzir/ampliar o menu lateral", keys: pretty(keys.toggleSide), run: () => setShowSide((v) => !v) },
     { id: "painel", label: "Ocultar/mostrar painel lateral", run: () => setShowOutline((v) => !v) },
@@ -274,12 +285,12 @@ export default function App() {
     const novo = { ...prefVisao, diario: "markdown" }; setPrefVisao(novo); store.set("visaoPorTipo", novo);
     await open(path); setPage("editor");
   };
-  const ROTULOS = { semana: { hoje: "Hoje", semana: "Semana", ano: "Ano" }[inicioModo] ?? "Hoje", ciclos: "Ciclos", aulas: "Aulas", gramatica: "Gramática", questoes: "Questões", correcao: "Correções", diario: "Diário", saude: "Saúde do vault", config: "Configurações" };
+  const ROTULOS = { semana: { hoje: "Hoje", semana: "Semana", ano: "Ano" }[inicioModo] ?? "Hoje", ciclos: "Ciclos", aulas: "Aulas", gramatica: "Gramática", recursos: "Recursos", correcao: "Produções", diario: "Diário", saude: "Saúde do vault", config: "Configurações" };
   // Caminho no topo: cada item é { t: texto, ir?: função }. Em Aulas (e numa aula aberta) as pastas são clicáveis e levam à listagem delas.
   const crumbs = page === "ciclos" ? [{ t: "Ciclos", ir: () => irSecao("ciclos") }, ...(ciclosPasta ? ciclosPasta.split("/") : []).map((t, i, a) => ({ t, ir: () => setCiclosPasta(a.slice(0, i + 1).join("/")) }))]
     : page === "gramatica" ? [{ t: "Gramática", ir: () => irSecao("gramatica") }, ...(gramaticaPasta ? gramaticaPasta.split("/") : []).map((t, i, a) => ({ t, ir: () => setGramaticaPasta(a.slice(0, i + 1).join("/")) }))]
     : page === "aulas" ? [{ t: "Aulas", ir: () => irAulas("") }, ...(aulasPasta ? aulasPasta.split("/") : []).map((t, i, a) => ({ t: t.replace(/^_/, ""), ir: () => irAulas(a.slice(0, i + 1).join("/")) }))]
-    : page === "questoes" && questoesAba !== "montar" ? [{ t: "Questões", ir: () => irQuestoes("") }, ...(questoesPasta ? questoesPasta.split("/") : []).map((t, i, a) => ({ t: t.replace(/^_/, ""), ir: () => irQuestoes(a.slice(0, i + 1).join("/")) }))]
+    : page === "recursos" && recursosAba !== "montar" ? [{ t: "Recursos", ir: () => irRecursos("") }, ...(recursosPasta ? recursosPasta.split("/") : []).map((t, i, a) => ({ t: NOMES_REC[t] ?? t.replace(/^_/, ""), ir: () => irRecursos(a.slice(0, i + 1).join("/")) }))]
     : page === "ciclo" ? [{ t: "Ciclos", ir: () => irSecao("ciclos") }, { t: ciclo?.titulo ?? "Ciclo" }]
     : page !== "editor" ? [ROTULOS[page] ?? ""].filter(Boolean).map((t) => ({ t }))
     : !rel ? []
@@ -294,10 +305,10 @@ export default function App() {
         if (i === 1) return { t: "Gramática", ir: () => { setGramaticaPasta(""); setPage("gramatica"); } };
         if (i < a.length - 1) return { t, ir: () => { setGramaticaPasta(a.slice(2, i + 1).join("/")); setPage("gramatica"); } };
       }
-      if (/^Acervo\/Questoes\//.test(rel)) { // banco: o caminho começa em "Questões"; as pastas levam à listagem delas
+      if (/^Acervo\/(Questoes|Textos|Oficinas)\//.test(rel)) { // recurso: o caminho começa em "Recursos"; as pastas levam à listagem delas
         if (i === 0) return null;
-        if (i === 1) return { t: "Questões", ir: () => irQuestoes("") };
-        if (i < a.length - 1) return { t, ir: () => irQuestoes(a.slice(2, i + 1).join("/")) };
+        if (i === 1) return { t: NOMES_REC[t] ?? t, ir: () => irRecursos(t) };
+        if (i < a.length - 1) return { t, ir: () => irRecursos(a.slice(1, i + 1).join("/")) };
       }
       if (/^Acervo\//.test(rel)) { // demais pastas do Acervo: sem "Acervo"; "Ciclos" leva à tela Ciclos
         if (i === 0) return null;
@@ -310,9 +321,17 @@ export default function App() {
       return { t };
     }).filter(Boolean);
     const secao = page === "editor"
-    ? (!rel ? null : /^Acervo\/Aulas\//.test(rel) ? "aulas" : /^Acervo\/Gram[aá]tica\//.test(rel) ? "gramatica" : /^Acervo\/Questoes\/|\/Provas\//.test(rel) ? "questoes" : /\/Correcoes\//.test(rel) ? "correcao" : null)
-    : ({ semana: "hoje", ciclo: "ciclos", ciclos: "ciclos", aulas: "aulas", gramatica: "gramatica", questoes: "questoes", correcao: "correcao", diario: "diario", saude: "saude", config: "config" })[page];
+    ? (!rel ? null : /^Acervo\/Aulas\//.test(rel) ? "aulas" : /^Acervo\/Gram[aá]tica\//.test(rel) ? "gramatica" : /^Acervo\/(Questoes|Textos|Oficinas)\/|\/Provas\//.test(rel) ? "recursos" : /\/Correcoes\//.test(rel) ? "correcao" : null)
+    : ({ semana: "hoje", ciclo: "ciclos", ciclos: "ciclos", aulas: "aulas", gramatica: "gramatica", recursos: "recursos", correcao: "correcao", diario: "diario", saude: "saude", config: "config" })[page];
   const pick = async (path, line) => { setSearchOpen(false); await open(path); if (line) setTimeout(() => goLine(line), 50); };
+  const progRef = useRef(null);
+  const aoRolarTexto = (e) => {
+    const m = e.target; if (!m.classList?.contains("cm-scroller")) return;
+    const t = m.scrollHeight - m.clientHeight;
+    if (progRef.current) progRef.current.style.transform = `scaleX(${t > 0 ? Math.min(1, m.scrollTop / t) : 0})`;
+    const pos = ed.current?.posNoTopo(e.currentTarget.getBoundingClientRect().top + 24);
+    if (pos != null && headings.length) { let k = -1; headings.forEach((h, i) => { if (h.pos <= pos) k = i; }); if (k !== activeHeading) setActiveHeading(k); }
+  };
   const goHeading = (pos, i) => { setActiveHeading(i); ed.current.goTo(pos); };
   const setProperty = (key, value) => {
     const t = setProp(ed.current.getText(), key, value);
@@ -347,17 +366,16 @@ export default function App() {
               );
             })}
           </nav>
-          <div className="flex-1" />
+          <div id="slot-barra-aula" className="flex min-w-0 flex-1 items-center gap-2 pl-3">{page === "editor" && !personalizada && current && <TocBarra headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />}</div>
           {visao && page === "editor" && (
             <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-xs">
               <button onClick={() => escolherVisao("markdown")} className={cn("px-3 py-1", !personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Editar</button>
               <button onClick={() => escolherVisao("personalizado")} className={cn("border-l px-3 py-1", personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Ver</button>
             </div>
           )}
-          {info?.tipo === "texto" && current && page === "editor" && <button onClick={() => { setTextoAtiv(current); irMontarProva(); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Atividade a partir deste texto</button>}
           <RailButton size="sm" label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>
-          {temPainel && <RailButton size="sm" label={numeros ? "Ocultar a numeração das linhas" : "Mostrar a numeração das linhas"} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
+          {temPainel && <RailButton size="sm" label={`${numeros ? "Ocultar" : "Mostrar"} a numeração das linhas (${pretty(keys.toggleNumeros)})`} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
           {temPainel && <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>}
         </header>}
 
@@ -365,7 +383,7 @@ export default function App() {
         {page === "ciclos" && <CiclosPage items={items} dirs={dirs} pasta={ciclosPasta} setPasta={setCiclosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} onCreate={() => novoCiclo(ciclosPasta)} />}
         {page === "aulas" && <AulasPage items={items} dirs={dirs} onOpen={open} onCreate={() => novaAula(aulasPasta)} pasta={aulasPasta} setPasta={setAulasPasta} onRefresh={refresh} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} />}
         {page === "gramatica" && <GramaticasPage items={items} dirs={dirs} onOpen={open} onCreate={() => novaGramatica(gramaticaPasta)} pasta={gramaticaPasta} setPasta={setGramaticaPasta} onRefresh={refresh} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} />}
-        {page === "questoes" && <QuestoesPage items={items} dirs={dirs} onOpen={open} onRefresh={refresh} aba={questoesAba} setAba={setQuestoesAba} pasta={questoesPasta} setPasta={setQuestoesPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
+        {page === "recursos" && <RecursosPage onNovo={novoRecurso} onAtividade={(p) => { setTextoAtiv(p); irMontarProva(); }} items={items} dirs={dirs} onOpen={open} onRefresh={refresh} aba={recursosAba} setAba={setRecursosAba} pasta={recursosPasta} setPasta={setRecursosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
         {page === "correcao" && (correcaoFoco
           ? <CorrecaoPage items={items} onOpen={open} focoPath={correcaoFoco} vistaInicial={correcaoVista} onVoltar={() => { setCorrecaoFoco(null); setCorrecaoVista("aluno"); }} />
           : <CorrecoesPage items={items} onCorrigir={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); }} onTurma={(p) => { setCorrecaoVista("turma"); setCorrecaoFoco(p); }} onOpen={open} onRename={renomearNota} onDelete={excluirEntrada} />)}
@@ -377,13 +395,13 @@ export default function App() {
         {personalizada && visao.id === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "prova" && <ProvaDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} />}
         {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} focoPath={current} />}
-        {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
-        {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} tick={verTick} onLink={link} numeros={numeros} onRename={renomearNota} />}
-        {personalizada && visao.id === "texto" && <TextoDaNota item={items.find((i) => i.path === current)} onOpen={open} tick={verTick} onAtividade={() => { setTextoAtiv(current); irMontarProva(); }} />}
+        {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
+        {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} numeros={numeros} onRename={renomearNota} />}
         {personalizada && visao.id === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={current} />}
         <ErrosComuns items={items} />
-        <main className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>
-          <Editor ref={ed} onChange={onChange} onSave={save} onLink={link} numeros={numeros} />
+        {page === "editor" && !personalizada && current && <div role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div ref={progRef} className="h-full origin-left bg-primary" style={{ transform: "scaleX(0)" }} /></div>}
+        <main onScrollCapture={aoRolarTexto} className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>
+          <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} numeros={numeros} />
         </main>
 
         {!foco && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
@@ -396,7 +414,7 @@ export default function App() {
         </footer>}
       </div>
 
-      {outlineVisible && (
+      {outlineVisible && !(personalizada && (visao.id === "aula" || visao.id === "banco")) && (
         <>
           <ResizeHandle width={outlineW} setWidth={setOutlineW} min={160} max={480} side="right" />
           <div style={{ width: outlineW }} className="shrink-0">

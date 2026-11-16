@@ -125,15 +125,16 @@
 .cm-callout-badge { font-weight: 500; font-size: .75rem; background: hsl(var(--c-fg) / .14); border-radius: 999px; padding: .05rem .5rem; }
 
 /* propriedades (frontmatter) */
-.cm-props { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; padding: 0 0 1.25rem; font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: .8125rem; }
-.cm-chip { background: hsl(var(--secondary)); color: hsl(var(--foreground) / .8); border-radius: 999px; padding: .15rem .65rem; }
-.cm-chip-soft { color: hsl(var(--muted-foreground)); }
-.cm-chip-warn { background: hsl(var(--chart-4) / .16); color: hsl(var(--chart-4)); }
-.cm-chip-status::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: hsl(var(--muted-foreground)); margin-right: .4rem; }
-.cm-chip-status[data-status="andamento"]::before { background: hsl(var(--chart-4)); }
-.cm-chip-status[data-status="finalizado"]::before { background: hsl(var(--chart-3)); }
-.cm-chip-status[data-status="pendente"]::before { background: #b9b3a8; }
-.cm-props-edit { margin-left: auto; color: hsl(var(--muted-foreground)); font-size: .78rem; padding: .1rem .3rem; border-radius: 4px; }
+.cm-titulo { font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: 1.9rem; font-weight: 700; line-height: 1.25; padding: 0 0 1.1rem; letter-spacing: -.01em; }
+.cm-props { padding: 0 0 2rem; font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: .875rem; line-height: 1.5; }
+.cm-props-card { position: relative; display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1.25rem; padding: .9rem 4.5rem .9rem 1.1rem; background: hsl(var(--secondary) / .55); border: 1px solid hsl(var(--border)); border-radius: 10px; }
+.cm-prop { display: contents; }
+.cm-prop-k { color: hsl(var(--muted-foreground)); font-weight: 500; }
+.cm-prop-v { color: hsl(var(--foreground) / .9); min-width: 0; overflow-wrap: anywhere; }
+.cm-prop-vazio { color: hsl(var(--chart-4)); font-style: italic; }
+.cm-prop-v[data-status="andamento"] { color: hsl(var(--chart-4)); }
+.cm-prop-v[data-status="finalizado"] { color: hsl(var(--chart-3)); }
+.cm-props-edit { position: absolute; top: .6rem; right: .6rem; color: hsl(var(--muted-foreground)); font-size: .78rem; padding: .1rem .3rem; border-radius: 4px; }
 .cm-props-edit:hover { background: hsl(var(--accent)); }
 
 /* tabelas */
@@ -237,3 +238,7 @@
 .cm-tooltip-autocomplete { border: 1px solid hsl(var(--border)) !important; border-radius: 8px; background: hsl(var(--popover, var(--background))) !important; font-family: var(--f-ui, sans-serif); font-size: .85rem; overflow: hidden; }
 .cm-tooltip-autocomplete ul li[aria-selected] { background: hsl(var(--accent)) !important; color: hsl(var(--accent-foreground, var(--foreground))) !important; }
 .cm-completionDetail { margin-left: .8em; color: hsl(var(--muted-foreground)); font-style: normal; }
+
+/* introdução da aula (antes do primeiro ##): sem altura mínima nem respiro extra, para não afastar o Conteúdo */
+[data-sec="intro"] .aula-ed .cm-editor .cm-content { min-height: 0; }
+[data-sec="intro"] .aula-ed .cm-editor .cm-scroller { padding-bottom: 0; }

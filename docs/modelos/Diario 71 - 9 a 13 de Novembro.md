@@ -18,6 +18,8 @@ MODELO FICTÍCIO (nomes e fatos inventados). Como usar:
 - ano = série da turma (6 a 9; a turma 71 é 7º ano), não o ano letivo; o ano letivo vem da pasta Anos/2026.
 - transcricao: pendente → aguardando-revisao → aprovada. Sem foto, crie já como "aprovada" e apague a linha "foto:".
 - foto: nome do arquivo da página do caderno, guardado junto no vault.
+- Etiquetas na ocorrência: #conversa #produtividade #espelho #andando #briga #celular #positivo (ex.: `- [[Nome]] — #conversa texto`).
+- `<!-- original: … -->` guarda o que estava escrito à mão quando a nota vem da foto (skill transcrever-diario); o app ignora.
 - Esta nota é sensível: o Claude não a lê pelo MCP.
 -->
 
@@ -26,7 +28,7 @@ MODELO FICTÍCIO (nomes e fatos inventados). Como usar:
 Dado: Leitura do texto "Vossa Excelência" e discussão em duplas sobre quando usar *você*, *senhor* e *Vossa Senhoria*. Fizeram a atividade 1 do caderno; a 2 ficou para casa.
 
 - [[Ana Beatriz Souza]] — participou muito, deu o exemplo do requerimento à direção.
-- [[Bruno Henrique Lima]] — conversa paralela durante a leitura; chamado a atenção duas vezes.
+- [[Bruno Henrique Lima]] — #conversa conversa paralela durante a leitura; chamado a atenção duas vezes.
 - [[Carla Mendes]] — sem material; copiou do colega.
 
 ## Aula 2 — Pronomes de tratamento: concordância verbal

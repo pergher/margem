@@ -208,6 +208,7 @@ impl Server {
         match tipo {
             "aula" => r.join("Acervo/Aulas"),
             "texto" => r.join("Acervo/Textos"),
+            "oficina" => r.join("Acervo/Oficinas"),
             "banco" => r.join("Acervo/Questoes"),
             "ciclo" => r.join("Acervo/Ciclos"),
             "gramatica" => r.join("Acervo/Gramática"),

@@ -118,3 +118,22 @@ describe("devolutiva", () => {
     expect(t).toContain("**Nota: 1,5 de 2**");
   });
 });
+
+describe("enunciado", () => {
+  it("cria a seção antes do primeiro aluno e não vira aluno", () => {
+    const t = C.editarEnunciado(NOTA, "Escreva uma coluna.\n15 a 20 linhas.");
+    expect(t).toContain("Rubrica. Cada critério vale 0, 0,5 ou 1 ponto. Média: 6,5\n\n## Enunciado\n\nEscreva uma coluna.\n15 a 20 linhas.\n\n## Ana");
+    const d = C.parseCorrecao(t);
+    expect(d.enunciado).toBe("Escreva uma coluna.\n15 a 20 linhas.");
+    expect(d.alunos.map((a) => a.nome)).toEqual(["Ana", "Beto"]);
+    expect(d.media).toBe(6.5);
+  });
+  it("troca e remove a seção existente", () => {
+    const t1 = C.editarEnunciado(NOTA, "A");
+    const t2 = C.editarEnunciado(t1, "B");
+    expect(C.parseCorrecao(t2).enunciado).toBe("B");
+    expect(t2.match(/## Enunciado/g)).toHaveLength(1);
+    expect(C.editarEnunciado(t2, "")).toBe(NOTA);
+  });
+  it("sem enunciado devolve vazio", () => expect(C.parseCorrecao(NOTA).enunciado).toBe(""));
+});

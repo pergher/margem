@@ -18,12 +18,6 @@ function BotaoAcao({ x, onClick, className = "" }) {
     className={`rounded-md px-2.5 py-0.5 text-xs ${ver ? "border border-border bg-transparent text-foreground hover:bg-accent" : x.feitas ? "border border-primary bg-primary/10 font-medium text-primary hover:bg-primary/20" : "bg-primary text-primary-foreground hover:opacity-90"} ${className}`}>{rotuloAcao(x)}</button>;
 }
 
-/** Atalho para a Visão da turma do lote (botão só com ícone, ao lado da ação principal). */
-function BotaoTurma({ onClick }) {
-  return <button onClick={(e) => { e.stopPropagation(); onClick(); }} title="Visão da turma" aria-label="Visão da turma"
-    className="inline-flex h-6 w-7 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-accent hover:text-foreground"><ChartColumn aria-hidden className="h-3.5 w-3.5" /></button>;
-}
-
 /** Correção: os lotes (uma pasta por atividade e turma), no explorador comum; daqui abre-se a tela de correção ou o arquivo. */
 export function CorrecoesPage({ items, onCorrigir, onTurma, onOpen, onRename, onDelete }) {
   const [lista, setLista] = useState(undefined);
@@ -42,7 +36,7 @@ export function CorrecoesPage({ items, onCorrigir, onTurma, onOpen, onRename, on
       })));
     return () => { vivo = false; };
   }, [items]);
-  if (lista === undefined) return <Carregando>Lendo as correções…</Carregando>;
+  if (lista === undefined) return <Carregando>Lendo as produções…</Carregando>;
 
   const turmas = [...new Set(lista.map((x) => x.turma).filter(Boolean))].sort();
   const meses = [...new Set(lista.map((x) => x.mes).filter(Boolean))].sort((a, b) => MESES.indexOf(a.toLowerCase()) - MESES.indexOf(b.toLowerCase()));
@@ -52,7 +46,7 @@ export function CorrecoesPage({ items, onCorrigir, onTurma, onOpen, onRename, on
 
   return (
     <Explorador
-      chave="correcoes" titulo="Correção" unidade={["lote", "lotes"]} buscaDica="Buscar por atividade, turma ou mês…"
+      chave="correcoes" titulo="Produções" unidade={["lote", "lotes"]} buscaDica="Buscar por atividade, turma ou mês…"
       subtitulo={<>{pend} a corrigir · {lista.length - pend} já corrigidas</>}
       itens={lista}
       filtros={[
@@ -80,7 +74,7 @@ export function CorrecoesPage({ items, onCorrigir, onTurma, onOpen, onRename, on
         {x.turma && <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: corTurma(x.turma) }} />Turma {x.turma}</span>}
         {x.mes && <span className="text-xs text-muted-foreground">{x.mes}</span>}
         {x.media != null && <span className="text-xs text-muted-foreground" title="Média da atividade">Média <b className="text-foreground">{fmt(x.media)}</b></span>}
-        <span className="inline-flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} /><BotaoTurma onClick={() => onTurma(x.path)} /></span>
+        <span className="inline-flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} /></span>
       </>}
       colunas={[
         { id: "turma", nome: "Turma", w: "w-24", ordem: "turma", render: (x) => (x.turma ? <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: corTurma(x.turma) }} />{x.turma}</span> : "—") },
@@ -88,10 +82,10 @@ export function CorrecoesPage({ items, onCorrigir, onTurma, onOpen, onRename, on
         { id: "prog", nome: "Progresso", w: "w-40", ordem: "prog", render: (x) => (
           <span className="flex items-center gap-2 text-xs text-muted-foreground"><span role="img" aria-label={`${x.feitas} de ${x.total} corrigidas`} className="h-1.5 w-16 rounded-full bg-muted"><span className="block h-1.5 rounded-full bg-primary" style={{ width: `${pct(x)}%` }} /></span>{x.feitas}/{x.total}</span>) },
         { id: "media", nome: "Média", w: "w-24", ordem: "media", render: (x) => <span className="text-xs text-muted-foreground" title="Média da atividade">{x.media != null ? <><b className="font-medium text-foreground">{fmt(x.media)}</b>{x.maximo ? ` / ${fmt(x.maximo).replace(",0", "")}` : ""}</> : "—"}</span> },
-        { id: "acao", nome: "", w: "w-40", render: (x) => <span className="flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} className="py-1" /><BotaoTurma onClick={() => onTurma(x.path)} /></span> },
+        { id: "acao", nome: "", w: "w-40", render: (x) => <span className="flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} className="py-1" /></span> },
       ]}
       menuExtra={(x) => [{ nome: rotuloAcao(x), Icone: ClipboardCheck, fazer: () => onCorrigir(x.path) }, { nome: "Visão da turma", Icone: ChartColumn, fazer: () => onTurma(x.path) }, { nome: "Abrir arquivo", Icone: ClipboardCheck, fazer: () => onOpen(x.path) }]}
-      onOpen={(x) => onCorrigir(x.path)} onRename={onRename} onDelete={onDelete}
+      onOpen={(x) => onTurma(x.path)} onRename={onRename} onDelete={onDelete}
       vazio={{ titulo: "Nenhuma correção ainda", texto: "Os lotes ficam em Anos/AAAA/Correcoes, com a seção “Transcrições e devolutivas”." }}
     />
   );

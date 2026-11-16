@@ -2,6 +2,7 @@
 // Planejamento do Ano (Anos/AAAA/Planejamento AAAA.md, tabela "Ano | Trimestre | Ordem | Ciclo"), sem turma.
 // Ainda lê o formato antigo (Anos/AAAA/Planejamento/ATC - Título - PR.md) até o vault ser migrado (`vault ciclos`).
 import { invoke } from "@/lib/api";
+import { gravarTurmas, AULAS_PADRAO } from "@/lib/turmas";
 
 export const FASES = [
   { id: "diagnosticar", nome: "Diagnosticar", cor: "#8A78B8" },
@@ -69,9 +70,23 @@ export function lerLinhasPlanejamento(text) {
 
 export const planejamentoDoAno = (items, ano) => items.find((i) => i.rel === `Anos/${ano}/Planejamento ${ano}.md`) ?? null;
 
-export async function lerCiclos(items) {
-  const anos = items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean);
-  const anoLetivo = anos.sort().pop() ?? null;
+/** Anos letivos que existem em `Anos/AAAA/`, em ordem crescente. */
+export const anosLetivos = (items) => [...new Set(items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean))].sort();
+
+/** Cria o ano letivo seguinte, vazio: Planejamento AAAA sem ciclos e, se vierem, as turmas do ano. Devolve o ano criado. */
+export async function criarProximoAno(items, { turmas = [], aulas } = {}) {
+  const anos = anosLetivos(items);
+  const novo = String((anos.length ? Number(anos[anos.length - 1]) : new Date().getFullYear()) + 1);
+  if (items.some((i) => i.rel.startsWith(`Anos/${novo}/`))) throw new Error(`O ano ${novo} já existe.`);
+  const root = items[0].path.slice(0, -items[0].rel.length);
+  const path = await invoke("create_note", { dir: root + `Anos/${novo}/`, name: `Planejamento ${novo}` });
+  await invoke("save_note", { path, text: modeloPlanejamento(novo) });
+  if (turmas.length) await gravarTurmas(items, novo, { turmas, aulas: aulas ?? AULAS_PADRAO });
+  return novo;
+}
+
+export async function lerCiclos(items, anoEscolhido = null) {
+  const anoLetivo = anoEscolhido ?? anosLetivos(items).pop() ?? null;
   const plan = anoLetivo ? planejamentoDoAno(items, anoLetivo) : null;
   const linhas = plan ? lerLinhasPlanejamento(await invoke("read_note", { path: plan.path }).catch(() => "")) : {};
   const alvo = items.filter((i) => /^Acervo\/Ciclos\/.+\.md$/.test(i.rel) || (LEGADO.test(i.rel) && LEGADO.exec(i.rel)[1] === anoLetivo));

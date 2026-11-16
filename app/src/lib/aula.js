@@ -36,7 +36,8 @@ export function parseAula(text) {
   const val = (k) => { const e = fm.entries.find((x) => x.key === k); return e?.value || (e?.items ?? []).join(", ") || ""; };
   const corpoBruto = fm.has ? fm.lines.slice(fm.end + 1).join("\n") : text;
   const { texto: corpo, notas } = separarMargem(corpoBruto);
-  const linhas = corpo.split("\n"), partes = [];
+  // Cada seção `##` leva as próprias anotações [!margem] (a margem as mostra ao lado do trecho a que pertencem).
+  const linhas = corpoBruto.split("\n"), partes = [];
   let atual = { titulo: "", linhas: [] }, fence = false;
   for (const l of linhas) {
     if (/^\s*```/.test(l)) fence = !fence;
@@ -44,13 +45,15 @@ export function parseAula(text) {
     if (h) { partes.push(atual); atual = { titulo: h[1].trim(), linhas: [] }; } else atual.linhas.push(l);
   }
   partes.push(atual);
+  const limpas = partes.map((p) => separarMargem(p.linhas.join("\n")));
   // Toda seção `##` vira uma aba, na ordem do arquivo; o id é a posição (estável ao renomear o título). `tipo` só serve para os dados da margem.
   const tipoDe = (t) => SECOES.find((x) => x.casa.test(sem(t.replace(/^[^\p{L}\p{N}(]+/u, ""))))?.id ?? null;
-  const secoes = partes.slice(1).map((p, k) => ({ id: "s" + k, tipo: tipoDe(p.titulo), nome: p.titulo || "(sem título)", md: p.linhas.join("\n").trim() }));
-  const intro = partes[0].linhas.filter((l) => !/^#\s/.test(l)).join("\n").trim();
+  const secoes = partes.slice(1).map((p, k) => ({ id: "s" + k, tipo: tipoDe(p.titulo), nome: p.titulo || "(sem título)", md: limpas[k + 1].texto.trim(), notas: limpas[k + 1].notas }));
+  const intro = limpas[0].texto.split("\n").filter((l) => !/^#\s/.test(l)).join("\n").trim();
+  const introNotas = limpas[0].notas;
   return {
     meta: { status: val("status"), ano: val("ano"), assuntos: val("assuntos"), tags: val("tags") },
-    secoes, intro, notas, corpo: corpo.trim(),
+    secoes, intro, introNotas, notas, corpo: corpo.trim(),
     codigos: [...new Set((secoes.find((s) => s.tipo === "habilidades")?.md ?? "").match(/EF\d\dLP\d\d/g) ?? [])],
   };
 }
@@ -119,6 +122,14 @@ export function secoesBrutas(text) {
     if (h) cab.push({ i, titulo: h[1].trim() });
   });
   const out = [];
+  // Trecho antes do primeiro `##` (sem o título `#`): também se edita na página, como as demais seções.
+  const fm = parseFm(text), fimIntro = cab.length ? cab[0].i : linhas.length;
+  let ini = fm.has ? fm.end + 1 : 0;
+  while (ini < fimIntro && !linhas[ini].trim()) ini++;
+  if (ini < fimIntro && /^#\s/.test(linhas[ini])) ini++;
+  while (ini < fimIntro && !linhas[ini].trim()) ini++;
+  const mdIntro = linhas.slice(ini, fimIntro).join("\n").replace(/\s+$/, "");
+  if (mdIntro.trim()) out.push({ id: "intro", ini, fim: fimIntro, linha0: ini, md: mdIntro });
   cab.forEach((c, k) => {
     const fim = k + 1 < cab.length ? cab[k + 1].i : linhas.length;
     // `md` inclui a linha do título `##`; linha0: quantas linhas do arquivo vêm antes dela (para numerar as linhas como no arquivo)
@@ -133,7 +144,7 @@ export function trocarSecao(text, id, md) {
   if (!s) return text;
   const linhas = text.split("\n");
   let corpo = md.replace(/\s+$/, "");
-  if (!/^##\s/.test(corpo)) corpo = linhas[s.ini] + "\n" + corpo;
+  if (id !== "intro" && !/^##\s/.test(corpo)) corpo = linhas[s.ini] + "\n" + corpo;
   const novo = [...corpo.split("\n"), ...(s.fim < linhas.length ? [""] : [])];
   return [...linhas.slice(0, s.ini), ...novo, ...linhas.slice(s.fim)].join("\n");
 }

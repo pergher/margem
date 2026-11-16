@@ -21,8 +21,9 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
   const [idx, setIdx] = useState(focoPath ? -1 : ultima?.idx ?? -1);
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState(""); // "" = todas as turmas
-  const carregar = (irParaUltima) => lerCiclos(items).then(async (c) => {
-    const ano = c.anoLetivo ?? String(new Date().getFullYear());
+  // O ano da Semana é o do calendário (independe da tela Ano): na virada passa sozinho a usar as turmas do ano novo.
+  const carregar = (irParaUltima) => lerCiclos(items, String(new Date().getFullYear())).then(async (c) => {
+    const ano = c.anoLetivo;
     const [semanas, legado, cfg] = await Promise.all([lerSemanas(items), lerSemana(items).catch(() => null), lerTurmas(items, ano)]);
     setDados({ semanas, legado, ciclos: c.ciclos, ano, cfg });
     setIdx((i) => { const f = focoPath ? semanas.findIndex((x) => x.path === focoPath) : -1; return f >= 0 ? f : irParaUltima || i < 0 || i >= semanas.length ? semanas.length - 1 : i; });
@@ -43,7 +44,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
 
   const nova = async (seg = proximaSegunda(semanas)) => {
     try {
-      await criarSemana(items, { ano, seg, rotulo: rotuloDe(seg), turmas: semanaNova({ semanas, turmas }) });
+      await criarSemana(items, { ano: String(seg.getFullYear()), seg, rotulo: rotuloDe(seg), turmas: semanaNova({ semanas, turmas }) });
       setIdx(-1); await onRefresh(); // items muda e a tela recarrega na última semana
     } catch (e) { falha(e); }
   };

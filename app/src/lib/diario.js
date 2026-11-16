@@ -72,3 +72,65 @@ export function inserirOcorrencia(text, n, aluno, texto) {
   return linhas.join("\n");
 }
 export const mudarEstado = (text, estado) => setProp(text, "transcricao", estado);
+
+// ---------- comportamentos e registros (página Diário) ----------
+// Na linha da ocorrência o professor pode etiquetar: "- [[Nome]] — #conversa #celular texto livre".
+// Sem etiqueta, o app sugere pelo texto (marcado como "sugerido"); a etiqueta no arquivo sempre vale mais.
+export const COMPORTAMENTOS = [
+  { id: "conversa", nome: "Conversa em sala", tag: "conversa", ponto: "bg-warn", re: /conversa|conversou|conversando|papo|barulh|bagunç|bagunc/i },
+  { id: "produtividade", nome: "Falta de produtividade", tag: "produtividade", ponto: "bg-warn", re: /n[ãa]o fez|sem material|sem produzir|n[ãa]o produz|n[ãa]o copiou|n[ãa]o realiz|n[ãa]o entreg|improdutiv|sem caderno|n[ãa]o trouxe|esqueceu o (?:caderno|material)/i },
+  { id: "espelho", nome: "Fora do espelho de classe", tag: "espelho", ponto: "bg-warn", re: /espelho|lugar errado|trocou de lugar|fora do lugar/i },
+  { id: "andando", nome: "Andando pela sala", tag: "andando", ponto: "bg-warn", re: /andando|andou|levant|circul|saiu da sala|sem pedir|fora da carteira/i },
+  { id: "briga", nome: "Briga", tag: "briga", ponto: "bg-err", re: /brig[aou]|agred|empurr|xing|soco|tapa|discutiu|discuss[ãa]o (?:acalorada|com)|bateu/i },
+  { id: "celular", nome: "Uso de celular", tag: "celular", ponto: "bg-warn", re: /celular|telefone|fone de ouvido/i },
+];
+export const POSITIVO = { id: "positivo", nome: "Positivo", tag: "positivo", ponto: "bg-ok", re: /particip|elogi|ajudou|caprich|excelente|criativ|bem organizad|com aten[çc][ãa]o|liderou|completa/i };
+export const OUTRO = { id: "outro", nome: "Sem categoria", ponto: "bg-muted-foreground/50" };
+export const CATEGORIAS = [...COMPORTAMENTOS, POSITIVO];
+
+/** Separa as etiquetas (#conversa…) do texto e devolve { texto, cats: [{ id, sugerida }] }. */
+export function comportamentosDe(bruto) {
+  const tags = [...bruto.matchAll(/(?:^|\s)#([\p{L}-]+)/gu)].map((m) => m[1].toLowerCase());
+  const texto = bruto.replace(/(?:^|\s)#[\p{L}-]+/gu, " ").replace(/\s+/g, " ").trim();
+  const dadas = CATEGORIAS.filter((c) => tags.includes(c.tag)).map((c) => ({ id: c.id, sugerida: false }));
+  if (dadas.length) return { texto, cats: dadas };
+  // "ausente" e "atrasou" não são os comportamentos acompanhados: ficam sem categoria.
+  const achadas = CATEGORIAS.filter((c) => c.re.test(texto)).map((c) => ({ id: c.id, sugerida: true }));
+  return { texto, cats: achadas.some((c) => c.id !== "positivo") ? achadas.filter((c) => c.id !== "positivo") : achadas };
+}
+export const insereTags = (ids, texto) => `${ids.map((i) => `#${CATEGORIAS.find((c) => c.id === i).tag}`).join(" ")}${ids.length ? " " : ""}${texto}`.trim();
+
+const MESES = ["janeiro", "fevereiro", "março", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const semAcento = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+/** Primeiro dia da semana como Date: aceita "2026-09-21" e "9 a 13 de Novembro" (ano vem da pasta). `null` se não der. */
+export function dataDaSemana(semana, ano) {
+  const s = String(semana ?? "").trim();
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = /^(\d{1,2})(?:\s+de\s+([A-Za-zçÇ]+))?\s+a\s+(\d{1,2})\s+de\s+([A-Za-zçÇ]+)/i.exec(s);
+  if (!m) return null;
+  const fim = MESES.findIndex((x) => semAcento(x) === semAcento(m[4])), ini = m[2] ? MESES.findIndex((x) => semAcento(x) === semAcento(m[2])) : fim;
+  return fim < 0 || ini < 0 ? null : new Date(+ano, ini, +m[1]);
+}
+export const mesDe = (d) => (d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}` : "");
+export const nomeDoMes = (ym) => { const [a, m] = ym.split("-"); return `${MESES[+m - 1]} de ${a}`; };
+
+/**
+ * Registros de um diário, prontos para a lista: uma "aula" por seção e uma "ocorrencia" por linha de aluno.
+ * `quando` ordena (data da semana + número da aula); `cats` só existe nas ocorrências.
+ */
+export function registrosDoDiario(text, d) {
+  const meta = lerMeta(text), data = dataDaSemana(meta.semana, d.ano), linhas = text.split("\n");
+  const base = { diario: d.path, turma: d.turma, ano: d.ano, semana: meta.semana, data, mes: mesDe(data), transcricao: meta.transcricao };
+  const aulas = aulasDoDiario(text), regs = [];
+  aulas.forEach((a, k) => {
+    const [rot, tema = ""] = a.titulo.split(/\s+—\s+/), n = Number(/\d+/.exec(rot)?.[0] ?? k + 1);
+    const corpo = linhas.slice(a.ini + 1, a.fim).filter((l) => l.trim() && !/^\s*-\s+\[\[/.test(l) && !/^\s*<!--.*-->\s*$/.test(l)).map((l) => l.replace(/^Dado:\s*/, "").trim()).filter(Boolean).join(" ");
+    regs.push({ ...base, id: `${d.path}#a${n}`, tipo: "aula", n, aula: rot, tema, texto: corpo, ord: (data?.getTime() ?? 0) + n });
+  });
+  for (const o of ocorrenciasDoDiario(text)) {
+    const n = Number(/Aula\s+(\d+)/i.exec(o.aula)?.[1] ?? 0), { texto, cats } = comportamentosDe(o.texto);
+    regs.push({ ...base, id: `${d.path}#l${o.linha}`, tipo: "ocorrencia", n, aula: o.aula.replace(/\s+—.*/, ""), tema: o.aula.split(/\s+—\s+/)[1] ?? "", aluno: o.aluno, texto, cats, linha: o.linha, ord: (data?.getTime() ?? 0) + n + 0.5 });
+  }
+  return regs;
+}
