@@ -8,6 +8,5 @@ export const VISOES = [
   { id: "aluno", nome: "Aluno", casa: (rel) => /^Anos\/\d{4}\/Alunos\/[^/]+\/[^/]+\.md$/.test(rel) },
   { id: "aula", nome: "Aula", casa: (rel) => /^Acervo\/Aulas\/.+\.md$/.test(rel) },
   { id: "banco", nome: "Banco", casa: (rel) => /^Acervo\/Questoes\/.+\.md$/.test(rel) },
-  { id: "texto", nome: "Texto", casa: (rel) => /^Acervo\/Textos\/[^/]+\.md$/.test(rel) },
 ];
 export const visaoDe = (rel) => (rel ? VISOES.find((v) => v.casa(rel)) ?? null : null);

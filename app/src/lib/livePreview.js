@@ -315,7 +315,7 @@ class PropsWidget extends WidgetType {
   toDOM(view) {
     const wrap = document.createElement("div");
     wrap.className = "cm-props";
-    const chip = (txt, cls = "") => { const s = document.createElement("span"); s.className = "cm-chip " + cls; s.textContent = txt; wrap.append(s); return s; };
+    const card = document.createElement("div"); card.className = "cm-props-card"; wrap.append(card);
     const items = [];
     let key = null;
     for (const raw of this.text.split("\n").slice(1, -1)) {
@@ -328,20 +328,30 @@ class PropsWidget extends WidgetType {
     }
     for (const [k, v0] of items) {
       const v = v0.replace(/^\[|\]$/g, "").replace(/^["']|["']$/g, "").trim();
-      if (!v) { chip(`${k} pendente`, "cm-chip-warn"); continue; }
-      if (k === "tipo" || k === "type") { chip(v); continue; }
-      if (k === "status") { const c = chip(v, "cm-chip-status"); c.dataset.status = v; continue; }
-      if (v.length > 40) { chip(`${k}: ${v.slice(0, 38)}…`); continue; }
-      chip(`${k}: ${v}`, "cm-chip-soft");
+      const nome = k.replace(/[-_]/g, " ").replace(/^./, (c) => c.toUpperCase());
+      const linha = document.createElement("div"); linha.className = "cm-prop";
+      const kk = document.createElement("span"); kk.className = "cm-prop-k"; kk.textContent = nome + ":";
+      const vv = document.createElement("span"); vv.className = "cm-prop-v" + (v ? "" : " cm-prop-vazio"); vv.textContent = v || "pendente";
+      if (k === "status" && v) vv.dataset.status = v;
+      linha.append(kk, vv); card.append(linha);
     }
     const b = document.createElement("button");
     b.className = "cm-props-edit"; b.textContent = "Editar";
     b.addEventListener("mousedown", (e) => { e.preventDefault(); view.dispatch({ selection: { anchor: 4 }, scrollIntoView: true }); view.focus(); });
-    wrap.append(b);
+    card.append(b);
     return wrap;
   }
   ignoreEvent() { return true; }
 }
+
+/** Título (nome do arquivo) acima do frontmatter. */
+class TituloWidget extends WidgetType {
+  constructor(t) { super(); this.t = t; }
+  eq(o) { return o.t === this.t; }
+  toDOM() { const h = document.createElement("div"); h.className = "cm-titulo"; h.textContent = this.t; return h; }
+  ignoreEvent() { return true; }
+}
+export const tituloExt = (t) => (t ? EditorView.decorations.of(Decoration.set([Decoration.widget({ widget: new TituloWidget(t), block: true, side: -1 }).range(0)])) : []);
 
 // ---------- decorações de bloco (StateField) ----------
 
@@ -562,6 +572,30 @@ function entrarNoBloco(forward) {
   };
 }
 export const navegacaoBlocos = keymap.of([{ key: "ArrowDown", run: entrarNoBloco(true) }, { key: "ArrowUp", run: entrarNoBloco(false) }]);
+
+/** Página de aula com um editor por seção: nas bordas do texto, as setas passam para o editor vizinho (acima/abaixo). */
+function passarAoVizinho(dir, horizontal) {
+  return (view) => {
+    const st = view.state, r = st.selection.main;
+    if (!r.empty) return false;
+    const alvoFim = dir > 0;
+    const naBorda = horizontal
+      ? r.head === (alvoFim ? st.doc.length : 0)
+      : alvoFim ? st.doc.lineAt(r.head).number === st.doc.lines && view.moveVertically(r, true).head === st.doc.length
+        : st.doc.lineAt(r.head).number === 1 && view.moveVertically(r, false).head === 0;
+    if (!naBorda) return false;
+    const todos = [...document.querySelectorAll(".aula-ed .cm-content")], i = todos.indexOf(view.contentDOM), viz = todos[i + dir];
+    const v = i >= 0 && viz ? EditorView.findFromDOM(viz) : null;
+    if (!v) return false;
+    v.focus();
+    v.dispatch({ selection: { anchor: alvoFim ? 0 : v.state.doc.length }, scrollIntoView: true });
+    return true;
+  };
+}
+export const navegacaoEntreEditores = keymap.of([
+  { key: "ArrowUp", run: passarAoVizinho(-1, false) }, { key: "ArrowDown", run: passarAoVizinho(1, false) },
+  { key: "ArrowLeft", run: passarAoVizinho(-1, true) }, { key: "ArrowRight", run: passarAoVizinho(1, true) },
+]);
 
 export const livePreview = [
   blockField,
