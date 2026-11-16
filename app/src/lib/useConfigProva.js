@@ -25,8 +25,7 @@ export function useConfigProva(items, onCriada) {
   };
   const mudar = (novo) => { setCfg(novo); pendente.current = novo; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
 
-  const pronto = items.length > 0;
-  useEffect(() => { if (pronto) lerConfigProva(it.current).then(setCfg).catch((e) => setErro(String(e?.message ?? e))); }, [pronto]);
+  useEffect(() => { lerConfigProva(it.current).then(setCfg).catch((e) => setErro(String(e?.message ?? e))); }, []);
   useEffect(() => () => { gravar(); }, []);
   return { cfg, mudar, erro, setErro };
 }

@@ -1,4 +1,5 @@
 // Fora do Tauri (navegador em desenvolvimento) lê o vault de teste via servidor do Vite, somente leitura.
+import { definirRaiz } from "@/lib/raiz";
 import { invoke as tauriInvoke, convertFileSrc } from "@tauri-apps/api/core";
 
 const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
@@ -8,8 +9,8 @@ const get = (u) => fetch("/__vault" + u).then((r) => r.json());
 // Navegador (dev): as operações de gerenciar notas valem só em memória, para testar a interface.
 let mem = null;
 const orig = {}; // caminho atual -> caminho real no disco (para ler notas renomeadas/movidas)
-const ensure = async () => (mem ??= { items: await get("/list"), dirs: null });
-const rootOf = (m) => m.items[0].path.slice(0, -m.items[0].rel.length);
+const ensure = async () => (mem ??= await (async () => { const root = await get("/root"); definirRaiz(root); return { items: await get("/list"), dirs: null, root }; })());
+const rootOf = (m) => m.root;
 const dirsOf = (m) => m.dirs ??= [...new Set(m.items.flatMap((i) => i.rel.split("/").slice(0, -1).map((_, k, a) => a.slice(0, k + 1).join("/") + "/")))];
 const relOf = (m, p) => p.slice(rootOf(m).length);
 const mk = (m, rel) => ({ name: rel.split("/").pop().replace(/\.md$/, ""), rel, path: rootOf(m) + rel });

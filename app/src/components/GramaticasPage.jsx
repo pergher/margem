@@ -1,3 +1,4 @@
+import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Explorador, cmp } from "@/components/Explorador";
@@ -16,7 +17,7 @@ const metaDe = (texto) => {
 /** Gramática: os arquivos de Acervo/Gramática (referência por tópico), no explorador comum. */
 export function GramaticasPage({ items, dirs, onOpen, onCreate, pasta, setPasta, onRefresh, onRename, onMove, onDelete, onNovaPasta }) {
   const [metas, setMetas] = useState({});
-  const raizAbs = items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length) + RAIZ : "";
+  const raizAbs = raizBarra(items) ? raizBarra(items) + RAIZ : "";
   const todas = useMemo(() => items.filter((i) => i.rel.startsWith(RAIZ + "/") && i.rel.endsWith(".md")).map((i) => ({ ...i, pasta: i.rel.split("/").slice(2, -1).join("/") })), [items]);
   const pastasRel = useMemo(() => {
     const set = new Set();

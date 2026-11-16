@@ -2,13 +2,14 @@
 //   turmas: ["61", "62", "71"]
 //   aulas_por_semana: 4
 // Sem a nota, a Semana usa as turmas que já aparecem nas notas de semana e 4 aulas por turma.
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
 import { parseFm, setProp } from "@/lib/frontmatter";
 
 export const AULAS_PADRAO = 4;
 export const nomeTurmas = (ano) => `Turmas ${ano}`;
 
-const raiz = (items) => items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+const raiz = (items) => raizDe(items);
 
 /** Texto digitado ("61, 62 71") → lista sem repetição, na ordem. */
 export const turmasDeTexto = (s) => [...new Set(String(s).split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean))];

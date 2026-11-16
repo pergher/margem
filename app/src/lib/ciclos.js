@@ -1,6 +1,7 @@
 // Ciclos são atemporais: notas de Acervo/Ciclos (nome = título, 16 aulas na tabela "## Aulas"). Quem os põe num ano é o
 // Planejamento do Ano (Anos/AAAA/Planejamento AAAA.md, tabela "Ano | Trimestre | Ordem | Ciclo"), sem turma.
 // Ainda lê o formato antigo (Anos/AAAA/Planejamento/ATC - Título - PR.md) até o vault ser migrado (`vault ciclos`).
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
 import { gravarTurmas, AULAS_PADRAO } from "@/lib/turmas";
 
@@ -78,7 +79,7 @@ export async function criarProximoAno(items, { turmas = [], aulas } = {}) {
   const anos = anosLetivos(items);
   const novo = String((anos.length ? Number(anos[anos.length - 1]) : new Date().getFullYear()) + 1);
   if (items.some((i) => i.rel.startsWith(`Anos/${novo}/`))) throw new Error(`O ano ${novo} já existe.`);
-  const root = items[0].path.slice(0, -items[0].rel.length);
+  const root = raizBarra(items);
   const path = await invoke("create_note", { dir: root + `Anos/${novo}/`, name: `Planejamento ${novo}` });
   await invoke("save_note", { path, text: modeloPlanejamento(novo) });
   if (turmas.length) await gravarTurmas(items, novo, { turmas, aulas: aulas ?? AULAS_PADRAO });
@@ -126,7 +127,7 @@ export async function incluirCicloNoAno(items, ciclo, anoLetivo, pos) {
   let path;
   if (plan) path = plan.path;
   else {
-    const root = items[0].path.slice(0, -items[0].rel.length);
+    const root = raizBarra(items);
     path = await invoke("create_note", { dir: root + `Anos/${anoLetivo}/`, name: `Planejamento ${anoLetivo}` });
     await invoke("save_note", { path, text: modeloPlanejamento(anoLetivo) });
   }
@@ -221,7 +222,7 @@ export async function criarCicloVazio(items, titulo, pasta = "") {
   if (!nome) throw new Error("O ciclo não tem título.");
   const igual = items.find((i) => i.name.toLowerCase() === nome.toLowerCase());
   if (igual) throw new Error(`Já existe uma nota chamada “${igual.name}”.`);
-  const root = items[0].path.slice(0, -items[0].rel.length);
+  const root = raizBarra(items);
   await invoke("create_folder", { dir: root + "Acervo/", name: "Ciclos" }).catch(() => {});
   const path = await invoke("create_note", { dir: root + "Acervo/Ciclos/" + (pasta ? pasta + "/" : ""), name: nome });
   await invoke("save_note", { path, text: modeloCiclo() });

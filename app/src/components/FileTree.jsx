@@ -1,3 +1,4 @@
+import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronRight, FileText, Folder, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,7 @@ export function FileTree({ items, dirs = [], current, currentRel, reveal, onOpen
   const [open, setOpen] = useState(() => new Set());
   const [hl, setHl] = useState(null);
   const tree = useMemo(() => buildTree(items, dirs), [items, dirs]);
-  const root = useMemo(() => (items[0] ? items[0].path.slice(0, -items[0].rel.length) : ""), [items]);
+  const root = useMemo(() => raizBarra(items), [items]);
   const [menuAt, setMenuAt] = useState(null);
   const [overKey, setOverKey] = useState(null);
   const dragging = useRef(null);

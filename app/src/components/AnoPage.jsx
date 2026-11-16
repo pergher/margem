@@ -46,13 +46,13 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
   const [tick, setTick] = useState(0); // força reler depois de mexer no Planejamento
   const [novo, setNovo] = useState(null); // diálogo "Criar próximo ano": { txt (turmas), aulas }
   const [anoSel, setAnoSel] = useState(null); // ano letivo mostrado (independente da Semana); null = o mais recente
-  useEffect(() => { if (!items.length) return; lerCiclos(items, anoSel).then(async (c) => {
+  useEffect(() => { lerCiclos(items, anoSel).then(async (c) => {
     const [semanas, cfg] = await Promise.all([lerSemanas(items).catch(() => []), lerTurmas(items, c.anoLetivo ?? String(new Date().getFullYear())).catch(() => ({ turmas: [] }))]);
     ultimo = { ...c, semanas, turmasCfg: cfg.turmas }; setDados(ultimo);
   }).catch((e) => setErro(String(e))); }, [items, tick, anoSel]);
 
   if (erro) return <Erro>Erro: {erro}</Erro>;
-  if (!dados || !items.length) return <Carregando>Lendo os planos…</Carregando>;
+  if (!dados) return <Carregando>Lendo os planos…</Carregando>;
   const { anoLetivo, ciclos } = dados;
   const anosTodos = anosLetivos(items), idxAno = anosTodos.indexOf(anoLetivo), ehUltimoAno = idxAno === anosTodos.length - 1;
   const abrirNovoAno = async () => {

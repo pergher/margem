@@ -1,5 +1,6 @@
 // Lê `Anos/AAAA/Planejamento/Planejamento.md`: "## A fazer" (tarefas) e "## Sema" com uma tabela por turma ("### 61").
 // Em cada tabela a linha marcada com ✓ já foi dada; a primeira sem ✓ é a aula de hoje.
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
 import { gravarVarios } from "@/lib/transacao";
 import { faseDaAula } from "@/lib/ciclos";
@@ -181,7 +182,7 @@ export async function importarLegado(items, legado, ano) {
     turma: t.turma, cicloNome: t.cicloNome,
     aulas: t.aulas.filter((a) => a.dada).map((a) => ({ texto: a.texto, recurso: a.recurso, dada: true, situacao: "dada", cicloNome: t.cicloNome, cicloN: a.n })),
   }));
-  const raiz = items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+  const raiz = raizDe(items);
   const dirAno = `${raiz}/Anos/${ano}`;
   try { await invoke("create_folder", { dir: dirAno, name: "Semanas" }); } catch { /* já existe */ }
   const path = await invoke("create_note", { dir: `${dirAno}/Semanas`, name: "Semana 0000 - Histórico importado" });
@@ -190,7 +191,7 @@ export async function importarLegado(items, legado, ano) {
 }
 
 export async function criarSemana(items, { ano, seg, rotulo, turmas }) {
-  const raiz = items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+  const raiz = raizDe(items);
   const dirAno = `${raiz}/Anos/${ano}`;
   try { await invoke("create_folder", { dir: dirAno, name: "Semanas" }); } catch { /* já existe */ }
   const path = await invoke("create_note", { dir: `${dirAno}/Semanas`, name: nomeSemana(seg) });

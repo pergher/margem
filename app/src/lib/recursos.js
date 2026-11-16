@@ -1,3 +1,4 @@
+import { raizDe, raizBarra } from "@/lib/raiz";
 // Criação dos recursos do acervo (texto, oficina, banco de questões) a partir de um modelo. A prova não passa por aqui: é montada em ProvaPage.
 
 export const RECURSOS = {
@@ -15,7 +16,7 @@ export async function criarRecurso(items, tipo, { nome, pasta = "" }) {
   const prefixo = `Acervo/${r.pasta}/`;
   const ja = items.find((i) => i.rel.startsWith(prefixo) && i.name.toLowerCase() === n.toLowerCase());
   if (ja) return ja.path;
-  const raiz = items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+  const raiz = raizDe(items);
   if (!items.some((i) => i.rel.startsWith(prefixo))) { try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: r.pasta }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir: `${raiz}/${prefixo}${pasta ? pasta + "/" : ""}`.replace(/\/$/, ""), name: n });
   await invoke("save_note", { path, text: r.modelo(n) });

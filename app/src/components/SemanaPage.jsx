@@ -28,13 +28,13 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
     setDados({ semanas, legado, ciclos: c.ciclos, ano, cfg });
     setIdx((i) => { const f = focoPath ? semanas.findIndex((x) => x.path === focoPath) : -1; return f >= 0 ? f : irParaUltima || i < 0 || i >= semanas.length ? semanas.length - 1 : i; });
   }).catch((e) => setErro(String(e)));
-  useEffect(() => { if (items.length) carregar(false); }, [items, focoPath]); // items vazio = vault ainda lendo
+  useEffect(() => { carregar(false); }, [items, focoPath]);
   useEffect(() => { if (dados && !focoPath) ultima = { dados, idx }; }, [dados, idx, focoPath]);
   const existe = (n) => items.find((i) => i.name.toLowerCase() === n.toLowerCase());
   const falha = (e) => setErro(String(e?.message ?? e));
 
   if (erro) return <Estado tipo="err" className="p-8 text-sm">Erro: {erro} <button className="ml-2 underline" onClick={() => { setErro(""); carregar(false); }}>tentar de novo</button></Estado>;
-  if (dados === undefined || !items.length) return <Carregando>Lendo a semana…</Carregando>;
+  if (dados === undefined) return <Carregando>Lendo a semana…</Carregando>;
 
   const { semanas, legado, ciclos, ano, cfg } = dados;
   // Turmas: as do arquivo do ano; sem ele, as que já aparecem nas semanas.

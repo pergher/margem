@@ -1,5 +1,6 @@
 // "Planejar ciclo com o Claude": o app NÃO tem modelo embutido. Monta o pedido (com os recursos que existem no vault),
 // o Claude responde (ou grava direto pelo vault-mcp, ferramenta plan_ciclo) e aqui o professor aceita linha a linha.
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
 import { incluirCicloNoAno } from "@/lib/ciclos";
 
@@ -79,7 +80,7 @@ export async function criarCiclo(items, dados, proposta) {
   const igual = items.find((i) => i.name.toLowerCase() === nome.toLowerCase());
   if (igual) throw new Error(`Já existe uma nota chamada “${igual.name}”. Mude o título do ciclo.`);
   const texto = montarCiclo(dados, proposta);
-  const root = items[0].path.slice(0, -items[0].rel.length);
+  const root = raizBarra(items);
   await invoke("create_folder", { dir: root + "Acervo/", name: "Ciclos" }).catch(() => {});
   const path = await invoke("create_note", { dir: root + "Acervo/Ciclos/", name: nome });
   await invoke("save_note", { path, text: texto });

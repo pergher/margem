@@ -1,6 +1,7 @@
 // Gramática do acervo (`tipo: gramatica`, `Acervo/Gramática/<Tópico>.md`): nota de REFERÊNCIA, um arquivo por tópico.
 // Fronteira com a Aula: a gramática guarda a regra, os exemplos e as dúvidas (o que vale em qualquer aula); a aula guarda a
 // sequência didática e as atividades, e cita a gramática com `[[Tópico]]` ou `![[Tópico#Seção]]`.
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { parseAula } from "@/lib/aula";
 
 const sem = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
@@ -83,7 +84,7 @@ export async function criarGramatica(items, { topico, ano = [], pasta = "" }) {
   if (!nome) throw new Error("A gramática não tem título.");
   const ja = items.find((i) => /^Acervo\/Gram[aá]tica\//.test(i.rel) && i.name.toLowerCase() === nome.toLowerCase());
   if (ja) return ja.path;
-  const raiz = items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+  const raiz = raizDe(items);
   const dir = `${raiz}/Acervo/Gramática${pasta ? "/" + pasta : ""}`;
   if (!items.some((i) => i.rel.startsWith("Acervo/Gramática/"))) { try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: "Gramática" }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir, name: nome });

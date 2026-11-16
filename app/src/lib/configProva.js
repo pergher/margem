@@ -1,6 +1,7 @@
 // Configuração das provas (cabeçalho, logo, colunas, linhas por folha), guardada numa nota do vault:
 // `_sistema/Configuração das provas.md` (`tipo: configuracao`); a logo é um arquivo em `_sistema/anexos/`.
 // Se a nota ainda não existe, vale o que estava guardado no navegador (versão antiga); gravar cria a nota.
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
 import { parseFm, setProp } from "@/lib/frontmatter";
 
@@ -9,7 +10,7 @@ const K_LINHAS = "provaLinhas"; // legado
 export const NOME = "Configuração das provas";
 export const PADRAO = { escola: "", linha2: "", logo: "", logoArquivo: "", logoNova: false, duasColunas: false, limiteLinhas: 0 };
 
-const raiz = (items) => items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+const raiz = (items) => raizDe(items);
 const caminho = (items) => `${raiz(items)}/_sistema/${NOME}.md`;
 
 function legado() {
@@ -21,7 +22,6 @@ function legado() {
 }
 
 export async function lerConfigProva(items) {
-  if (!items?.length) return { ...PADRAO };
   let texto;
   try { texto = await invoke("read_note", { path: caminho(items) }); } catch { return legado(); }
   const fm = parseFm(texto);

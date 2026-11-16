@@ -163,7 +163,7 @@ fn save_attachment(app: State<App>, dir: String, name: String, data: Vec<u8>) ->
     let ext = Path::new(name).extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
     if !["png", "jpg", "jpeg"].contains(&ext.as_str()) { return Err("só imagens png ou jpg".into()); }
     if data.is_empty() || data.len() > 2_000_000 { return Err("imagem vazia ou maior que 2 MB".into()); }
-    let d = inside_any(&app, &dir)?;
+    let d = pasta_destino(&app, &dir)?;
     if !d.is_dir() { return Err("destino não é pasta".into()); }
     let p = d.join(name);
     std::fs::write(&p, data).map_err(|e| e.to_string())?;
@@ -222,11 +222,42 @@ fn resolve_link(app: State<App>, target: String) -> Option<String> {
 fn root_of(app: &App) -> Result<PathBuf, String> { canon(&app.root()).map_err(|e| e.to_string()) }
 
 /// Caminho existente (arquivo ou pasta) dentro do vault, nunca a própria raiz nem pasta oculta.
-fn inside_any(app: &App, p: &str) -> Result<PathBuf, String> {
+fn inside_any(app: &App, p: &str) -> Result<PathBuf, String> { inside_any_em(&root_of(app)?, p) }
+
+fn inside_any_em(root: &Path, p: &str) -> Result<PathBuf, String> {
     let p = canon(Path::new(p)).map_err(|e| format!("{p}: {e}"))?;
-    let root = root_of(app)?;
-    let oculto = p.strip_prefix(&root).map_or(true, |r| r.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')));
-    if p == root || !p.starts_with(&root) || oculto { Err("fora do vault".into()) } else { Ok(p) }
+    let oculto = p.strip_prefix(root).map_or(true, |r| r.components().any(|c| c.as_os_str().to_string_lossy().starts_with('.')));
+    if p == root || !p.starts_with(root) || oculto { Err("fora do vault".into()) } else { Ok(p) }
+}
+
+/// Pasta de destino para criar algo: a raiz (vazia ou o próprio caminho dela) ou uma pasta do vault.
+/// Se a pasta ainda não existe (vault novo, sem `Anos/2026/Semanas`), cria-a — só dentro do vault e nunca oculta.
+fn pasta_destino(app: &App, dir: &str) -> Result<PathBuf, String> { pasta_destino_em(&root_of(app)?, dir) }
+
+fn pasta_destino_em(root: &Path, dir: &str) -> Result<PathBuf, String> {
+    let root = root.to_path_buf();
+    if dir.is_empty() { return Ok(root); }
+    if let Ok(c) = canon(Path::new(dir)) {
+        if c == root { return Ok(root); }
+        return inside_any_em(&root, dir);
+    }
+    let mut rest: Vec<std::ffi::OsString> = Vec::new();
+    let mut atual = PathBuf::from(dir);
+    let base = loop {
+        if let Ok(c) = canon(&atual) { break c; }
+        let Some(nome) = atual.file_name().map(|n| n.to_os_string()) else { return Err("fora do vault".into()) };
+        rest.push(nome);
+        if !atual.pop() { return Err("fora do vault".into()); }
+    };
+    if !base.starts_with(&root) { return Err("fora do vault".into()); }
+    let mut alvo = base;
+    for n in rest.into_iter().rev() {
+        let s = n.to_string_lossy();
+        if s == ".." || s == "." || s.starts_with('.') { return Err("fora do vault".into()); }
+        alvo.push(n);
+    }
+    std::fs::create_dir_all(&alvo).map_err(|e| e.to_string())?;
+    Ok(alvo)
 }
 
 fn valid_name(n: &str) -> Result<&str, String> {
@@ -285,7 +316,7 @@ fn renomear_fs(from: &Path, to: &Path) -> Result<(), String> {
 #[tauri::command]
 fn create_note(app: State<App>, dir: String, name: String) -> Result<String, String> {
     let name = valid_name(&name)?.trim_end_matches(".md").to_string();
-    let d = if dir.is_empty() { root_of(&app)? } else { inside_any(&app, &dir)? };
+    let d = pasta_destino(&app, &dir)?;
     if !d.is_dir() { return Err("destino não é pasta".into()); }
     let p = d.join(format!("{name}.md"));
     if p.exists() { return Err(format!("já existe: {name}.md")); }
@@ -297,7 +328,7 @@ fn create_note(app: State<App>, dir: String, name: String) -> Result<String, Str
 #[tauri::command]
 fn create_folder(app: State<App>, dir: String, name: String) -> Result<String, String> {
     let name = valid_name(&name)?;
-    let d = if dir.is_empty() { root_of(&app)? } else { inside_any(&app, &dir)? };
+    let d = pasta_destino(&app, &dir)?;
     let p = d.join(name);
     if p.exists() { return Err(format!("já existe: {name}")); }
     std::fs::create_dir(&p).map_err(|e| e.to_string())?;
@@ -643,6 +674,27 @@ mod tests {
         std::fs::remove_dir_all(d.join("Acervo/Oficinas")).unwrap();
         criar_estrutura(&d).unwrap();
         assert!(!d.join("Acervo/Oficinas").exists());
+        std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    #[test]
+    fn pasta_destino_cria_pastas_que_faltam_so_dentro_do_vault() {
+        let d = std::env::temp_dir().join(format!("margem-destino-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let root = canon(&d).unwrap();
+        let r = root.to_string_lossy().to_string();
+        // a própria raiz vale como destino (vault vazio)
+        assert_eq!(pasta_destino_em(&root, &r).unwrap(), root);
+        assert_eq!(pasta_destino_em(&root, "").unwrap(), root);
+        // pasta que não existe ainda é criada
+        let novo = pasta_destino_em(&root, &format!("{r}/Anos/2026/Semanas")).unwrap();
+        assert!(novo.is_dir() && novo.ends_with("Anos/2026/Semanas"));
+        // fora do vault, oculta ou com `..`: recusa e não cria
+        assert!(pasta_destino_em(&root, "/tmp/margem-fora-do-vault/x").is_err());
+        assert!(pasta_destino_em(&root, &format!("{r}/.oculta/x")).is_err());
+        assert!(pasta_destino_em(&root, &format!("{r}/Anos/../../x")).is_err());
+        assert!(!root.join(".oculta").exists());
         std::fs::remove_dir_all(&d).unwrap();
     }
 

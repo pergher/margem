@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
 import { ArrowLeft, ArrowRight, ListOrdered, ListTree, PanelLeft, Search, Maximize2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { definirRaiz, raizDe } from "@/lib/raiz";
+import { Carregando } from "@/components/ui/estado";
 import { Menu } from "@/components/Menu";
 import { Editor } from "@/components/Editor";
 import { ResizeHandle } from "@/components/ResizeHandle";
@@ -58,6 +60,7 @@ function RailButton({ label, active, onClick, disabled, size = "lg", children })
 
 export default function App() {
   const [items, setItems] = useState([]);
+  const [carregado, setCarregado] = useState(false); // a primeira leitura do vault terminou (mesmo que ele esteja vazio)
   const [dirs, setDirs] = useState([]);
   const [dialog, setDialog] = useState(null);
   const [status, setStatus] = useState("");
@@ -76,6 +79,7 @@ export default function App() {
   useEffect(() => { loadFromDisk().then((o) => o && setOverrides(o)); }, []);
   // undefined = verificando; null = nenhuma pasta escolhida (só no app); texto = pasta do vault
   const [vaultRoot, setVaultRoot] = useState(isTauri ? undefined : "navegador");
+  definirRaiz(vaultRoot); // antes dos filhos: as telas montam caminhos a partir dela, inclusive com o vault vazio
   useEffect(() => { if (isTauri) invoke("get_vault_root").then(setVaultRoot).catch(() => setVaultRoot(null)); }, []);
   // Pasta movida/apagada/desconectada: confere ao abrir e sempre que a janela volta ao foco.
   const [vaultAusente, setVaultAusente] = useState(null);
@@ -87,7 +91,7 @@ export default function App() {
     const t = setTimeout(() => procurarAtualizacao().then((u) => u && setStatus(`Nova versão ${u.version} disponível: Configurações › Atualizações`)).catch(() => {}), 8000);
     return () => clearTimeout(t);
   }, []);
-  const refresh = useCallback(() => Promise.all([invoke("list_notes"), invoke("list_dirs")]).then(([n, d]) => { setItems(n); setDirs(d); }).catch((e) => setStatus(String(e))), []);
+  const refresh = useCallback(() => Promise.all([invoke("list_notes"), invoke("list_dirs")]).then(([n, d]) => { setItems(n); setDirs(d); setCarregado(true); }).catch((e) => { setStatus(String(e)); setCarregado(true); }), []);
   useEffect(() => { if (vaultRoot) refresh(); }, [refresh, vaultRoot]);
 
 
@@ -264,7 +268,7 @@ export default function App() {
     { id: "buscar", label: "Buscar arquivo", keys: pretty(keys.search), run: () => setSearchOpen(true) },
     { id: "salvar", label: "Salvar agora", keys: pretty(keys.save), run: () => save() },
     { id: "tabela", label: "Inserir tabela", keys: pretty(keys.insertTable), run: () => { if (cur.current) { setPage("editor"); setTimeout(() => ed.current?.insertTable(), 50); } } },
-    { id: "nota", label: "Novo arquivo", hint: "criar", run: () => createNote(items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length - 1) : "") },
+    { id: "nota", label: "Novo arquivo", hint: "criar", run: () => createNote(raizDe(items)) },
     { id: "numeros", label: "Mostrar/ocultar a numeração das linhas", keys: pretty(keys.toggleNumeros), run: () => setNumeros((v) => !v) },
     { id: "foco", label: "Modo foco (esconde menus e barras)", keys: pretty(keys.focus), run: () => setFoco((v) => !v) },
     { id: "lado", label: "Reduzir/ampliar o menu lateral", keys: pretty(keys.toggleSide), run: () => setShowSide((v) => !v) },
@@ -385,6 +389,8 @@ export default function App() {
         </header>}
 
         {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
+        {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
+        {(carregado || page === "config" || (page === "editor" && !personalizada)) && <>
         {page === "ciclos" && <CiclosPage items={items} dirs={dirs} pasta={ciclosPasta} setPasta={setCiclosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} onCreate={() => novoCiclo(ciclosPasta)} />}
         {page === "aulas" && <AulasPage items={items} dirs={dirs} onOpen={open} onCreate={() => novaAula(aulasPasta)} pasta={aulasPasta} setPasta={setAulasPasta} onRefresh={refresh} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} />}
         {page === "gramatica" && <GramaticasPage items={items} dirs={dirs} onOpen={open} onCreate={() => novaGramatica(gramaticaPasta)} pasta={gramaticaPasta} setPasta={setGramaticaPasta} onRefresh={refresh} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} />}
@@ -403,6 +409,7 @@ export default function App() {
         {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
         {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} numeros={numeros} onRename={renomearNota} />}
         {personalizada && visao.id === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={current} />}
+        </>}
         <ErrosComuns items={items} />
         {page === "editor" && !personalizada && current && <div role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div ref={progRef} className="h-full origin-left bg-primary" style={{ transform: "scaleX(0)" }} /></div>}
         <main onScrollCapture={aoRolarTexto} className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>

@@ -1,3 +1,4 @@
+import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
 import { ListChecks, Network, Plus } from "lucide-react";
 import { Explorador, cmp, norm } from "@/components/Explorador";
@@ -44,7 +45,7 @@ export function Situacao({ id, className }) {
 /** Aulas: os arquivos de Acervo/Aulas, no explorador comum (pastas, grade/lista, busca, filtros). */
 export function AulasPage({ items, dirs, onOpen, onCreate, pasta, setPasta, onRefresh, onRename, onMove, onDelete, onNovaPasta }) {
   const [metas, setMetas] = useState({});
-  const raizAbs = items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length) + "Acervo/Aulas" : "";
+  const raizAbs = raizBarra(items) ? raizBarra(items) + "Acervo/Aulas" : "";
   const todas = useMemo(() => items.filter((i) => /^Acervo\/Aulas\/.+\.md$/.test(i.rel)).map((i) => { const p = i.rel.split("/"); return { ...i, pasta: p.slice(2, -1).join("/") }; }), [items]);
   // Todas as pastas de Aulas (inclusive as vazias, que só aparecem na lista de pastas).
   const pastasRel = useMemo(() => {

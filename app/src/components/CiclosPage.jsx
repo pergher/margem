@@ -1,3 +1,4 @@
+import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { Explorador, cmp } from "@/components/Explorador";
@@ -18,10 +19,10 @@ export function CiclosPage({ items, dirs, onCiclo, onCreate, pasta, setPasta, on
   const [lidos, setLidos] = useState({}); // path -> ciclo lido (aulas, habilidades, ano/trimestre)
   useEffect(() => {
     let vivo = true;
-    if (items.length) lerCiclos(items).then((d) => { if (vivo) setLidos(Object.fromEntries(d.ciclos.map((c) => [c.path, c]))); }).catch(() => {});
+    lerCiclos(items).then((d) => { if (vivo) setLidos(Object.fromEntries(d.ciclos.map((c) => [c.path, c]))); }).catch(() => {});
     return () => { vivo = false; };
   }, [items]);
-  const raizAbs = items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length) + RAIZ : "";
+  const raizAbs = raizBarra(items) ? raizBarra(items) + RAIZ : "";
   const todos = useMemo(() => items.filter((i) => i.rel.startsWith(RAIZ + "/") && i.rel.endsWith(".md")).map((i) => ({ ...i, pasta: i.rel.split("/").slice(2, -1).join("/") })), [items]);
   const pastasRel = useMemo(() => {
     const set = new Set();

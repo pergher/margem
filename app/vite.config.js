@@ -5,7 +5,7 @@ import fs from "node:fs";
 
 // Só em desenvolvimento: serve o vault de teste por HTTP para poder ver o layout num navegador comum.
 function devVault() {
-  const root = path.resolve(import.meta.dirname, "../tests/fixtures/vault");
+  const root = path.resolve(process.env.VAULT_DEV || path.resolve(import.meta.dirname, "../tests/fixtures/vault"));
   const walk = (d, out = []) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name.startsWith(".")) continue;
@@ -20,6 +20,7 @@ function devVault() {
       s.middlewares.use("/__vault", (req, res) => {
         const u = new URL(req.url, "http://x");
         const send = (o) => { res.setHeader("content-type", "application/json"); res.end(JSON.stringify(o)); };
+        if (u.pathname === "/root") return send(root + "/");
         if (u.pathname === "/list") return send(walk(root).map((p) => ({ name: path.basename(p, ".md"), path: p, rel: path.relative(root, p).split(path.sep).join("/"), modified: Math.floor(fs.statSync(p).mtimeMs / 1000) })));
         const p = path.resolve(u.searchParams.get("path") || "");
         if (u.pathname === "/read" && p.startsWith(root)) { if (!fs.existsSync(p)) { res.statusCode = 404; return res.end(); } return send(fs.readFileSync(p, "utf8")); }

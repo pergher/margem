@@ -1,4 +1,5 @@
 // Lê um banco de questões (`tipo: banco`) e verifica uma seleção para a prova de uma folha.
+import { raizDe, raizBarra } from "@/lib/raiz";
 import JSZip from "jszip";
 import { invoke } from "@/lib/api";
 
@@ -188,7 +189,7 @@ export function provaNota(b, sel, { turma, data, valor }, fontes) {
   return `---\ntipo: prova\nturma: "${turma}"\ndata: ${data}\nquestoes: [${[...sel].sort((x, y) => x - y).join(", ")}]\nvalor: ${valor}\n---\n# Prova ${turma} — ${data}\n\nBanco: [[${b.nome}]]\n\n${ps(paragrafos(b, sel, fontes))}\n\n## Gabarito (professor)\n\n${ps(gabarito(b, sel))}\n`;
 }
 export async function salvarProva(items, b, sel, dados, fontes) {
-  const raiz = items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+  const raiz = raizDe(items);
   const ano = items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean).sort().pop() ?? String(new Date().getFullYear());
   try { await invoke("create_folder", { dir: `${raiz}/Anos/${ano}`, name: "Provas" }); } catch { /* já existe */ }
   const path = await invoke("create_note", { dir: `${raiz}/Anos/${ano}/Provas`, name: `Prova ${dados.turma} - ${dados.data}` });

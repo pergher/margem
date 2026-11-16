@@ -3,6 +3,7 @@
 //   Anos/AAAA/Alunos/<turma>/<Nome>.md                                 (tipo: aluno)
 // No diário, cada aula é uma seção "## Aula N — texto"; ocorrência de aluno = linha "- [[Nome]] — texto".
 // As notas de aluno não guardam cópia: o app junta as ocorrências lendo os diários.
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
 import { setProp } from "@/lib/frontmatter";
 import { serieDeTurma } from "@/lib/utils";
@@ -13,7 +14,7 @@ export const ESTADOS = [
   { id: "aprovada", nome: "Aprovada" },
 ];
 
-const raiz = (items) => items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+const raiz = (items) => raizDe(items);
 const pasta = (items, ano, tipo, turma) => `${raiz(items)}/Anos/${ano}/${tipo}/${turma}`;
 const prop = (text, k) => new RegExp(`^${k}:[ \\t]*["']?(.*?)["']?[ \\t]*$`, "m").exec(text.split(/\n---/)[0])?.[1] ?? "";
 export const turmasDe = (s) => [...new Set((s.match(/\d{2}/g) ?? []))];

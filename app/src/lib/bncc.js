@@ -1,7 +1,8 @@
 // Descrições das habilidades da BNCC, lidas de `_sistema/bncc/bncc-lp-{6..9}ano.md` (linhas "- **EF06LP12** `6º` — texto ^ef06lp12").
+import { raizDe, raizBarra } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
 
-const raiz = (items) => items[0].path.slice(0, items[0].path.length - items[0].rel.length).replace(/\/$/, "");
+const raiz = (items) => raizDe(items);
 let cache = { raiz: null, mapa: null };
 
 export async function carregarBncc(items) {

@@ -1,3 +1,4 @@
+import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ClipboardList, FileText, Gamepad2, Plus, Quote } from "lucide-react";
 import { ProvaPage } from "@/components/ProvaPage";
@@ -65,7 +66,7 @@ export function RecursosPage({ items, dirs, onOpen, onRefresh, aba, setAba, text
     return () => { vivo = false; };
   }, [bancos, provas, textos, oficinas]);
 
-  const base = items[0] ? items[0].path.slice(0, items[0].path.length - items[0].rel.length) + RAIZ : "";
+  const base = raizBarra(items) ? raizBarra(items) + RAIZ : "";
   const pastasRel = useMemo(() => {
     const set = new Set();
     const ok = (r) => PASTAS.includes(r.split("/")[0]) && r !== "Textos/imagens" && !r.startsWith("Textos/imagens/");
