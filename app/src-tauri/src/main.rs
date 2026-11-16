@@ -556,10 +556,28 @@ fn root_file(h: &tauri::AppHandle) -> Result<PathBuf, String> {
     h.path().app_config_dir().map(|d| d.join("vault.json")).map_err(|e| e.to_string())
 }
 
+/// Pasta guardada, mesmo que não exista mais (movida, apagada, disco/Drive desconectado): o app avisa em vez de esquecê-la.
 fn saved_root(h: &tauri::AppHandle) -> Option<PathBuf> {
     let j: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(root_file(h).ok()?).ok()?).ok()?;
-    let p = PathBuf::from(j.get("raiz")?.as_str()?);
-    p.is_dir().then_some(p)
+    Some(PathBuf::from(j.get("raiz")?.as_str()?))
+}
+
+/// Caminho do vault quando a pasta sumiu (`None` = tudo certo). Nunca recria a pasta: um Drive desconectado não pode virar uma pasta vazia.
+#[tauri::command]
+fn vault_ausente(app: State<App>) -> Option<String> {
+    let r = app.root();
+    if r.as_os_str().is_empty() || r.is_dir() { None } else { Some(slash(&r)) }
+}
+
+/// Pasta escolhida vazia (ignorando o que começa com `.`): monta a estrutura padrão. Só cria o que falta; nunca mexe no que existe.
+fn criar_estrutura(root: &Path) -> std::io::Result<()> {
+    let vazia = std::fs::read_dir(root)?.flatten().all(|e| e.file_name().to_string_lossy().starts_with('.'));
+    if !vazia { return Ok(()); }
+    let ano = 1970 + std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0) / 31_556_952;
+    let mut dirs: Vec<String> = ["_sistema", "Acervo/Aulas", "Acervo/Ciclos", "Acervo/Gramática", "Acervo/Textos", "Acervo/Questoes", "Acervo/Oficinas"].map(String::from).to_vec();
+    dirs.extend(["Semanas", "Provas", "Correcoes", "Diarios", "Alunos", "Relatorios"].map(|d| format!("Anos/{ano}/{d}")));
+    for d in dirs { std::fs::create_dir_all(root.join(d))?; }
+    Ok(())
 }
 
 /// Pasta do vault em uso (`None` = ainda não escolhida).
@@ -579,6 +597,7 @@ fn liberar_imagens(h: &tauri::AppHandle, root: &Path) {
 fn set_vault_root(h: tauri::AppHandle, app: State<App>, path: String) -> Result<String, String> {
     let p = canon(Path::new(&path)).map_err(|e| format!("{path}: {e}"))?;
     if !p.is_dir() { return Err("não é uma pasta".into()); }
+    criar_estrutura(&p).map_err(|e| format!("não montou a estrutura: {e}"))?;
     let f = root_file(&h)?;
     if let Some(d) = f.parent() { std::fs::create_dir_all(d).map_err(|e| e.to_string())?; }
     std::fs::write(&f, serde_json::json!({ "raiz": p.to_string_lossy() }).to_string()).map_err(|e| e.to_string())?;
@@ -595,7 +614,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .invoke_handler(tauri::generate_handler![list_notes, read_note, save_note, resolve_link, read_config, write_config, create_note, create_folder, rename_entry, move_entry, delete_entry, list_dirs, note_info, search_text, read_embed, read_sidecar, save_attachment, vault_health, list_history, read_version, restore_version, get_vault_root, set_vault_root, agendar_reabertura]);
+        .invoke_handler(tauri::generate_handler![list_notes, read_note, save_note, resolve_link, read_config, write_config, create_note, create_folder, rename_entry, move_entry, delete_entry, list_dirs, vault_ausente, note_info, search_text, read_embed, read_sidecar, save_attachment, vault_health, list_history, read_version, restore_version, get_vault_root, set_vault_root, agendar_reabertura]);
     builder
         .setup(move |app| {
             let root = env_root.clone().or_else(|| saved_root(app.handle())).unwrap_or_else(|| {
@@ -614,8 +633,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn estrutura_so_em_pasta_vazia() {
+        let d = std::env::temp_dir().join(format!("margem-estrutura-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(d.join(".historico")).unwrap();
+        criar_estrutura(&d).unwrap();
+        assert!(d.join("Acervo/Aulas").is_dir() && d.join("_sistema").is_dir());
+        // pasta com conteúdo: não cria nada novo
+        std::fs::remove_dir_all(d.join("Acervo/Oficinas")).unwrap();
+        criar_estrutura(&d).unwrap();
+        assert!(!d.join("Acervo/Oficinas").exists());
+        std::fs::remove_dir_all(&d).unwrap();
+    }
+
+    #[test]
     fn salva_nota_listada_do_vault_de_teste() {
         let root = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/vault"));
+        if !root.is_dir() { return; } // o vault de teste é cópia local (fora do git): no CI ele não existe
         let v = Vault::open(&root).unwrap();
         let n = v.notes.iter().next().unwrap();
         let p: String = slash(&n.path);

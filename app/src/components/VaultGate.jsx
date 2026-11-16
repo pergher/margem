@@ -32,3 +32,24 @@ export function EscolherVault({ onDone }) {
     </div>
   );
 }
+
+/** A pasta guardada não existe mais (movida, apagada ou disco/Drive desconectado). Nada é recriado nem apagado. */
+export function VaultAusente({ caminho, onTentar, onDone }) {
+  const [erro, setErro] = useState("");
+  const outra = async () => { try { const r = await escolherPastaDoVault(); if (r) onDone(r); } catch (e) { setErro(String(e)); } };
+  return (
+    <div className="flex h-full items-center justify-center p-8">
+      <div className="max-w-md text-center">
+        <Logo className="mx-auto mb-4 h-16 w-16" />
+        <h1 className="text-xl font-semibold">Não encontro a pasta do vault</h1>
+        <p className="mt-3 break-all text-sm text-muted-foreground"><code>{caminho}</code></p>
+        <p className="mt-3 text-sm text-muted-foreground">Ela foi movida, renomeada ou apagada, ou o disco (ou o Google Drive) não está conectado. Seus arquivos não foram alterados: o app não recria nem apaga nada sozinho.</p>
+        <div className="mt-6 flex justify-center gap-2">
+          <button onClick={onTentar} className="rounded-lg border px-4 py-2 text-sm hover:bg-accent">Tentar de novo</button>
+          <button onClick={outra} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:opacity-90"><FolderOpen className="h-4 w-4" strokeWidth={1.6} />Escolher a nova pasta…</button>
+        </div>
+        {erro && <Estado tipo="err" className="mt-4 text-sm">{erro}</Estado>}
+      </div>
+    </div>
+  );
+}

@@ -29,7 +29,7 @@ import { DiarioPage } from "@/components/DiarioPage";
 import { CicloPage } from "@/components/CicloPage";
 import { capturing } from "@/components/ShortcutsPage";
 import { SettingsPage } from "@/components/SettingsPage";
-import { EscolherVault } from "@/components/VaultGate";
+import { EscolherVault, VaultAusente } from "@/components/VaultGate";
 import { store, clamp } from "@/lib/store";
 import { useNotaAberta } from "@/lib/useNotaAberta";
 import { usePreferencias } from "@/lib/usePreferencias";
@@ -77,6 +77,10 @@ export default function App() {
   // undefined = verificando; null = nenhuma pasta escolhida (só no app); texto = pasta do vault
   const [vaultRoot, setVaultRoot] = useState(isTauri ? undefined : "navegador");
   useEffect(() => { if (isTauri) invoke("get_vault_root").then(setVaultRoot).catch(() => setVaultRoot(null)); }, []);
+  // Pasta movida/apagada/desconectada: confere ao abrir e sempre que a janela volta ao foco.
+  const [vaultAusente, setVaultAusente] = useState(null);
+  const conferirVault = useCallback(() => { if (isTauri) invoke("vault_ausente").then(setVaultAusente).catch(() => {}); }, []);
+  useEffect(() => { conferirVault(); window.addEventListener("focus", conferirVault); return () => window.removeEventListener("focus", conferirVault); }, [conferirVault, vaultRoot]);
   // Procura atualização uma vez, em silêncio, pouco depois de abrir.
   useEffect(() => {
     if (!isTauri) return;
@@ -343,6 +347,7 @@ export default function App() {
 
   if (vaultRoot === undefined) return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abrindo…</div>;
   if (vaultRoot === null) return <EscolherVault onDone={setVaultRoot} />;
+  if (vaultAusente) return <VaultAusente caminho={vaultAusente} onTentar={conferirVault} onDone={(r) => { setVaultAusente(null); setVaultRoot(r); refresh(); }} />;
 
   return (
     <div className="flex h-full">
