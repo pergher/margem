@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, FileText } from "lucide-react";
+import { IconArrowRight as ArrowRight, IconFileText as FileText } from "@tabler/icons-react";
 import { lerCiclos } from "@/lib/ciclos";
 import { lerSemanas, segundaDe, rotuloDe, situacaoAula } from "@/lib/semana";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";

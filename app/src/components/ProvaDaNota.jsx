@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, X } from "lucide-react";
+import { IconCheck as Check, IconX as X } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { lerBanco, verificar, paragrafos, gabarito, docxBlob, imprimir, fonteDoTexto, definirLimite, LIMITE_PADRAO } from "@/lib/prova";

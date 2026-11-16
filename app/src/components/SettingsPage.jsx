@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { Keyboard, Users, FileText, FolderOpen, Download, Palette, Sun, Moon, House, BookText, CircleHelp, ClipboardCheck, Search, Settings, FileCheck, CalendarDays, GraduationCap, Info } from "lucide-react";
+import { IconKeyboard as Keyboard, IconUsers as Users, IconFileText as FileText, IconFolderOpen as FolderOpen, IconDownload as Download, IconPalette as Palette, IconSun as Sun, IconMoon as Moon, IconHome as House, IconBook as BookText, IconHelpCircle as CircleHelp, IconClipboardCheck as ClipboardCheck, IconSearch as Search, IconSettings as Settings, IconFileCheck as FileCheck, IconCalendarEvent as CalendarDays, IconSchool as GraduationCap, IconInfoCircle as Info } from "@tabler/icons-react";
 import { invoke, isTauri } from "@/lib/api";
 import { escolherPastaDoVault } from "@/components/VaultGate";
 import { Logo } from "@/components/Logo";

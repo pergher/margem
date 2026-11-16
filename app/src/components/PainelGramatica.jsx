@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { X, ExternalLink } from "lucide-react";
+import { IconX as X, IconExternalLink as ExternalLink } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { html } from "@/lib/aulaHtml";
 import { parseGramatica } from "@/lib/gramatica";

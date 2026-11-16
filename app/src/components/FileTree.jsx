@@ -1,6 +1,6 @@
 import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, FileText, Folder, FolderOpen } from "lucide-react";
+import { IconChevronRight as ChevronRight, IconFileText as FileText, IconFolder as Folder, IconFolderOpen as FolderOpen } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 function buildTree(items, dirs) {

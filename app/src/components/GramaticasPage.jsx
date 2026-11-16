@@ -1,6 +1,6 @@
 import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { IconPlus as Plus } from "@tabler/icons-react";
 import { Explorador, cmp } from "@/components/Explorador";
 import { SITUACOES, ANOS, Situacao, quando } from "@/components/AulasPage";
 import { invoke } from "@/lib/api";

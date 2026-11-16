@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FolderOpen } from "lucide-react";
+import { IconFolderOpen as FolderOpen } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { Logo } from "@/components/Logo";
 import { Estado } from "@/components/ui/estado";

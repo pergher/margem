@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, X, ArrowUpToLine } from "lucide-react";
+import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconPlus as Plus, IconX as X, IconArrowBarToUp as ArrowUpToLine } from "@tabler/icons-react";
 import { FASES, lerCiclos } from "@/lib/ciclos";
 import { SITUACOES, situacaoAula, lerSemana, lerSemanas, semanaNova, importarLegado, cicloDaTurma, proximasDoCiclo, criarSemana, proximaSegunda, segundaDe, rotuloDe, nomeSemana, removerAulaSemana, adicionarAvulsa, promoverAvulsa, adicionarDoCiclo } from "@/lib/semana";
 import { corTurma } from "@/lib/cores";

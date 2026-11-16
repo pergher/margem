@@ -1,4 +1,4 @@
-import { House, CalendarDays, CalendarRange, Repeat2, BookText, BookMarked, Library, ClipboardCheck, BookOpen, HeartPulse, Settings, Sun, Moon } from "lucide-react";
+import { IconHome as House, IconCalendarEvent as CalendarDays, IconCalendarWeek as CalendarRange, IconRepeat as Repeat2, IconBook as BookText, IconBookmarks as BookMarked, IconLibrary as Library, IconClipboardCheck as ClipboardCheck, IconBook2 as BookOpen, IconHeartbeat as HeartPulse, IconSettings as Settings, IconSun as Sun, IconMoon as Moon } from "@tabler/icons-react";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 

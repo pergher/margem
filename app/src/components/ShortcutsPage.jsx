@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { RotateCcw } from "lucide-react";
+import { IconRotateClockwise as RotateCcw } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { ACTIONS, comboOf, conflict, effective, hasModifier, pretty, saveOverrides } from "@/lib/shortcuts";
 import { Estado } from "@/components/ui/estado";

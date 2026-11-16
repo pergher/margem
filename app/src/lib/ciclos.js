@@ -112,6 +112,32 @@ export function incluirNoPlanejamento(text, nomeCiclo, { ano, tri }) {
   return text.replace(/\s*$/, "\n\n") + `| Ano | Trimestre | Ordem | Ciclo |\n| --- | --- | --- | --- |\n${nova}\n`;
 }
 
+/** Muda a posição de um ciclo no Planejamento: vai para o ano/trimestre `ano`/`tri`, antes de `antesDe` (nome) ou no fim. Renumera a "Ordem" dos grupos mexidos. */
+export function moverNoPlanejamento(text, nomeCiclo, { ano, tri, antesDe = null }) {
+  const alvo = nomeCiclo.toLowerCase();
+  const celulas = (l) => l.replace(/^\||\|\s*$/g, "").split(/(?<!\\)\|/).map((x) => x.trim());
+  const nomeDe = (c) => /^\[\[([^\]|#]+)/.exec(c[3] ?? "")?.[1].trim().toLowerCase();
+  let linhas = text.split("\n");
+  const ehLinha = (l) => { const c = celulas(l); return l.startsWith("|") && /^\d$/.test(c[0]) && /^\d$/.test(c[1]) && nomeDe(c); };
+  const i0 = linhas.findIndex((l) => ehLinha(l) && nomeDe(celulas(l)) === alvo);
+  if (i0 < 0) return text;
+  const origem = celulas(linhas[i0]);
+  const [oAno, oTri] = [Number(origem[0]), Number(origem[1])];
+  const raw = linhas.splice(i0, 1)[0];
+  const ult = linhas.reduce((u, l, i) => (ehLinha(l) ? i : u), i0 - 1);
+  linhas.splice(ult + 1, 0, raw);
+  const grupo = (a, t) => linhas.map((l, i) => ({ l, i, c: ehLinha(l) ? celulas(l) : null })).filter((x) => x.c && Number(x.c[0]) === a && Number(x.c[1]) === t);
+  const ordenar = (g) => g.sort((x, y) => (Number(x.c[2]) || 1) - (Number(y.c[2]) || 1) || x.i - y.i);
+  const reescrever = (g, a, t) => g.forEach((x, k) => { linhas[x.i] = `| ${a} | ${t} | ${k + 1} | ${x.c[3]} |`; });
+  const destino = ordenar(grupo(ano, tri)).filter((x) => nomeDe(x.c) !== alvo);
+  const x = { i: ult + 1, c: celulas(raw) };
+  const pos = antesDe ? destino.findIndex((y) => nomeDe(y.c) === antesDe.toLowerCase()) : -1;
+  destino.splice(pos < 0 ? destino.length : pos, 0, x);
+  reescrever(destino, ano, tri);
+  if (ano !== oAno || tri !== oTri) reescrever(ordenar(grupo(oAno, oTri)), oAno, oTri);
+  return linhas.join("\n");
+}
+
 export function tirarDoPlanejamento(text, nomeCiclo) {
   const alvo = `[[${nomeCiclo.toLowerCase()}]]`;
   return text.split("\n").filter((l) => !(l.startsWith("|") && l.toLowerCase().includes(alvo))).join("\n");
@@ -134,6 +160,12 @@ export async function incluirCicloNoAno(items, ciclo, anoLetivo, pos) {
   const text = await invoke("read_note", { path });
   await invoke("save_note", { path, text: incluirNoPlanejamento(text, ciclo.name, pos) });
   return path;
+}
+
+export async function moverCicloNoAno(items, ciclo, anoLetivo, destino) {
+  const plan = planejamentoDoAno(items, anoLetivo);
+  if (!plan) return;
+  await invoke("save_note", { path: plan.path, text: moverNoPlanejamento(await invoke("read_note", { path: plan.path }), ciclo.name, destino) });
 }
 
 export async function tirarCicloDoAno(items, ciclo, anoLetivo) {

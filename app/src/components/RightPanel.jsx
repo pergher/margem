@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { AlertTriangle, ListTree, Link2, SlidersHorizontal, X, Plus, History } from "lucide-react";
+import { IconAlertTriangle as AlertTriangle, IconListTree as ListTree, IconLink as Link2, IconAdjustmentsHorizontal as SlidersHorizontal, IconX as X, IconPlus as Plus, IconHistory as History } from "@tabler/icons-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { parseFm } from "@/lib/frontmatter";

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
-import { ArrowLeft, ArrowRight, ListOrdered, ListTree, PanelLeft, Search, Maximize2 } from "lucide-react";
+import { IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconListNumbers as ListOrdered, IconListTree as ListTree, IconLayoutSidebar as PanelLeft, IconSearch as Search, IconMaximize as Maximize2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { definirRaiz, raizDe } from "@/lib/raiz";
 import { Carregando } from "@/components/ui/estado";

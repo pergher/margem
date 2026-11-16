@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ClipboardCheck, ChartColumn } from "lucide-react";
+import { IconClipboardCheck as ClipboardCheck, IconChartBar as ChartColumn } from "@tabler/icons-react";
 import { Explorador } from "@/components/Explorador";
 import { corTurma } from "@/lib/cores";
 import { listaCorrecoes, lerCorrecao, estatisticas, num } from "@/lib/correcao";

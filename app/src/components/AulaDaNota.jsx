@@ -7,7 +7,7 @@ import { parseAula, mermaidDe, secoesBrutas, trocarSecao, dadosDaAula } from "@/
 import { acionarBotao } from "@/lib/blocoAcoes";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { lerCiclos } from "@/lib/ciclos";
-import { ChevronDown, Plus, StickyNote } from "lucide-react";
+import { IconChevronDown as ChevronDown, IconPlus as Plus, IconNote as StickyNote } from "@tabler/icons-react";
 import { Chips, Text, Historico } from "@/components/RightPanel";
 import { Editor } from "@/components/Editor";
 import { Carregando, Erro } from "@/components/ui/estado";

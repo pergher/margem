@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { AlertTriangle, CircleAlert, CircleCheck, Inbox, Loader2, X } from "lucide-react";
+import { IconAlertTriangle as AlertTriangle, IconAlertCircle as CircleAlert, IconCircleCheck as CircleCheck, IconInbox as Inbox, IconLoader2 as Loader2, IconX as X } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 // Estado fixo da interface (certo / atenção / erro): sempre cor + ícone + texto, nunca só cor.

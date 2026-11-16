@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Command, FileText } from "lucide-react";
+import { IconCommand as Command, IconFileText as FileText } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();

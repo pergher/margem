@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
+import { IconArrowLeft as ArrowLeft, IconChevronDown as ChevronDown, IconSearch as Search, IconAdjustmentsHorizontal as SlidersHorizontal, IconX as X } from "@tabler/icons-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { AtividadeDialog } from "@/components/AtividadeDialog";

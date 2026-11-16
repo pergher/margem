@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FilePlus2, FolderPlus, Pencil, Trash2 } from "lucide-react";
+import { IconFilePlus as FilePlus2, IconFolderPlus as FolderPlus, IconPencil as Pencil, IconTrash as Trash2 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { Estado } from "@/components/ui/estado";
 

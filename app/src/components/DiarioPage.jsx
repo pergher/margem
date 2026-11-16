@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, ClipboardCheck, Copy, Eye, EyeOff, Pencil, Plus, Search, User, UserPlus, X } from "lucide-react";
+import { IconBook2 as BookOpen, IconClipboardCheck as ClipboardCheck, IconCopy as Copy, IconEye as Eye, IconEyeOff as EyeOff, IconPencil as Pencil, IconPlus as Plus, IconSearch as Search, IconUser as User, IconUserPlus as UserPlus, IconX as X } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { corTurma } from "@/lib/cores";

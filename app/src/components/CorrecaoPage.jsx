@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke, srcDeImagem } from "@/lib/api";
-import { ArrowLeft, ChartColumn, Info, ChevronLeft, ChevronRight, Eye, EyeOff, ZoomIn, ZoomOut, RotateCw, Search, AlertTriangle, CircleCheck, Download, ArrowRight, ChevronDown, Copy, Pencil, Plus } from "lucide-react";
+import { IconArrowLeft as ArrowLeft, IconChartBar as ChartColumn, IconInfoCircle as Info, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconEye as Eye, IconEyeOff as EyeOff, IconZoomIn as ZoomIn, IconZoomOut as ZoomOut, IconRotateClockwise2 as RotateCw, IconSearch as Search, IconAlertTriangle as AlertTriangle, IconCircleCheck as CircleCheck, IconDownload as Download, IconArrowRight as ArrowRight, IconChevronDown as ChevronDown, IconCopy as Copy, IconPencil as Pencil, IconPlus as Plus } from "@tabler/icons-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { ERRO, listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, fmt, num, gravarNota, aprovarTranscricao, gravarEnunciado } from "@/lib/correcao";

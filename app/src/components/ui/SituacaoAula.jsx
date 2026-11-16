@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, CornerDownRight, Ban, MoreHorizontal } from "lucide-react";
+import { IconCheck as Check, IconCornerDownRight as CornerDownRight, IconBan as Ban, IconDots as MoreHorizontal } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
 /** As três situações de uma aula (a mesma lista em Hoje e na Semana). `id` é o que fica gravado na nota. */

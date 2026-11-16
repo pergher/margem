@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight, CircleCheck, Plus, X } from "lucide-react";
+import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconCircleCheck as CircleCheck, IconGripVertical as Grip, IconPlus as Plus, IconTrash as Trash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { PlanejarCicloDialog } from "@/components/PlanejarCicloDialog";
-import { FASES, anosLetivos, criarProximoAno, lerCiclos, incluirCicloNoAno, tirarCicloDoAno } from "@/lib/ciclos";
-import { lerSemanas } from "@/lib/semana";
+import { FASES, anosLetivos, criarProximoAno, lerCiclos, incluirCicloNoAno, tirarCicloDoAno, moverCicloNoAno } from "@/lib/ciclos";
+import { lerSemanas, segundaDe } from "@/lib/semana";
 import { lerTurmas, turmasDeTexto, sugerirTurmasDoProximoAno, AULAS_PADRAO } from "@/lib/turmas";
 import { corTurma } from "@/lib/cores";
 import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
@@ -10,10 +10,35 @@ import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
 const cor = Object.fromEntries(FASES.map((f) => [f.id, f.cor]));
 
 function Barra({ aulas }) {
-  if (!aulas.length) return <div className="mt-2 h-[5px] rounded bg-border" />;
+  if (!aulas.length) return <div className="mt-2 h-3 rounded-sm bg-border" />;
   return (
-    <div className="mt-2 flex h-[5px] gap-0.5">
-      {aulas.map((a) => <span key={a.n} title={`Aula ${a.n}: ${FASES.find((f) => f.id === a.fase).nome}`} style={{ flex: 1, background: cor[a.fase] }} />)}
+    <div className="mt-2 flex h-3 gap-0.5">
+      {aulas.map((a) => <span key={a.n} title={`Aula ${a.n}: ${FASES.find((f) => f.id === a.fase).nome}`} className="rounded-sm" style={{ flex: 1, background: cor[a.fase] }} />)}
+    </div>
+  );
+}
+
+// Progresso do ciclo em anel: vazio → cheio; verde e com ✓ quando concluído.
+function Rosca({ dadas, total, concluido }) {
+  const r = 7, circ = 2 * Math.PI * r, f = total ? Math.min(1, dadas / total) : 0;
+  return (
+    <svg viewBox="0 0 20 20" className="h-5 w-5 shrink-0 -rotate-90" role="img" aria-label={concluido ? "Concluído" : `Em andamento: ${dadas} de ${total} aulas`}>
+      <title>{concluido ? "Concluído" : `Em andamento: ${dadas} de ${total} aulas`}</title>
+      <circle cx="10" cy="10" r={r} fill="none" strokeWidth="2.5" className="stroke-border" style={{ strokeWidth: 2.5 }} />
+      <circle cx="10" cy="10" r={r} fill="none" strokeLinecap="round" className={concluido ? "stroke-ok" : "stroke-primary"} style={{ strokeWidth: 2.5 }} strokeDasharray={`${circ * f} ${circ}`} />
+    </svg>
+  );
+}
+
+// Aulas do ciclo em círculos, na cor da etapa; as que caem na semana atual ganham um anel.
+function Aulas({ aulas, semana }) {
+  return (
+    <div className="flex flex-wrap gap-1" aria-label="Aulas do ciclo">
+      {aulas.map((a) => {
+        const ativa = semana.has(a.n);
+        return <span key={a.n} title={`Aula ${a.n}: ${FASES.find((f) => f.id === a.fase).nome}${ativa ? " · nesta semana" : ""}`}
+          className={"h-3 w-3 rounded-full " + (ativa ? "ring-2 ring-foreground ring-offset-1 ring-offset-background" : "")} style={{ background: cor[a.fase] }} />;
+      })}
     </div>
   );
 }
@@ -28,7 +53,7 @@ function LinhaFora({ c, onCiclo, onIncluir }) {
         <span className="block text-sm font-medium leading-snug">{c.titulo}</span>
         <span className="block text-xs text-muted-foreground">{c.aulas.length ? `${c.aulas.length} aulas` : "sem tabela de aulas"}{c.habilidades.length ? ` · ${c.habilidades.join(", ")}` : " · sem habilidade"}</span>
       </button>
-      <span className="w-40 shrink-0"><Barra aulas={c.aulas} /></span>
+      <span className="w-64 shrink-0"><Barra aulas={c.aulas} /></span>
       <span className="flex shrink-0 items-center gap-1.5">
         <select aria-label={`Ano escolar de ${c.titulo}`} value={ano} onChange={(e) => setAno(Number(e.target.value))} className={sel}>{[6, 7, 8, 9].map((a) => <option key={a} value={a}>{a}º ano</option>)}</select>
         <select aria-label={`Trimestre de ${c.titulo}`} value={tri} onChange={(e) => setTri(Number(e.target.value))} className={sel}>{[1, 2, 3].map((t) => <option key={t} value={t}>{t}º tri</option>)}</select>
@@ -44,6 +69,8 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
   const [erro, setErro] = useState("");
   const [filtro, setFiltro] = useState(""); // "" = todas as turmas
   const [tick, setTick] = useState(0); // força reler depois de mexer no Planejamento
+  const [arrasto, setArrasto] = useState(null); // ciclo sendo arrastado
+  const [alvo, setAlvo] = useState(null); // onde vai cair: "path" de uma linha (entra antes dela) ou "fim:ano:tri"
   const [novo, setNovo] = useState(null); // diálogo "Criar próximo ano": { txt (turmas), aulas }
   const [anoSel, setAnoSel] = useState(null); // ano letivo mostrado (independente da Semana); null = o mais recente
   useEffect(() => { lerCiclos(items, anoSel).then(async (c) => {
@@ -99,6 +126,9 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
     }
     return Object.entries(por).map(([turma, x]) => ({ turma, dadas: x.dadas.size, total: Math.max(x.total, c.aulas.length) - (fora[turma]?.size ?? 0) }));
   };
+  const seg = segundaDe(), chave = `${seg.getFullYear()}-${String(seg.getMonth() + 1).padStart(2, "0")}-${String(seg.getDate()).padStart(2, "0")}`;
+  const semanaAtual = (dados.semanas ?? []).find((sm) => (sm.name ?? "").includes(chave)) ?? (dados.semanas ?? [])[(dados.semanas ?? []).length - 1];
+  const aulasDaSemana = (c) => new Set((semanaAtual?.turmas ?? []).flatMap((t) => t.aulas).filter((a) => a.cicloNome?.toLowerCase() === c.name.toLowerCase() && a.cicloN && a.situacao !== "descartada").map((a) => a.cicloN));
   const situacao = (p) => !p.length ? null : p.every((x) => x.dadas >= x.total) ? "Concluído" : "Em andamento";
   // Filtro de turma: os ciclos do ano escolar da turma (61 → 6º ano) e os que ela já usa nas semanas.
   const visiveis = ciclos.filter((c) => c.incluido && (!filtro || String(c.ano) === filtro[0] || progresso(c).some((p) => p.turma === filtro)));
@@ -107,11 +137,14 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
   const semHabilidade = ciclos.filter((c) => !c.habilidades.length);
   const semTitulo = ciclos.filter((c) => c.vazio);
   const semAulas = ciclos.filter((c) => !c.aulas.length);
-  const codigos = {}; for (const c of ciclos) (codigos[`${c.ano}${c.tri}${c.ciclo}`] ??= []).push(c);
-  const repetidos = Object.entries(codigos).filter(([, l]) => l.length > 1);
   const tirar = (c) => tirarCicloDoAno(items, c, anoLetivo).then(() => setTick((t) => t + 1)).catch((e) => setErro(String(e?.message ?? e)));
+  const soltar = (ano, tri, antes) => {
+    const c = arrasto; setArrasto(null); setAlvo(null);
+    if (!c || (antes && antes.path === c.path)) return;
+    moverCicloNoAno(items, c, anoLetivo, { ano, tri, antesDe: antes?.name ?? null }).then(() => setTick((t) => t + 1)).catch((e) => setErro(String(e?.message ?? e)));
+  };
   const Lista = ({ lista, vazio }) => lista.length
-    ? <div className="flex flex-wrap gap-1.5">{lista.map((c) => <button key={c.path} onClick={() => onCiclo(c)} title={c.name} className="rounded-md border px-2 py-0.5 text-xs hover:bg-accent">{c.incluido ? `${c.ano}${c.tri}${c.ciclo}` : c.name}</button>)}</div>
+    ? <div className="flex flex-wrap gap-1.5">{lista.map((c) => <button key={c.path} onClick={() => onCiclo(c)} title={c.name} className="max-w-full truncate rounded-md border px-2 py-0.5 text-xs hover:bg-accent">{c.incluido ? c.titulo : c.name}</button>)}</div>
     : <div className="text-xs text-muted-foreground">{vazio}</div>;
   const Bloco = ({ titulo, children }) => <section className="border-t pt-4 first:border-t-0 first:pt-0"><h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</h2>{children}</section>;
 
@@ -147,26 +180,27 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
               {[1, 2, 3].map((t) => {
                 const lista = visiveis.filter((c) => c.ano === ano && c.tri === t);
                 return (
-                  <div key={t} className="-mx-4 border-t px-4 first:border-t-0">
+                  <div key={t} className={"-mx-4 border-t px-4 first:border-t-0 " + (alvo === `fim:${ano}:${t}` ? "bg-accent/40" : "")}
+                    onDragOver={(e) => { if (arrasto) { e.preventDefault(); setAlvo(`fim:${ano}:${t}`); } }} onDrop={(e) => { e.preventDefault(); soltar(ano, t, null); }}>
                     <div className="pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}º trimestre</div>
                     <div className="flex flex-col divide-y">
-                      {lista.map((c) => {
-                        const prog = progresso(c).filter((x) => !filtro || x.turma === filtro), sit = situacao(prog);
+                      {lista.map((c, idx) => {
+                        const prog = progresso(c), sit = situacao(prog);
                         return (
-                          <div key={c.path} className="-mx-4 flex items-center gap-2 px-4 transition-colors hover:bg-accent/50">
-                          <button onClick={() => onCiclo(c)} title={c.name} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 text-left !bg-transparent">
-                            <span className="w-9 shrink-0 text-xs tabular-nums text-muted-foreground">{c.ano}{c.tri}{c.ciclo}</span>
+                          <div key={c.path} className={"group -mx-4 flex items-center gap-2 px-4 transition-colors hover:bg-accent/50 " + (arrasto?.path === c.path ? "opacity-40 " : "") + (alvo === c.path ? "shadow-[inset_0_2px_0_0_hsl(var(--primary))]" : "")}
+                            draggable={!c.legado} onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", c.name); setArrasto(c); }} onDragEnd={() => { setArrasto(null); setAlvo(null); }}
+                            onDragOver={(e) => { if (arrasto && arrasto.path !== c.path) { e.preventDefault(); e.stopPropagation(); setAlvo(c.path); } }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); soltar(ano, t, c); }}>
+                          {!c.legado && <Grip aria-hidden title="Arraste para mudar a ordem ou o trimestre" className="-ml-2 h-4 w-4 shrink-0 cursor-grab text-muted-foreground/60" />}
+                          <button onClick={() => onCiclo(c)} title={c.name} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-left !bg-transparent">
+                            <span className="w-4 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{idx + 1}</span>
+                            <span className="flex w-5 shrink-0 justify-center">{sit && <Rosca dadas={prog.reduce((t, x) => t + x.dadas, 0)} total={prog.reduce((t, x) => t + x.total, 0)} concluido={sit === "Concluído"} />}</span>
                             <span className="min-w-[14rem] flex-1">
                               <span className="block text-sm font-medium leading-snug">{c.titulo}</span>
                               <span className="block text-xs text-muted-foreground">{c.aulas.length ? `${c.aulas.length} aulas` : "sem tabela de aulas"}{c.habilidades.length ? ` · ${c.habilidades.join(", ")}` : " · sem habilidade"}</span>
                             </span>
-                            <span className="w-40 shrink-0"><Barra aulas={c.aulas} /></span>
-                            <span className="w-44 shrink-0 text-xs">
-                              {sit ? <><span className={"inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-white " + (sit === "Concluído" ? "bg-ok" : "bg-primary")}>{sit === "Concluído" && <CircleCheck aria-hidden className="h-3 w-3" />}{sit}</span>
-                                <span className="mt-0.5 block text-muted-foreground">{prog.map((x) => `turma ${x.turma}: ${x.dadas} de ${x.total}`).join(" · ")}</span></> : <span className="text-muted-foreground">sem turma</span>}
-                            </span>
+                            {sit === "Em andamento" && <span className="w-64 shrink-0"><Aulas aulas={c.aulas} semana={aulasDaSemana(c)} /></span>}
                           </button>
-                          {!c.legado && <button onClick={() => tirar(c)} title="Tirar do ano (o ciclo continua no Acervo)" aria-label={`Tirar ${c.titulo} do ano`} className="mr-1 inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><X aria-hidden className="h-3 w-3" />Tirar</button>}
+                          {!c.legado && <button onClick={() => tirar(c)} title="Tirar do ano (o ciclo continua no Acervo)" aria-label={`Tirar ${c.titulo} do ano`} className="mr-1 inline-flex shrink-0 items-center rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-err focus-visible:opacity-100 group-hover:opacity-100"><Trash aria-hidden className="h-4 w-4" /></button>}
                           </div>
                         );
                       })}
@@ -190,16 +224,11 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
 
         <aside aria-label="Legenda e pendências" className="flex w-full shrink-0 flex-col gap-4 rounded-xl border bg-background p-4 lg:sticky lg:top-0 lg:w-72">
           <Bloco titulo="Etapas do ciclo">
-            <div className="flex flex-col gap-1 text-xs">{FASES.map((f) => <span key={f.id} className="flex items-center gap-2"><span aria-hidden className="inline-block h-2.5 w-2.5" style={{ background: f.cor }} />{f.nome}</span>)}</div>
+            <div className="flex flex-col gap-1 text-xs">{FASES.map((f) => <span key={f.id} className="flex items-center gap-2"><span aria-hidden className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: f.cor }} />{f.nome}</span>)}</div>
           </Bloco>
           <Bloco titulo="Sem habilidade BNCC"><Lista lista={semHabilidade} vazio="Todos têm habilidade." /></Bloco>
           <Bloco titulo="Sem aulas"><Lista lista={semAulas} vazio="Todos têm aulas." /></Bloco>
           <Bloco titulo="Sem título"><Lista lista={semTitulo} vazio="Todos têm título." /></Bloco>
-          <Bloco titulo="Outros problemas">
-            {repetidos.length
-              ? <ul className="flex flex-col gap-1 text-xs">{repetidos.map(([cod, l]) => <li key={cod}>Código {cod} repetido em {l.length} ciclos</li>)}</ul>
-              : <div className="text-xs text-muted-foreground">Nenhum.</div>}
-          </Bloco>
         </aside>
       </div>
     </div>

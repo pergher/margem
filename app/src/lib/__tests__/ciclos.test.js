@@ -85,6 +85,18 @@ describe("planejamento do ano", () => {
   });
 });
 
+describe("mover ciclo no planejamento", () => {
+  const P = "# P\n\n| Ano | Trimestre | Ordem | Ciclo |\n| --- | --- | --- | --- |\n| 6 | 1 | 1 | [[A]] |\n| 6 | 1 | 2 | [[B]] |\n| 6 | 1 | 3 | [[C]] |\n| 6 | 2 | 1 | [[D]] |\n";
+  const pos = (t) => Object.fromEntries(Object.entries(C.lerLinhasPlanejamento(t)).map(([k, v]) => [k, `${v.tri}.${v.ciclo}`]));
+  it("reordena dentro do trimestre", () => {
+    expect(pos(C.moverNoPlanejamento(P, "C", { ano: 6, tri: 1, antesDe: "A" }))).toEqual({ a: "1.2", b: "1.3", c: "1.1", d: "2.1" });
+    expect(pos(C.moverNoPlanejamento(P, "A", { ano: 6, tri: 1 }))).toEqual({ a: "1.3", b: "1.1", c: "1.2", d: "2.1" });
+  });
+  it("muda de trimestre e fecha o buraco", () => {
+    expect(pos(C.moverNoPlanejamento(P, "A", { ano: 6, tri: 2, antesDe: "D" }))).toEqual({ a: "2.1", b: "1.1", c: "1.2", d: "2.2" });
+  });
+});
+
 describe("edição da tabela de aulas", () => {
   const nums = (t) => [...t.matchAll(/^\| (\d+) \| ([^|]*?) \|/gm)].map((m) => `${m[1]}:${m[2]}`);
 

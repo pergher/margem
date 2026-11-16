@@ -1,6 +1,6 @@
 import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
-import { ListChecks, Network, Plus } from "lucide-react";
+import { IconListCheck as ListChecks, IconNetwork as Network, IconPlus as Plus } from "@tabler/icons-react";
 import { Explorador, cmp, norm } from "@/components/Explorador";
 import { invoke } from "@/lib/api";
 import { parseFm } from "@/lib/frontmatter";

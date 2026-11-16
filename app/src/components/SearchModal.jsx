@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { FileText, Search, TextSearch } from "lucide-react";
+import { IconFileText as FileText, IconSearch as Search, IconListSearch as TextSearch } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 

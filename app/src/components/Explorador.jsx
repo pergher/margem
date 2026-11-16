@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronRight, FileText, Folder, FolderInput, FolderOpen, FolderPlus, LayoutGrid, List, Pencil, Search, Star, Trash2, Upload, X } from "lucide-react";
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconChevronRight as ChevronRight, IconFileText as FileText, IconFolder as Folder, IconFolderSymlink as FolderInput, IconFolderOpen as FolderOpen, IconFolderPlus as FolderPlus, IconLayoutGrid as LayoutGrid, IconList as List, IconPencil as Pencil, IconSearch as Search, IconStar as Star, IconTrash as Trash2, IconUpload as Upload, IconX as X } from "@tabler/icons-react";
 import { Vazio } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 

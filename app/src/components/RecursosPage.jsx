@@ -1,6 +1,6 @@
 import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ClipboardList, FileText, Gamepad2, Plus, Quote } from "lucide-react";
+import { IconChevronDown as ChevronDown, IconClipboardList as ClipboardList, IconFileText as FileText, IconDeviceGamepad2 as Gamepad2, IconPlus as Plus, IconQuote as Quote } from "@tabler/icons-react";
 import { ProvaPage } from "@/components/ProvaPage";
 import { Explorador, cmp } from "@/components/Explorador";
 import { Anos } from "@/components/ui/Anos";

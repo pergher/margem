@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Plus, Trash2 } from "lucide-react";
+import { IconChevronDown as ChevronDown, IconPlus as Plus, IconTrash as Trash2 } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { parseBanco } from "@/lib/prova";
 import { parseFm, setProp } from "@/lib/frontmatter";

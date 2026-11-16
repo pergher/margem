@@ -105,7 +105,7 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }
 
         <div className="mt-5 text-xs font-semibold text-muted-foreground">Etapas</div>
         <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-          {contagem.map(({ f, n }) => <span key={f.id} className="rounded-full border px-2 py-0.5"><span aria-hidden className="mr-1 inline-block h-2 w-2" style={{ background: f.cor }} />{f.nome} · {n}</span>)}
+          {contagem.map(({ f, n }) => <span key={f.id} className="rounded-full border px-2 py-0.5"><span aria-hidden className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: f.cor }} />{f.nome} · {n}</span>)}
         </div>
       </aside>
       <ResizeHandle width={wDados} setWidth={setWDados} min={240} max={560} side="left" />
