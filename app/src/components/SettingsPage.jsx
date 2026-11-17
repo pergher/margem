@@ -323,7 +323,7 @@ function Temas({ titulo, lista, atual, onPick }) {
 }
 
 /** IA: desligada por padrão. A chave vai direto para o cofre do sistema e nunca volta para a tela. */
-const PROVEDORES_FIXOS = ["anthropic", "openai", "local"];
+const PROVEDORES_FIXOS = ["anthropic", "openai", "gemini", "local"];
 function ConfigIA() {
   const [c, setC] = useState(null);
   const [temChave, setTemChave] = useState(false);

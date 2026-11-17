@@ -85,6 +85,7 @@ pub(crate) fn provedores_padrao() -> Vec<ProvedorCfg> {
     vec![
         p("anthropic", "anthropic", "Claude", "", "claude-sonnet-5-5", true, true),
         p("openai", "openai-compat", "OpenAI", "https://api.openai.com/v1", "gpt-4o", true, true),
+        p("gemini", "openai-compat", "Gemini", "https://generativelanguage.googleapis.com/v1beta/openai", "gemini-3.5-flash-lite", true, true),
         p("local", "openai-compat", "Local (Ollama)", "http://localhost:11434/v1", "llama3.1", false, false),
     ]
 }
@@ -99,6 +100,13 @@ impl ConfigIA {
     /// Depois de ler: migra o formato antigo e calcula `local`.
     fn normalizar(mut self) -> Self {
         if let Some(m) = self.modelo.take() { if let Some(a) = self.provedores.iter_mut().find(|p| p.id == "anthropic") { a.modelo = m; } }
+        // Configurações gravadas antes do Gemini existir: acrescenta o provedor (antes do local, se houver).
+        if !self.provedores.iter().any(|p| p.id == "gemini") {
+            if let Some(g) = provedores_padrao().into_iter().find(|p| p.id == "gemini") {
+                let pos = self.provedores.iter().position(|p| p.id == "local").unwrap_or(self.provedores.len());
+                self.provedores.insert(pos, g);
+            }
+        }
         for p in &mut self.provedores { p.local = p.tipo == "openai-compat" && e_local(&p.base_url); }
         self
     }
@@ -231,6 +239,15 @@ pub async fn ia_testar(h: AppHandle) -> Result<String, String> {
     let nao = AtomicBool::new(false);
     let msgs = vec![Msg::usuario("Responda apenas: ok")];
     let mut resp = String::new();
-    prov.conversar(Requisicao { sistema: "Responda de forma curta.", msgs: &msgs, ferramentas: &[], max_tokens: 16, cancelar: &nao }, &mut |e| if let provedor::Evento::Texto(t) = e { resp.push_str(&t); }).await?;
+    // max_tokens folgado: modelos que "pensam" (Gemini 3, por ex.) gastam parte do limite antes de escrever.
+    {
+        let mut coletar = |e| if let provedor::Evento::Texto(t) = e { resp.push_str(&t); };
+        let chamada = prov.conversar(Requisicao { sistema: "Responda de forma curta.", msgs: &msgs, ferramentas: &[], max_tokens: 512, cancelar: &nao }, &mut coletar);
+        match tokio::time::timeout(std::time::Duration::from_secs(40), chamada).await {
+            Err(_) => return Err(format!("{} não respondeu em 40 s (modelo {}). Confira o nome do modelo e a chave.", pcfg.rotulo, pcfg.modelo)),
+            Ok(r) => { r?; }
+        }
+    }
+    if resp.trim().is_empty() { return Err(format!("{} conectou, mas o modelo {} não devolveu texto. Tente outro modelo.", pcfg.rotulo, pcfg.modelo)); }
     Ok(format!("Conexão ok ({} · {}): {}", pcfg.rotulo, pcfg.modelo, resp.trim()))
 }

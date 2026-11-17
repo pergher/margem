@@ -23,7 +23,7 @@ impl Anthropic {
 fn parte_json(p: &Parte) -> Value {
     match p {
         Parte::Texto(t) => json!({"type": "text", "text": t}),
-        Parte::UsoFerramenta { id, nome, args } => json!({"type": "tool_use", "id": id, "name": nome, "input": args}),
+        Parte::UsoFerramenta { id, nome, args, .. } => json!({"type": "tool_use", "id": id, "name": nome, "input": args}),
         Parte::ResultadoFerramenta { id, texto, erro } => json!({"type": "tool_result", "tool_use_id": id, "content": texto, "is_error": erro}),
     }
 }
@@ -105,7 +105,7 @@ impl Acumulador {
         self.blocos.into_values().filter_map(|b| match b {
             Bloco::Texto(t) if t.is_empty() => None,
             Bloco::Texto(t) => Some(Parte::Texto(t)),
-            Bloco::Ferramenta { id, nome, json } => decodificar(&json).ok().map(|args| Parte::UsoFerramenta { id, nome, args }),
+            Bloco::Ferramenta { id, nome, json } => decodificar(&json).ok().map(|args| Parte::UsoFerramenta { id, nome, args, assinatura: None }),
         }).collect()
     }
 }
@@ -184,7 +184,7 @@ mod tests {
             assert_eq!(acc.parada.as_deref(), Some("tool_use"));
             assert_eq!(acc.partes(), vec![
                 Parte::Texto("Vou buscar.".into()),
-                Parte::UsoFerramenta { id: "toolu_01".into(), nome: "search_notes".into(), args: json!({"query": "anáfora", "tipo": "texto"}) },
+                Parte::UsoFerramenta { id: "toolu_01".into(), nome: "search_notes".into(), args: json!({"query": "anáfora", "tipo": "texto"}), assinatura: None },
             ]);
         }
     }
@@ -209,7 +209,7 @@ mod tests {
         let cancelar = AtomicBool::new(false);
         let msgs = vec![
             Msg::usuario("oi"),
-            Msg { papel: Papel::Assistente, partes: vec![Parte::UsoFerramenta { id: "t1".into(), nome: "read_note".into(), args: json!({"nome": "A"}) }] },
+            Msg { papel: Papel::Assistente, partes: vec![Parte::UsoFerramenta { id: "t1".into(), nome: "read_note".into(), args: json!({"nome": "A"}), assinatura: None }] },
             Msg { papel: Papel::Usuario, partes: vec![Parte::ResultadoFerramenta { id: "t1".into(), texto: "conteúdo".into(), erro: false }] },
         ];
         let fs = vec![Ferramenta { nome: "read_note".into(), descricao: "Lê".into(), schema: json!({"type": "object"}) }];

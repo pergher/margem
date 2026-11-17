@@ -10,7 +10,8 @@ pub enum Papel { Usuario, Assistente }
 #[derive(Clone, Debug, PartialEq)]
 pub enum Parte {
     Texto(String),
-    UsoFerramenta { id: String, nome: String, args: Value },
+    /// `assinatura`: dado opaco que o provedor (Gemini 3) exige de volta junto da chamada.
+    UsoFerramenta { id: String, nome: String, args: Value, assinatura: Option<Value> },
     ResultadoFerramenta { id: String, texto: String, erro: bool },
 }
 

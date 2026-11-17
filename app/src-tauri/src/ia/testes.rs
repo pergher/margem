@@ -31,7 +31,7 @@ impl Provedor for ProvedorFalso {
         for p in &partes {
             match p {
                 Parte::Texto(t) => emitir(Evento::Texto(t.clone())),
-                Parte::UsoFerramenta { id, nome, args } => emitir(Evento::UsoFerramenta { id: id.clone(), nome: nome.clone(), args: args.clone() }),
+                Parte::UsoFerramenta { id, nome, args, .. } => emitir(Evento::UsoFerramenta { id: id.clone(), nome: nome.clone(), args: args.clone() }),
                 Parte::ResultadoFerramenta { .. } => {}
             }
         }
@@ -45,7 +45,7 @@ impl Ferramentas for FerramentasFalsas {
     fn executar(&self, nome: &str, _: &Value) -> Saida { lock(&self.chamadas).push(nome.into()); Saida { texto: format!("resultado de {nome}"), erro: false, proposta: None } }
 }
 
-fn uso(id: &str, nome: &str, args: Value) -> Parte { Parte::UsoFerramenta { id: id.into(), nome: nome.into(), args } }
+fn uso(id: &str, nome: &str, args: Value) -> Parte { Parte::UsoFerramenta { id: id.into(), nome: nome.into(), args, assinatura: None } }
 async fn rodar_com(prov: &dyn Provedor, ferr: &dyn Ferramentas, msgs: &mut Vec<Msg>, max_voltas: usize, cancelar: &AtomicBool) -> Vec<EventoIA> {
     let mut evs = vec![];
     rodar(prov, ferr, &Config { sistema: "s", max_tokens: 100, max_voltas }, msgs, Msg::usuario("pergunta"), cancelar, &mut |e| evs.push(e)).await;
@@ -265,15 +265,15 @@ fn local_e_reconhecido_pelo_endereco() {
     for u in ["http://localhost:11434/v1", "http://127.0.0.1:8080", "http://[::1]:11434/v1", "http://LOCALHOST/v1"] { assert!(e_local(u), "{u}"); }
     for u in ["https://api.openai.com/v1", "http://localhost.evil.com/v1", "http://evil.com/localhost", "http://localhost@evil.com/v1", "https://x.com:443/127.0.0.1"] { assert!(!e_local(u), "{u}"); }
     let n = ConfigIA::default().normalizar();
-    assert_eq!(n.provedores.iter().map(|p| p.local).collect::<Vec<_>>(), vec![false, false, true]);
-    assert!(!n.provedores[2].exige_chave && !n.provedores[2].suporta_ferramentas, "o local não pede chave e começa sem ferramentas");
+    assert_eq!(n.provedores.iter().map(|p| p.local).collect::<Vec<_>>(), vec![false, false, false, true]);
+    assert!(!n.provedores[3].exige_chave && !n.provedores[3].suporta_ferramentas, "o local não pede chave e começa sem ferramentas");
 }
 
 #[test]
 fn config_da_etapa_m_migra_para_a_lista_de_provedores() {
     let velha = r#"{"ativa": true, "provedor": "anthropic", "modelo": "claude-meu-modelo", "max_tokens": 2000, "aceitou_aviso": true}"#;
     let c: ConfigIA = serde_json::from_str::<ConfigIA>(velha).unwrap().normalizar();
-    assert_eq!(c.provedores.len(), 3);
+    assert_eq!(c.provedores.len(), 4);
     assert_eq!(c.selecionado().unwrap().modelo, "claude-meu-modelo");
     assert!(c.ativa && validar(&c).is_ok());
     assert!(serde_json::to_value(&c).unwrap().get("modelo").is_none(), "o campo antigo deixa de ser gravado");
@@ -317,7 +317,7 @@ fn contrato_os_dois_adaptadores_geram_os_mesmos_eventos_neutros() {
          vec![Parte::Texto("Olá, professor! Posso ajudar.".into())]),
         (include_str!("fixtures/anthropic_ferramenta.sse"), include_str!("fixtures/openai_ferramenta.sse"),
          vec![Evento::Texto("Vou buscar.".into()), Evento::UsoFerramenta { id: "toolu_01".into(), nome: "search_notes".into(), args: json!({"query": "anáfora", "tipo": "texto"}) }, Evento::Fim("tool_use".into())],
-         vec![Parte::Texto("Vou buscar.".into()), Parte::UsoFerramenta { id: "toolu_01".into(), nome: "search_notes".into(), args: json!({"query": "anáfora", "tipo": "texto"}) }]),
+         vec![Parte::Texto("Vou buscar.".into()), Parte::UsoFerramenta { id: "toolu_01".into(), nome: "search_notes".into(), args: json!({"query": "anáfora", "tipo": "texto"}), assinatura: None }]),
     ];
     for (anth, oai, eventos, partes) in casos {
         for tam in [6, 41, 100_000] { // pedaços de rede de qualquer tamanho

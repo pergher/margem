@@ -32,8 +32,10 @@ pub(crate) fn corpo(modelo: &str, base_url: &str, req: &Requisicao<'_>) -> Value
             }
             Papel::Assistente => {
                 let texto: String = m.partes.iter().filter_map(|p| if let Parte::Texto(t) = p { Some(t.as_str()) } else { None }).collect::<Vec<_>>().join("\n");
-                let chamadas: Vec<Value> = m.partes.iter().filter_map(|p| if let Parte::UsoFerramenta { id, nome, args } = p {
-                    Some(json!({"id": id, "type": "function", "function": {"name": nome, "arguments": args.to_string()}}))
+                let chamadas: Vec<Value> = m.partes.iter().filter_map(|p| if let Parte::UsoFerramenta { id, nome, args, assinatura } = p {
+                    let mut c = json!({"id": id, "type": "function", "function": {"name": nome, "arguments": args.to_string()}});
+                    if let Some(a) = assinatura { c["extra_content"] = json!({"google": {"thought_signature": a}}); } // Gemini 3 exige a assinatura de volta
+                    Some(c)
                 } else { None }).collect();
                 let mut o = json!({"role": "assistant", "content": if texto.is_empty() { Value::Null } else { json!(texto) }});
                 if !chamadas.is_empty() { o["tool_calls"] = json!(chamadas); }
@@ -52,7 +54,7 @@ pub(crate) fn corpo(modelo: &str, base_url: &str, req: &Requisicao<'_>) -> Value
 
 /// Junta os pedaços do stream. Cada chamada de ferramenta chega em fragmentos (`function.arguments`), indexada por `index`.
 #[derive(Default)]
-pub(crate) struct Acumulador { texto: String, ferramentas: BTreeMap<usize, (String, String, String)>, tokens_in: u64, tokens_out: u64, pub parada: Option<String>, pub fim: bool, anunciadas: bool }
+pub(crate) struct Acumulador { texto: String, ferramentas: BTreeMap<usize, (String, String, String)>, assinaturas: BTreeMap<usize, Value>, tokens_in: u64, tokens_out: u64, pub parada: Option<String>, pub fim: bool, anunciadas: bool }
 
 fn parada_neutra(r: &str) -> String {
     match r { "tool_calls" | "function_call" => "tool_use", "stop" => "end_turn", "length" => "max_tokens", outro => outro }.to_string()
@@ -84,6 +86,7 @@ impl Acumulador {
         }
         for (pos, c) in ch.pointer("/delta/tool_calls").and_then(Value::as_array).into_iter().flatten().enumerate() {
             let i = c.get("index").and_then(Value::as_u64).map_or(pos, |i| i as usize);
+            if let Some(a) = c.pointer("/extra_content/google/thought_signature").filter(|a| !a.is_null()) { self.assinaturas.entry(i).or_insert_with(|| a.clone()); }
             let e = self.ferramentas.entry(i).or_default();
             if let Some(id) = c.get("id").and_then(Value::as_str).filter(|s| !s.is_empty()) { e.0 = id.to_string(); }
             if let Some(n) = c.pointer("/function/name").and_then(Value::as_str).filter(|s| !s.is_empty()) { e.1 = n.to_string(); }
@@ -117,7 +120,7 @@ impl Acumulador {
         if !self.texto.is_empty() { out.push(Parte::Texto(self.texto.clone())); }
         for (i, (id, nome, args)) in &self.ferramentas {
             if nome.is_empty() { continue; }
-            if let Ok(args) = decodificar(args) { out.push(Parte::UsoFerramenta { id: if id.is_empty() { format!("call_{i}") } else { id.clone() }, nome: nome.clone(), args }); }
+            if let Ok(args) = decodificar(args) { out.push(Parte::UsoFerramenta { id: if id.is_empty() { format!("call_{i}") } else { id.clone() }, nome: nome.clone(), args, assinatura: self.assinaturas.get(i).cloned() }); }
         }
         out
     }
@@ -167,7 +170,7 @@ mod tests {
         let cancelar = AtomicBool::new(false);
         let msgs = vec![
             Msg::usuario("oi"),
-            Msg { papel: Papel::Assistente, partes: vec![Parte::Texto("vou ver".into()), Parte::UsoFerramenta { id: "c1".into(), nome: "read_note".into(), args: json!({"nome": "A"}) }] },
+            Msg { papel: Papel::Assistente, partes: vec![Parte::Texto("vou ver".into()), Parte::UsoFerramenta { id: "c1".into(), nome: "read_note".into(), args: json!({"nome": "A"}), assinatura: None }] },
             Msg { papel: Papel::Usuario, partes: vec![Parte::ResultadoFerramenta { id: "c1".into(), texto: "conteúdo".into(), erro: false }] },
         ];
         let fs = vec![Ferramenta { nome: "read_note".into(), descricao: "Lê".into(), schema: json!({"type": "object"}) }];
@@ -191,6 +194,18 @@ mod tests {
         acc.evento(r#"{"choices":[{"delta":{"tool_calls":[{"function":{"name":"progress","arguments":{"turma":"61"}}}]},"finish_reason":"tool_calls"}]}"#, &mut |e| evs.push(e)).unwrap();
         acc.evento("[DONE]", &mut |e| evs.push(e)).unwrap();
         assert_eq!(evs, vec![Evento::UsoFerramenta { id: "call_0".into(), nome: "progress".into(), args: json!({"turma": "61"}) }, Evento::Fim("tool_use".into())]);
+    }
+
+    #[test]
+    fn assinatura_de_raciocinio_do_gemini_volta_na_chamada() {
+        let mut acc = Acumulador::default();
+        acc.evento(r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"c9","function":{"name":"progress","arguments":"{}"},"extra_content":{"google":{"thought_signature":"SIG=="}}}]},"finish_reason":"tool_calls"}]}"#, &mut |_| {}).unwrap();
+        let partes = acc.partes();
+        assert!(matches!(&partes[0], Parte::UsoFerramenta { assinatura: Some(a), .. } if a == "SIG=="));
+        let cancelar = AtomicBool::new(false);
+        let msgs = vec![Msg { papel: Papel::Assistente, partes }];
+        let c = corpo("m", "https://generativelanguage.googleapis.com/v1beta/openai", &Requisicao { sistema: "s", msgs: &msgs, ferramentas: &[], max_tokens: 9, cancelar: &cancelar });
+        assert_eq!(c["messages"][1]["tool_calls"][0]["extra_content"]["google"]["thought_signature"], "SIG==");
     }
 
     #[test]

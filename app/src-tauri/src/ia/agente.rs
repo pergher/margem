@@ -59,7 +59,7 @@ pub async fn rodar(
             emitir(EventoIA::Fim { motivo: "cancelado".into() });
             return;
         }
-        let usos: Vec<(String, String, serde_json::Value)> = partes.iter().filter_map(|p| if let Parte::UsoFerramenta { id, nome, args } = p { Some((id.clone(), nome.clone(), args.clone())) } else { None }).collect();
+        let usos: Vec<(String, String, serde_json::Value)> = partes.iter().filter_map(|p| if let Parte::UsoFerramenta { id, nome, args, .. } = p { Some((id.clone(), nome.clone(), args.clone())) } else { None }).collect();
         msgs.push(Msg { papel: Papel::Assistente, partes });
         if usos.is_empty() { emitir(EventoIA::Fim { motivo: "fim".into() }); return; }
 
