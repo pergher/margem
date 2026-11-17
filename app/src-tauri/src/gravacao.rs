@@ -7,11 +7,12 @@ use crate::lock;
 /// Última versão (hash do texto) que o app leu ou gravou de cada nota: serve para notar que o arquivo mudou por fora.
 pub(crate) type Vistos = Mutex<std::collections::HashMap<PathBuf, u64>>;
 
+/// FNV-1a de 64 bits: estável entre versões do Rust e entre processos (o `DefaultHasher` não garante isso),
+/// então o hash pode ser guardado ou comparado depois.
 pub(crate) fn hash_texto(t: &str) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    t.hash(&mut h);
-    h.finish()
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in t.as_bytes() { h ^= u64::from(*b); h = h.wrapping_mul(0x0000_0100_0000_01b3); }
+    h
 }
 
 /// Retrato do arquivo no disco: conteúdo (hash), data de modificação e tamanho. Só o hash não basta para notar
@@ -35,12 +36,17 @@ pub(crate) fn gravar_atomico(p: &Path, text: &str) -> Result<(), String> {
 /// Como `gravar_atomico`, mas roda `checar` com o temporário já pronto e imediatamente antes do `rename`:
 /// se devolver erro, o temporário é apagado e o original não é tocado.
 pub(crate) fn gravar_atomico_checando(p: &Path, text: &str, checar: impl FnOnce() -> Result<(), String>) -> Result<(), String> {
+    gravar_bytes_atomico(p, text.as_bytes(), checar)
+}
+
+/// Escrita atômica de bytes (imagens, anexos), com a mesma checagem opcional antes do `rename`.
+pub(crate) fn gravar_bytes_atomico(p: &Path, dados: &[u8], checar: impl FnOnce() -> Result<(), String>) -> Result<(), String> {
     use std::io::Write;
     let nome = p.file_name().ok_or("caminho inválido")?.to_string_lossy();
     let tmp = p.with_file_name(format!("{nome}.margem-tmp"));
     let r = (|| -> Result<(), String> {
         let mut f = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
-        f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+        f.write_all(dados).map_err(|e| e.to_string())?;
         f.sync_all().map_err(|e| e.to_string())?;
         checar()?;
         std::fs::rename(&tmp, p).map_err(|e| e.to_string())
@@ -157,6 +163,26 @@ mod tests {
         }).unwrap();
         assert_eq!(chamadas, vec![false, true], "o snapshot é refeito ao notar a mudança tardia");
         assert_eq!(std::fs::read_to_string(&p).unwrap(), "b");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn hash_e_estavel_entre_versoes_e_processos() {
+        // valores de referência do FNV-1a de 64 bits: se mudarem, o hash deixou de ser estável
+        assert_eq!(hash_texto(""), 0xcbf2_9ce4_8422_2325);
+        assert_eq!(hash_texto("a"), 0xaf63_dc4c_8601_ec8c);
+        assert_ne!(hash_texto("a"), hash_texto("b"));
+    }
+
+    #[test]
+    fn grava_bytes_por_atomico() {
+        let d = tmpdir("bytes");
+        let p = d.join("img.png");
+        gravar_bytes_atomico(&p, &[0x89, b'P', b'N', b'G'], || Ok(())).unwrap();
+        assert_eq!(std::fs::read(&p).unwrap(), vec![0x89, b'P', b'N', b'G']);
+        assert!(gravar_bytes_atomico(&p, b"outro", || Err("não".into())).is_err());
+        assert_eq!(std::fs::read(&p).unwrap().len(), 4, "o original fica intacto se a checagem recusa");
+        assert_eq!(std::fs::read_dir(&d).unwrap().count(), 1);
         let _ = std::fs::remove_dir_all(&d);
     }
 }

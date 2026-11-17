@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod atualizacao;

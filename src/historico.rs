@@ -71,9 +71,9 @@ pub fn orfaos(root: &Path, dias: u64) -> Vec<PathBuf> {
         let Ok(rd) = std::fs::read_dir(d) else { return };
         let ids = hist_ids(d);
         if !ids.is_empty() {
-            let rel = d.strip_prefix(base).unwrap();
+            let rel = d.strip_prefix(base).unwrap_or(d);
             let nota = root.join(rel).with_extension("md");
-            let nome = format!("{}.md", d.file_name().unwrap().to_string_lossy()).to_lowercase();
+            let nome = format!("{}.md", d.file_name().unwrap_or_default().to_string_lossy()).to_lowercase();
             if !nota.exists() && !lix.contains(&nome) && ids[0] < limite { out.push(d.to_path_buf()); }
         }
         for e in rd.flatten() { if e.path().is_dir() { andar(&e.path(), base, root, lix, limite, out); } }

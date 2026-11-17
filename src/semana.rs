@@ -70,11 +70,11 @@ fn celulas(l: &str) -> Vec<String> {
     while let Some(c) = ch.next() {
         if c == '\\' && ch.peek() == Some(&'|') {
             ch.next();
-            out.last_mut().unwrap().push('|');
+            if let Some(c) = out.last_mut() { c.push('|'); }
         } else if c == '|' {
             out.push(String::new());
         } else {
-            out.last_mut().unwrap().push(c);
+            if let Some(atual) = out.last_mut() { atual.push(c); }
         }
     }
     out.into_iter().map(|c| c.trim().to_string()).collect()

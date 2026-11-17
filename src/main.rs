@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
 use std::path::PathBuf;
 
 use vault_core::migrate::migrate_named;
@@ -136,7 +137,7 @@ fn main() -> ExitCode {
                             }
                             if aplicar {
                                 let _ = historico::snapshot(&v.root, &n.path, true); // guarda a versão antiga antes de migrar
-                                std::fs::write(&n.path, &m.text).expect("escrita");
+                                if let Err(e) = std::fs::write(&n.path, &m.text) { eprintln!("não gravou {rel}: {e}"); return ExitCode::FAILURE; }
                             }
                         }
                         if !m.manual.is_empty() {
@@ -170,7 +171,7 @@ fn main() -> ExitCode {
                 println!("{rel}: {c}");
                 if aplicar {
                     let _ = historico::snapshot(&v.root, &n.path, true);
-                    std::fs::write(&n.path, novo).expect("escrita");
+                    if let Err(e) = std::fs::write(&n.path, novo) { eprintln!("não gravou {rel}: {e}"); return ExitCode::FAILURE; }
                 }
             }
             println!("\n{total} anotações em {arquivos} aulas {}", if aplicar { "convertidas em [!margem]" } else { "seriam convertidas em [!margem] (simulação; use --aplicar)" });
@@ -178,14 +179,14 @@ fn main() -> ExitCode {
         }
         Some("edit-cell") if args.len() == 6 => {
             let (Ok(t), Ok(r), Ok(c)) = (args[2].parse::<usize>(), args[3].parse::<usize>(), args[4].parse::<usize>()) else { return usage() };
-            let text = std::fs::read_to_string(&args[1]).expect("leitura");
+            let text = match std::fs::read_to_string(&args[1]) { Ok(t) => t, Err(e) => { eprintln!("não leu {}: {e}", args[1]); return ExitCode::FAILURE; } };
             let tables = find_tables(&text);
             let Some(cell) = tables.get(t).and_then(|t| t.rows.get(r)).and_then(|r| r.get(c)) else {
                 eprintln!("célula não encontrada");
                 return ExitCode::from(2);
             };
             if let Some(raiz) = PathBuf::from(&args[1]).canonicalize().ok().and_then(|p| p.ancestors().find(|a| a.join(".historico").is_dir() || a.join("Acervo").is_dir()).map(|a| a.to_path_buf())) { let _ = historico::snapshot(&raiz, &PathBuf::from(&args[1]), true); }
-            std::fs::write(&args[1], replace_cell(&text, cell, &args[5])).expect("escrita");
+            if let Err(e) = std::fs::write(&args[1], replace_cell(&text, cell, &args[5])) { eprintln!("não gravou {}: {e}", args[1]); return ExitCode::FAILURE; }
             ExitCode::SUCCESS
         }
         Some("progresso") if args.len() == 2 => {

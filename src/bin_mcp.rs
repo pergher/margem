@@ -1,3 +1,4 @@
+#![cfg_attr(not(test), warn(clippy::unwrap_used))]
 use vault_core::mcp::{parse_args, run_stdio};
 
 fn main() {

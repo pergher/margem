@@ -18,6 +18,21 @@ pub(crate) fn inside_root(root: &Path, p: &str) -> Result<PathBuf, String> {
     inside_ext(root, p, &["md"])
 }
 
+/// Sidecar `.json` dentro do vault: `Some(caminho)` se existe; `None` se não existe mas o lugar é do vault;
+/// erro se o caminho (existente ou não) cai fora do vault ou não é `.json`.
+pub(crate) fn sidecar_em(root: &Path, p: &str) -> Result<Option<PathBuf>, String> {
+    let raiz = canon(root).map_err(|e| e.to_string())?;
+    if let Ok(c) = canon(Path::new(p)) {
+        return if c.starts_with(&raiz) && c.extension().is_some_and(|x| x == "json") { Ok(Some(c)) } else { Err("fora do vault".into()) };
+    }
+    // não existe: o ancestral mais próximo que existe precisa ser do vault
+    let mut atual = Path::new(p).to_path_buf();
+    while !atual.exists() { if !atual.pop() { return Err("fora do vault".into()); } }
+    let base = canon(&atual).map_err(|e| e.to_string())?;
+    let sem_volta = !Path::new(p).components().any(|c| matches!(c, std::path::Component::ParentDir));
+    if base.starts_with(&raiz) && sem_volta && Path::new(p).extension().is_some_and(|x| x == "json") { Ok(None) } else { Err("fora do vault".into()) }
+}
+
 pub(crate) fn inside_ext(root: &Path, p: &str, exts: &[&str]) -> Result<PathBuf, String> {
     let p = canon(Path::new(p)).map_err(|e| format!("{p}: {e}"))?;
     let root = canon(root).map_err(|e| e.to_string())?;
@@ -106,6 +121,13 @@ mod tests {
         assert!(inside_ext(&d, &format!("{sub}/_dados.json"), &["json"]).is_ok());
         assert!(inside_ext(&d, &format!("{sub}/x.txt"), &["json"]).is_err());
         assert!(inside_ext(&d, "/etc/passwd", &["json"]).is_err());
+        // sidecar: existente dentro do vault lê; inexistente dentro do vault é `None`; fora do vault é erro, exista ou não
+        assert!(sidecar_em(&d, &format!("{sub}/_dados.json")).unwrap().is_some());
+        assert!(sidecar_em(&d, &format!("{sub}/outro.json")).unwrap().is_none());
+        assert!(sidecar_em(&d, &format!("{sub}/x.txt")).is_err());
+        assert!(sidecar_em(&d, "/etc/passwd.json").is_err());
+        assert!(sidecar_em(&d, "/tmp/margem-nao-existe-fora/_dados.json").is_err());
+        assert!(sidecar_em(&d, &format!("{sub}/../../fora.json")).is_err());
         let _ = std::fs::remove_dir_all(&d);
     }
 }

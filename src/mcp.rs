@@ -142,10 +142,8 @@ impl Server {
         let dir = self.destino_dir("ciclo");
         std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         let path = dir.join(format!("{}.md", m.nome));
-        if path.exists() {
-            return Err(format!("já existe {}.md", m.nome));
-        }
-        std::fs::write(&path, &m.texto).map_err(|e| e.to_string())?;
+        // create_new: nunca sobrescreve, nem numa corrida entre a checagem e a escrita
+        escrever_novo(&path, &m.texto).map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { format!("já existe {}.md", m.nome) } else { e.to_string() })?;
         let rel = path.strip_prefix(&self.root).unwrap_or(&path).to_string_lossy().replace('\\', "/");
         Ok(format!("criado: {rel}{avisos}"))
     }
@@ -240,10 +238,16 @@ impl Server {
             fm.push_str(&format!("{f}: \n"));
         }
         fm.push_str(&format!("---\n\n# {nome}\n"));
-        std::fs::write(&path, fm).map_err(|e| e.to_string())?;
+        escrever_novo(&path, &fm).map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { format!("já existe {nome}.md") } else { e.to_string() })?;
         let rel = path.strip_prefix(&self.root).unwrap_or(&path).to_string_lossy().replace('\\', "/");
         Ok(format!("criada: {rel} (campos vazios aparecem como pendência no validador)"))
     }
+}
+
+/// Grava um arquivo que ainda não existe; se existir (ou aparecer no meio do caminho) devolve `AlreadyExists` sem tocar nele.
+fn escrever_novo(path: &std::path::Path, texto: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    std::fs::OpenOptions::new().write(true).create_new(true).open(path)?.write_all(texto.as_bytes())
 }
 
 fn tools() -> Value {

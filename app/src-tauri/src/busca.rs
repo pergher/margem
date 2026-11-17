@@ -92,7 +92,7 @@ pub fn read_embed(app: State<App>, target: String, anchor: Option<String>, inlin
     let Some(f) = com_vault(&app, |v| v.attachment_path(&last).map(Path::to_path_buf))? else { return Ok(None) };
     let ext = f.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
     let mime = match ext.as_str() { "png" => "image/png", "jpg" | "jpeg" => "image/jpeg", "gif" => "image/gif", "webp" => "image/webp", "svg" => "image/svg+xml", _ => "" };
-    let name = f.file_name().unwrap().to_string_lossy().to_string();
+    let name = f.file_name().unwrap_or_default().to_string_lossy().to_string();
     if mime.is_empty() || f.metadata().map_or(true, |m| m.len() > 12_000_000) { return Ok(Some(json!({ "kind": "file", "name": name }))); }
     // Padrão: só o caminho (a tela carrega pelo protocolo `asset:`, sem base64 pela ponte). `inline` pede o data URL (logo da prova, exportações).
     if !inline.unwrap_or(false) { return Ok(Some(json!({ "kind": "image", "name": name, "path": slash(&f) }))); }

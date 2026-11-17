@@ -39,7 +39,8 @@ pub fn com_vault<R>(app: &App, f: impl FnOnce(&Vault) -> R) -> Result<R, String>
         app.aberturas.fetch_add(1, Ordering::Relaxed);
         *g = Some(VaultEmCache { raiz, assinatura: atual, vault });
     }
-    Ok(f(&g.as_ref().expect("cache preenchido acima").vault))
+    let c = g.as_ref().ok_or("o vault não foi carregado")?;
+    Ok(f(&c.vault))
 }
 
 #[cfg(test)]

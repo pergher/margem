@@ -42,10 +42,11 @@ pub(crate) fn nome_em_uso(app: &App, nome: &str, exceto: Option<&Path>) -> Resul
 /// Arquivo auxiliar `.json` dentro do vault (ex.: `_dados.json` de uma correção); `None` se não existir.
 #[tauri::command]
 pub fn read_sidecar(app: State<App>, path: String) -> Result<Option<String>, String> {
-    let p = Path::new(&path);
-    if !p.exists() { return Ok(None); }
-    let p = inside_ext(&app.root(), &path, &["json"])?;
-    std::fs::read_to_string(p).map(Some).map_err(|e| e.to_string())
+    // Valida o caminho antes de olhar o disco: um caminho fora do vault dá sempre o mesmo erro, exista ou não.
+    match sidecar_em(&app.root(), &path)? {
+        Some(p) => std::fs::read_to_string(p).map(Some).map_err(|e| e.to_string()),
+        None => Ok(None),
+    }
 }
 
 /// Grava uma imagem (png/jpg, até 2 MB) numa pasta existente do vault (ex.: a logo da escola em `_sistema/anexos`).
@@ -58,7 +59,7 @@ pub fn save_attachment(app: State<App>, dir: String, name: String, data: Vec<u8>
     let d = pasta_destino(&app, &dir)?;
     if !d.is_dir() { return Err("destino não é pasta".into()); }
     let p = d.join(name);
-    std::fs::write(&p, data).map_err(|e| e.to_string())?;
+    gravar_bytes_atomico(&p, &data, || Ok(()))?;
     app.invalidar();
     Ok(slash(&p))
 }
@@ -167,8 +168,10 @@ pub fn create_note(app: State<App>, dir: String, name: String) -> Result<String,
     let p = d.join(format!("{name}.md"));
     if p.exists() { return Err(format!("já existe: {name}.md")); }
     if let Some(onde) = nome_em_uso(&app, &name, None)? { return Err(format!("já existe uma nota com esse nome em {onde}; os links [[{name}]] ficariam ambíguos")); }
-    std::fs::write(&p, format!("# {name}\n")).map_err(|e| e.to_string())?;
+    // create_new: nunca sobrescreve, nem numa corrida entre a checagem acima e a escrita
+    let escrito = std::fs::OpenOptions::new().write(true).create_new(true).open(&p).and_then(|mut f| { use std::io::Write; f.write_all(format!("# {name}\n").as_bytes()) });
     app.invalidar();
+    escrito.map_err(|e| if e.kind() == std::io::ErrorKind::AlreadyExists { format!("já existe: {name}.md") } else { e.to_string() })?;
     Ok(slash(&p))
 }
 
@@ -194,7 +197,7 @@ pub fn rename_entry(app: State<App>, path: String, name: String) -> Result<Chang
     let so_caixa = to != from && to.to_string_lossy().to_lowercase() == from.to_string_lossy().to_lowercase();
     if to != from && !so_caixa && to.exists() { return Err("já existe um item com esse nome".into()); }
     if is_note { if let Some(onde) = nome_em_uso(&app, &name, Some(&from))? { return Err(format!("já existe uma nota com esse nome em {onde}; os links [[{name}]] ficariam ambíguos")); } }
-    let antigo = from.file_stem().unwrap().to_string_lossy().to_string();
+    let antigo = from.file_stem().ok_or("caminho inválido")?.to_string_lossy().to_string();
     renomear_fs(&from, &to)?;
     app.invalidar();
     mover_historico(&root_of(&app)?, &from, &to);
@@ -216,10 +219,10 @@ pub fn move_entry(app: State<App>, path: String, dir: String) -> Result<Changed,
     let d = if dir.is_empty() { root_of(&app)? } else { inside_any(&app, &dir)? };
     if !d.is_dir() { return Err("destino não é pasta".into()); }
     if d.starts_with(&from) { return Err("não dá para mover para dentro de si mesma".into()); }
-    let to = d.join(from.file_name().unwrap());
+    let to = d.join(from.file_name().ok_or("caminho inválido")?);
     if to == from { return Ok(Changed { path: path.clone(), links: 0 }); }
     if to.exists() { return Err("já existe um item com esse nome no destino".into()); }
-    if from.is_file() { if let Some(onde) = nome_em_uso(&app, &from.file_stem().unwrap().to_string_lossy(), Some(&from))? { return Err(format!("já existe uma nota com esse nome em {onde}; os links ficariam ambíguos")); } }
+    if from.is_file() { if let Some(onde) = nome_em_uso(&app, &from.file_stem().unwrap_or_default().to_string_lossy(), Some(&from))? { return Err(format!("já existe uma nota com esse nome em {onde}; os links ficariam ambíguos")); } }
     std::fs::rename(&from, &to).map_err(|e| e.to_string())?;
     mover_historico(&root_of(&app)?, &from, &to);
     app.invalidar();
@@ -232,7 +235,7 @@ pub fn delete_entry(app: State<App>, path: String) -> Result<(), String> {
     let from = inside_any(&app, &path)?;
     let lix = root_of(&app)?.join(".lixeira");
     std::fs::create_dir_all(&lix).map_err(|e| e.to_string())?;
-    let base = from.file_name().unwrap().to_string_lossy().to_string();
+    let base = from.file_name().ok_or("caminho inválido")?.to_string_lossy().to_string();
     let mut to = lix.join(&base);
     let mut i = 1;
     while to.exists() { to = lix.join(format!("{base}.{i}")); i += 1; }
@@ -248,7 +251,7 @@ pub fn list_dirs(app: State<App>) -> Result<Vec<String>, String> {
         for e in rd.flatten() {
             let p = e.path();
             if p.is_dir() && !e.file_name().to_string_lossy().starts_with('.') {
-                out.push(p.strip_prefix(root).unwrap().to_string_lossy().replace('\\', "/") + "/");
+                out.push(p.strip_prefix(root).unwrap_or(&p).to_string_lossy().replace('\\', "/") + "/");
                 walk(&p, root, out);
             }
         }
@@ -285,7 +288,7 @@ pub struct Info { issues: Vec<Aviso>, backlinks: Vec<Back>, tipo: Option<String>
 pub fn note_info(app: State<App>, path: String) -> Result<Info, String> {
     use vault_core::validate::{required_fields, validate_note, Severity, STATUS};
     let p = inside(&app, &path)?;
-    let name = p.file_stem().unwrap().to_string_lossy().to_string();
+    let name = p.file_stem().ok_or("caminho inválido")?.to_string_lossy().to_string();
     let root = app.root();
     com_vault(&app, |v| {
         let issues = validate_note(v, &name).into_iter().map(|i| Aviso {

@@ -233,15 +233,21 @@ pub fn migrate_named(name: &str, text: &str) -> Result<Migration, String> {
                 mig.changes.push(format!("period removido (a turma vive no ciclo ou plano do ano; era {:?})", items(&e.value).iter().filter_map(|v| str_of(v)).collect::<Vec<_>>()));
                 vec![]
             }
-            ("ciclo", "period") => {
-                let (_, tri, ciclo) = ciclo_do_nome.unwrap();
-                let antigo = items(&e.value).first().and_then(|v| int_of(v));
-                if antigo.is_some_and(|n| n != tri) {
-                    mig.manual.push(format!("period {antigo:?} difere do trimestre do nome ({tri}); conferir"));
+            ("ciclo", "period") => match ciclo_do_nome {
+                // `tipo: ciclo` já escrito, mas o nome do arquivo não traz o número (ex.: "231 - Crase"): não dá para deduzir
+                None => {
+                    mig.manual.push("period em nota de ciclo sem o número no nome do arquivo; conferir".into());
+                    e.lines.clone()
                 }
-                mig.changes.push(format!("period → trimestre: {tri} + ciclo: {ciclo} (pelo nome do arquivo)"));
-                vec![format!("trimestre: {tri}\n"), format!("ciclo: {ciclo}\n")]
-            }
+                Some((_, tri, ciclo)) => {
+                    let antigo = items(&e.value).first().and_then(|v| int_of(v));
+                    if antigo.is_some_and(|n| n != tri) {
+                        mig.manual.push(format!("period {antigo:?} difere do trimestre do nome ({tri}); conferir"));
+                    }
+                    mig.changes.push(format!("period → trimestre: {tri} + ciclo: {ciclo} (pelo nome do arquivo)"));
+                    vec![format!("trimestre: {tri}\n"), format!("ciclo: {ciclo}\n")]
+                }
+            },
             ("plano", "period") => match items(&e.value).first().and_then(|v| int_of(v)) {
                 Some(n) => {
                     mig.changes.push(format!("period → trimestre: {n}"));
@@ -302,7 +308,7 @@ pub fn migrate_named(name: &str, text: &str) -> Result<Migration, String> {
     if new_yaml == yaml {
         return Ok(mig);
     }
-    let start = text.split_inclusive('\n').next().unwrap().len();
+    let start = text.split_inclusive('\n').next().map_or(0, str::len);
     let new_text = format!("{}{}{}", &text[..start], new_yaml, &text[start + yaml.len()..]);
     // verificações de segurança: continua válido e o corpo não mudou
     let sp2 = frontmatter::split(&new_text);

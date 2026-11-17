@@ -39,7 +39,7 @@ fn walk(dir: &Path, root: &Path, out: &mut Vec<PathBuf>) -> io::Result<()> {
         if p.is_dir() {
             walk(&p, root, out)?;
         } else {
-            out.push(p.strip_prefix(root).unwrap().to_path_buf());
+            out.push(p.strip_prefix(root).unwrap_or(&p).to_path_buf());
         }
     }
     Ok(())
@@ -129,9 +129,9 @@ pub fn plan(root: &Path, ano: &str, raiz_nome: &str) -> io::Result<Plan> {
     let mut nomes: BTreeMap<String, Vec<PathBuf>> = BTreeMap::new();
     for f in &files {
         let nome = if f.extension().is_some_and(|e| e == "md") {
-            f.file_stem().unwrap().to_string_lossy().to_lowercase()
+            f.file_stem().unwrap_or_default().to_string_lossy().to_lowercase()
         } else {
-            f.file_name().unwrap().to_string_lossy().to_lowercase()
+            f.file_name().unwrap_or_default().to_string_lossy().to_lowercase()
         };
         nomes.entry(nome).or_default().push(final_path(f));
     }
@@ -167,9 +167,9 @@ pub fn plan(root: &Path, ano: &str, raiz_nome: &str) -> io::Result<Plan> {
             };
             let [alvo] = achados.as_slice() else { return None };
             let nome = if alvo.extension().is_some_and(|e| e == "md") {
-                alvo.file_stem().unwrap().to_string_lossy().to_string()
+                alvo.file_stem().unwrap_or_default().to_string_lossy().to_string()
             } else {
-                alvo.file_name().unwrap().to_string_lossy().to_string()
+                alvo.file_name().unwrap_or_default().to_string_lossy().to_string()
             };
             let unico = nomes.get(&nome.to_lowercase()).is_some_and(|v| v.len() == 1);
             if !unico {
@@ -222,7 +222,7 @@ pub fn apply(root: &Path, plan: &Plan) -> io::Result<()> {
         if to.exists() {
             return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("destino já existe: {}", m.to.display())));
         }
-        fs::create_dir_all(to.parent().unwrap())?;
+        if let Some(pai) = to.parent() { fs::create_dir_all(pai)?; }
         fs::rename(root.join(&m.from), &to)?;
         crate::historico::mover_historico(root, &root.join(&m.from), &to);
     }

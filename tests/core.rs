@@ -402,3 +402,11 @@ fn validate_note_so_devolve_a_nota_pedida() {
     assert_eq!(so_a.iter().map(|i| (i.line, i.code)).collect::<Vec<_>>(), todos);
     assert!(validate_note(&v, "inexistente").is_empty());
 }
+
+#[test]
+fn migrar_ciclo_com_period_e_nome_sem_numero_pede_decisao_manual_em_vez_de_panicar() {
+    use vault_core::migrate::migrate_named;
+    let m = migrate_named("Crase", "---\ntipo: ciclo\nperiod: [\"2\"]\n---\n# Crase\n").unwrap();
+    assert!(m.manual.iter().any(|x| x.contains("period")), "{:?}", m.manual);
+    assert!(m.text.contains("period"), "o campo fica como estava para decisão manual");
+}

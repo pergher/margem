@@ -12,11 +12,8 @@ pub struct Split {
 pub fn split(text: &str) -> Split {
     let none = Split { yaml: None, body_start: 0 };
     let mut lines = text.split_inclusive('\n');
-    match lines.next() {
-        Some(l) if l.trim_start_matches('\u{feff}').trim_end() == "---" => {} // BOM do Bloco de Notas é aceito
-        _ => return none,
-    }
-    let mut offset = text.split_inclusive('\n').next().unwrap().len();
+    let Some(primeira) = lines.next().filter(|l| l.trim_start_matches('\u{feff}').trim_end() == "---") else { return none }; // BOM do Bloco de Notas é aceito
+    let mut offset = primeira.len();
     let yaml_start = offset;
     for l in lines {
         if l.trim_end() == "---" {
