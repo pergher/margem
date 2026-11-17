@@ -14,31 +14,58 @@ pub(crate) fn hash_texto(t: &str) -> u64 {
     h.finish()
 }
 
+/// Retrato do arquivo no disco: conteúdo (hash), data de modificação e tamanho. Só o hash não basta para notar
+/// uma troca por um sincronizador que reescreve o mesmo texto; os três juntos deixam a janela de corrida bem pequena.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct Retrato { hash: u64, mtime: Option<std::time::SystemTime>, len: u64 }
+
+/// `None` se o arquivo não existe (ou não é texto UTF-8 legível).
+pub(crate) fn retratar(p: &Path) -> Option<Retrato> {
+    let texto = std::fs::read_to_string(p).ok()?;
+    let m = std::fs::metadata(p).ok()?;
+    Some(Retrato { hash: hash_texto(&texto), mtime: m.modified().ok(), len: m.len() })
+}
+
 /// Grava sem deixar o arquivo pela metade: escreve num temporário ao lado e troca pelo original (uma queda no meio
 /// mantém a versão antiga inteira).
 pub(crate) fn gravar_atomico(p: &Path, text: &str) -> Result<(), String> {
+    gravar_atomico_checando(p, text, || Ok(()))
+}
+
+/// Como `gravar_atomico`, mas roda `checar` com o temporário já pronto e imediatamente antes do `rename`:
+/// se devolver erro, o temporário é apagado e o original não é tocado.
+pub(crate) fn gravar_atomico_checando(p: &Path, text: &str, checar: impl FnOnce() -> Result<(), String>) -> Result<(), String> {
     use std::io::Write;
     let nome = p.file_name().ok_or("caminho inválido")?.to_string_lossy();
     let tmp = p.with_file_name(format!("{nome}.margem-tmp"));
-    let r = (|| -> std::io::Result<()> {
-        let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(text.as_bytes())?;
-        f.sync_all()?;
-        std::fs::rename(&tmp, p)
+    let r = (|| -> Result<(), String> {
+        let mut f = std::fs::File::create(&tmp).map_err(|e| e.to_string())?;
+        f.write_all(text.as_bytes()).map_err(|e| e.to_string())?;
+        f.sync_all().map_err(|e| e.to_string())?;
+        checar()?;
+        std::fs::rename(&tmp, p).map_err(|e| e.to_string())
     })();
-    if let Err(e) = r { let _ = std::fs::remove_file(&tmp); return Err(e.to_string()); }
+    if let Err(e) = r { let _ = std::fs::remove_file(&tmp); return Err(e); }
     Ok(())
 }
 
 /// Grava a nota, recusando (erro que começa com `conflito:`) se o arquivo mudou no disco desde que o app o viu pela última vez.
-/// Com `forcar`, sobrescreve; `antes` roda logo antes de gravar (aqui: guardar a versão do disco no histórico).
-pub(crate) fn gravar_nota(vistos: &Vistos, p: &Path, text: &str, forcar: bool, antes: impl FnOnce(bool)) -> Result<(), String> {
-    let no_disco = std::fs::read_to_string(p).ok();
+/// A checagem é feita duas vezes: no começo e de novo logo antes do `rename`, comparando conteúdo, data e tamanho com o que
+/// foi visto no começo (um sincronizador pode mexer no arquivo no meio da gravação).
+/// Com `forcar`, sobrescreve; `antes` roda antes de gravar (aqui: guardar a versão do disco no histórico) com `true` quando
+/// o disco difere do que o app conhecia; se o arquivo ainda mudar depois disso, `antes(true)` roda de novo para guardar também essa versão.
+pub(crate) fn gravar_nota(vistos: &Vistos, p: &Path, text: &str, forcar: bool, mut antes: impl FnMut(bool)) -> Result<(), String> {
+    let inicial = retratar(p);
     let conhecido = lock(vistos).get(p).copied();
-    let mudou = matches!((&no_disco, conhecido), (Some(d), Some(h)) if hash_texto(d) != h);
+    let mudou = matches!((inicial, conhecido), (Some(d), Some(h)) if d.hash != h);
     if mudou && !forcar { return Err("conflito: o arquivo foi alterado fora do Margem desde a última leitura".into()); }
     antes(mudou);
-    gravar_atomico(p, text)?;
+    gravar_atomico_checando(p, text, || {
+        if retratar(p) == inicial { return Ok(()); }
+        if !forcar { return Err("conflito: o arquivo foi alterado durante a gravação (sincronizador?); nada foi gravado".into()); }
+        antes(true);
+        Ok(())
+    })?;
     lock(vistos).insert(p.to_path_buf(), hash_texto(text));
     Ok(())
 }
@@ -93,5 +120,43 @@ mod tests {
     fn normaliza_bom_e_crlf_na_leitura() {
         assert_eq!(normalizar("\u{feff}---\r\na: 1\r\n---\r\n".into()), "---\na: 1\n---\n");
         assert_eq!(normalizar("sem\nmudança".into()), "sem\nmudança");
+    }
+
+    #[test]
+    fn recusa_se_o_arquivo_muda_entre_a_checagem_e_o_rename() {
+        let d = tmpdir("conflito-tardio");
+        let p = d.join("n.md");
+        let vistos: Vistos = Mutex::new(Default::default());
+        std::fs::write(&p, "original").unwrap();
+        gravar_nota(&vistos, &p, "a", false, |_| {}).unwrap();
+        // um sincronizador troca o arquivo depois da primeira checagem (o gancho `antes` roda nessa janela)
+        let e = gravar_nota(&vistos, &p, "b", false, |_| std::fs::write(&p, "do drive").unwrap()).unwrap_err();
+        assert!(e.starts_with("conflito:") && e.contains("durante a gravação"), "{e}");
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "do drive", "o arquivo alheio fica intacto");
+        assert_eq!(std::fs::read_dir(&d).unwrap().count(), 1, "sem temporário sobrando");
+        // mesmo tamanho e mesmo texto reescrito por fora: ainda vale o aviso quando o conteúdo difere
+        std::fs::write(&p, "a").unwrap();
+        let vistos: Vistos = Mutex::new(Default::default());
+        gravar_nota(&vistos, &p, "a", false, |_| {}).unwrap();
+        let e = gravar_nota(&vistos, &p, "b", false, |_| std::fs::write(&p, "z").unwrap()).unwrap_err();
+        assert!(e.starts_with("conflito:"), "{e}");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn com_forcar_a_mudanca_tardia_tambem_vai_para_o_historico() {
+        let d = tmpdir("conflito-tardio-forcado");
+        let p = d.join("n.md");
+        let vistos: Vistos = Mutex::new(Default::default());
+        std::fs::write(&p, "original").unwrap();
+        gravar_nota(&vistos, &p, "a", false, |_| {}).unwrap();
+        let mut chamadas = vec![];
+        gravar_nota(&vistos, &p, "b", true, |x| {
+            chamadas.push(x);
+            if chamadas.len() == 1 { std::fs::write(&p, "do drive").unwrap(); }
+        }).unwrap();
+        assert_eq!(chamadas, vec![false, true], "o snapshot é refeito ao notar a mudança tardia");
+        assert_eq!(std::fs::read_to_string(&p).unwrap(), "b");
+        let _ = std::fs::remove_dir_all(&d);
     }
 }

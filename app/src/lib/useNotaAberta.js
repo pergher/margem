@@ -33,7 +33,8 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
     catch (e) {
       if (!String(e).startsWith("conflito:")) { dirty.current = true; console.error("save_note falhou", path, e); setStatus("Erro ao salvar: " + e); return; }
       // O arquivo mudou fora do Margem (Drive, Obsidian, Claude). Nada foi gravado: o usuário decide.
-      const sobrescrever = window.confirm("Esta nota foi alterada fora do Margem desde que você a abriu.\n\nOK: sobrescrever com o que está no editor (a versão do disco vai para o histórico).\nCancelar: carregar a versão do disco (o que você digitou desde então será descartado).");
+      const durante = String(e).includes("durante a gravação"); // 2ª checagem, logo antes de trocar o arquivo
+      const sobrescrever = window.confirm((durante ? "Esta nota foi alterada por outro programa (sincronizador?) no exato momento de salvar. Nada foi gravado.\n\n" : "Esta nota foi alterada fora do Margem desde que você a abriu.\n\n") + "OK: sobrescrever com o que está no editor (a versão do disco vai para o histórico).\nCancelar: carregar a versão do disco (o que você digitou desde então será descartado).");
       try {
         if (sobrescrever) { await invoke("save_note", { path, text, force: true }); salvou(); }
         else if (path === cur.current) { const t = await invoke("read_note", { path }); restoreText(t); setStatus("Carregada a versão do disco"); }
