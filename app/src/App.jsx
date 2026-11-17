@@ -31,6 +31,12 @@ import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault, VaultAusente } from "@/components/VaultGate";
 import { store } from "@/lib/store";
 import { useNotaAberta } from "@/lib/useNotaAberta";
+import { useObservador } from "@/lib/useObservador";
+import { AvisoMudouFora } from "@/components/AvisoMudouFora";
+import { usePropostas } from "@/lib/usePropostas";
+import { PropostaDialog } from "@/components/PropostaDialog";
+import { useIA } from "@/lib/useIA";
+import { PainelIA } from "@/components/PainelIA";
 import { usePreferencias } from "@/lib/usePreferencias";
 import { useNavegacao } from "@/lib/useNavegacao";
 import { useHistoricoNavegacao } from "@/lib/useHistoricoNavegacao";
@@ -70,7 +76,7 @@ export default function App() {
   const P = usePreferencias(() => ed.current?.remeasure());
   const { dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, destaques, setDestaques, numeros, setNumeros, forma, setForma, zoom, setZoom, outlineW, setOutlineW, showSide, setShowSide, showOutline, setShowOutline, panelTab, setPanelTab } = P;
   const { page, setPage, ciclo, setCiclo, anoAba, setAnoAba, documentosPasta, setDocumentosPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, documentosAba, setDocumentosAba, textoAtiv, setTextoAtiv, documentosTipo, irAno, irMontarProva, irDocumentos, irSecao } = useNavegacao();
-  const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo } = useNotaAberta({ ed, setStatus, setPage, setItems });
+  const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo, aplicarDoDisco, manterMinha } = useNotaAberta({ ed, setStatus, setPage, setItems });
 
   useEffect(() => { loadFromDisk().then((o) => o && setOverrides(o)); }, []);
   // undefined = verificando; null = nenhuma pasta escolhida (só no app); texto = pasta do vault
@@ -89,6 +95,17 @@ export default function App() {
   }, []);
   const refresh = useCallback(() => Promise.all([invoke("list_notes"), invoke("list_dirs")]).then(([n, d]) => { setItems(n); setDirs(d); setCarregado(true); }).catch((e) => { setStatus(String(e)); setCarregado(true); }), []);
   useEffect(() => { if (vaultRoot) refresh(); }, [refresh, vaultRoot]);
+  const obs = useObservador({ cur, dirty, refresh, aplicarDoDisco, manterMinha, vaultRoot });
+  const props = usePropostas({ ed, cur, refresh, setStatus, vaultRoot });
+  const getContextoIA = () => (cur.current && ed.current ? { path: cur.current, texto: ed.current.getText(), selecao: ed.current.getSelection() || window.getSelection()?.toString() || "" } : null);
+  const ia = useIA({ getContexto: getContextoIA });
+  const [propostaVista, setPropostaVista] = useState(null); // id da proposta aberta no diálogo, ou "disco" (editor × disco)
+  const [difDisco, setDifDisco] = useState(null);
+  const verDiferencas = async () => {
+    try { const disco = await invoke("ler_do_disco", { path: cur.current }); setDifDisco({ id: 0, nota: cur.current, nova: null, texto_base: ed.current.getText(), texto_novo: disco, resumo: "o que está no editor × o que está no disco" }); setPropostaVista("disco"); }
+    catch (e) { setStatus("Erro: " + e); }
+  };
+  useEffect(() => { obs.setAviso(null); }, [current]);
 
 
   // Atualização: salva a nota e guarda onde o usuário estava; ao reabrir, volta para lá.
@@ -162,7 +179,7 @@ export default function App() {
     setStatus(`Renomeada; ${r.links} link(s) atualizado(s)`);
     return r.path;
   };
-  useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setShowSide, setFoco, setNumeros, setZoom });
+  useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA: () => { setShowOutline(true); setPanelTab("ia"); } });
 
   const keys = effective(overrides);
   const commands = [
@@ -188,6 +205,7 @@ export default function App() {
     { id: "nota", label: "Novo arquivo", hint: "criar", run: () => createNote(raizDe(items)) },
     { id: "numeros", label: "Mostrar/ocultar a numeração das linhas", keys: pretty(keys.toggleNumeros), run: () => setNumeros((v) => !v) },
     { id: "foco", label: "Modo foco (esconde menus e barras)", keys: pretty(keys.focus), run: () => setFoco((v) => !v) },
+    { id: "ia", label: "Abrir o painel de IA", keys: pretty(keys.ia), run: () => { setShowOutline(true); setPanelTab("ia"); } },
     { id: "lado", label: "Reduzir/ampliar o menu lateral", keys: pretty(keys.toggleSide), run: () => setShowSide((v) => !v) },
     { id: "painel", label: "Ocultar/mostrar painel lateral", run: () => setShowOutline((v) => !v) },
     { id: "tema", label: dark ? "Tema claro" : "Tema escuro", run: () => setDark((v) => !v) },
@@ -283,31 +301,50 @@ export default function App() {
         {personalizada && visao.id === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "prova" && <ProvaDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} />}
         {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} focoPath={current} />}
-        {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
-        {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} numeros={numeros} onRename={renomearNota} />}
+        {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible && panelTab !== "ia"} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
+        {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible && panelTab !== "ia"} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} numeros={numeros} onRename={renomearNota} />}
         {personalizada && visao.id === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={current} />}
         </>}
         <ErrosComuns items={items} />
+        {page === "editor" && current && <AvisoMudouFora aviso={obs.aviso} onCarregar={obs.carregarDoDisco} onManter={obs.manter} onDispensar={obs.dispensar} onDiferencas={verDiferencas} />}
         {page === "editor" && !personalizada && current && <div role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div ref={progRef} className="h-full origin-left bg-primary" style={{ transform: "scaleX(0)" }} /></div>}
         <main onScrollCapture={aoRolarTexto} className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>
           <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} onRename={(n) => current && renomearNota(current, n).catch((e) => setStatus("Erro: " + (e?.message ?? e)))} numeros={numeros} />
         </main>
 
+        {props.desfazer && <div role="status" className="fixed bottom-10 right-6 z-40 flex items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-lg">
+          {props.desfazer.texto}<button onClick={props.desfazerAgora} className="font-medium text-primary hover:underline">Desfazer</button>
+          <button aria-label="Fechar aviso" onClick={props.dispensarDesfazer} className="text-muted-foreground hover:text-foreground">×</button></div>}
         {!foco && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
           <span className={/^Erro/.test(status) ? "font-medium text-err" : undefined}>{status}</span>
           <span className="flex-1" />
           {current && info?.issues.length > 0 && <button onClick={() => { setShowOutline(true); setPanelTab("links"); }} className="text-warn hover:underline">{info.issues.length} aviso{info.issues.length > 1 ? "s" : ""}</button>}
+          {import.meta.env.DEV && current && <button onClick={() => invoke("propor_teste", { path: current }).then(() => props.recarregar()).catch((e) => setStatus("Erro: " + e))} className="hover:text-foreground">Propor (teste)</button>}
+          {isTauri && <button onClick={() => { setShowOutline(true); setPanelTab("ia"); }} title={`Painel de IA (${pretty(keys.ia)})`} className="hover:text-foreground">IA</button>}
+          {props.lista.length > 0 && <button onClick={() => setPropostaVista(props.lista[0].id)} className="font-medium text-primary hover:underline">{props.lista.length} proposta{props.lista.length > 1 ? "s" : ""}</button>}
           {current && <span>{words} palavras</span>}
           {zoom !== 1 && <button onClick={() => setZoom(1)} title={`Restaurar (${pretty(keys.zoomReset)})`} className="hover:text-foreground">{Math.round(zoom * 100)}%</button>}
           <span>Salva sozinho</span>
         </footer>}
+        {propostaVista === "disco" && difDisco && <PropostaDialog proposta={difDisco} titulo="Diferenças com o disco" rotuloAplicar="Usar os trechos marcados" rotuloRecusar="Fechar"
+          onClose={() => { setPropostaVista(null); setDifDisco(null); }}
+          onAplicar={async (t) => { ed.current.replaceDoc(t); manterMinha(); obs.dispensar(); setStatus("Mesclada com a versão do disco"); }} />}
+        {propostaVista && propostaVista !== "disco" && (() => {
+          const i = props.lista.findIndex((p) => p.id === propostaVista);
+          if (i < 0) return null;
+          const p = props.lista[i];
+          return <PropostaDialog key={p.id} proposta={p} posicao={{ indice: i, total: props.lista.length }} onClose={() => setPropostaVista(null)}
+            onTrocar={(d) => setPropostaVista(props.lista[(i + d + props.lista.length) % props.lista.length].id)}
+            onAplicar={(t) => props.aplicar(p, t)} onRecusar={() => props.recusar(p)} />;
+        })()}
       </div>
 
-      {outlineVisible && !(personalizada && (visao.id === "aula" || visao.id === "banco")) && (
+      {outlineVisible && (!(personalizada && (visao.id === "aula" || visao.id === "banco")) || panelTab === "ia") && (
         <>
           <ResizeHandle width={outlineW} setWidth={setOutlineW} min={160} max={480} side="right" />
           <div style={{ width: outlineW }} className="shrink-0">
-            <RightPanel tab={panelTab} setTab={setPanelTab} info={info} text={propsText} onSet={setProperty} onOpen={open} onGoLine={goLine} path={current} histTick={histTick} onRestore={restoreText}>
+            <RightPanel tab={panelTab} setTab={setPanelTab} info={info} text={propsText} onSet={setProperty} onOpen={open} onGoLine={goLine} path={current} histTick={histTick} onRestore={restoreText}
+              painelIA={<PainelIA ia={ia} texto={propsText} getContexto={getContextoIA} onAbrirConfig={() => setPage("config")} onVerProposta={async (id) => { await props.recarregar(); setPropostaVista(id); }} />}>
               <Outline headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />
             </RightPanel>
           </div>

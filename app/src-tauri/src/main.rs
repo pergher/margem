@@ -7,7 +7,10 @@ mod cache;
 mod caminhos;
 mod config;
 mod gravacao;
+mod ia;
 mod notas;
+mod observador;
+mod propostas;
 
 use std::path::PathBuf;
 use std::sync::atomic::AtomicUsize;
@@ -28,11 +31,17 @@ pub(crate) struct App {
     /// Quantas vezes o vault foi lido do disco (para os testes do cache).
     pub(crate) aberturas: AtomicUsize,
     pub(crate) vistos: Vistos,
+    /// Cabo do observador de arquivos (ver `observador.rs`); soltá-lo para de observar.
+    /// Propostas de alteração aguardando aprovação (ver `propostas.rs`); só em memória.
+    pub(crate) propostas: propostas::Propostas,
+    /// Conversas e cancelamentos da IA (só em memória; ver `ia/`).
+    pub(crate) ia: ia::Estado,
+    pub(crate) observador: Mutex<Option<Box<dyn std::any::Any + Send>>>,
 }
 
 impl App {
     pub(crate) fn new(root: PathBuf) -> Self {
-        App { root_cell: Mutex::new(root), vault: Mutex::new(None), aberturas: AtomicUsize::new(0), vistos: Mutex::new(Default::default()) }
+        App { root_cell: Mutex::new(root), vault: Mutex::new(None), aberturas: AtomicUsize::new(0), vistos: Mutex::new(Default::default()), propostas: Default::default(), ia: Default::default(), observador: Mutex::new(None) }
     }
     pub(crate) fn root(&self) -> PathBuf { lock(&self.root_cell).clone() }
     /// Esquece o vault em cache: chamado depois de toda gravação feita pelo app.
@@ -51,14 +60,18 @@ fn main() {
             notas::create_note, notas::create_folder, notas::rename_entry, notas::move_entry, notas::delete_entry, notas::list_dirs,
             config::vault_ausente, notas::note_info, busca::search_text, busca::read_embed, notas::read_sidecar, notas::save_attachment,
             notas::vault_health, notas::list_history, notas::read_version, notas::restore_version, config::get_vault_root,
-            config::set_vault_root, atualizacao::agendar_reabertura]);
+            config::set_vault_root, atualizacao::agendar_reabertura, observador::verificar_nota, observador::ler_do_disco,
+            propostas::listar_propostas, propostas::descartar_proposta, propostas::aplicar_proposta, propostas::propor_teste,
+            ia::ia_config_ler, ia::ia_config_gravar, ia::ia_enviar, ia::ia_cancelar, ia::ia_limpar, ia::ia_testar, ia::ia_previa_contexto,
+            ia::segredos::ia_guardar_chave, ia::segredos::ia_tem_chave, ia::segredos::ia_apagar_chave]);
     builder
         .setup(move |app| {
             let root = env_root.clone().or_else(|| config::saved_root(app.handle())).unwrap_or_else(|| {
                 if cfg!(debug_assertions) { PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/ficticio")) } else { PathBuf::new() }
             });
             config::liberar_imagens(app.handle(), &root);
-            app.manage(App::new(root));
+            app.manage(App::new(root.clone()));
+            observador::iniciar_observador(app.handle(), &root);
             Ok(())
         })
         .run(tauri::generate_context!())

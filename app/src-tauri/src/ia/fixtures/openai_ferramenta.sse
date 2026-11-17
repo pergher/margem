@@ -1,0 +1,18 @@
+data: {"id":"c2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+data: {"id":"c2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"content":"Vou buscar."},"finish_reason":null}]}
+
+data: {"id":"c2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"toolu_01","type":"function","function":{"name":"search_notes","arguments":""}}]},"finish_reason":null}]}
+
+data: {"id":"c2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"query\": \"an"}}]},"finish_reason":null}]}
+
+data: {"id":"c2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"áfora\", \"tipo\":"}}]},"finish_reason":null}]}
+
+data: {"id":"c2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":" \"texto\"}"}}]},"finish_reason":null}]}
+
+data: {"id":"c2","object":"chat.completion.chunk","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
+
+data: {"id":"c2","object":"chat.completion.chunk","choices":[],"usage":{"prompt_tokens":120,"completion_tokens":42,"total_tokens":162}}
+
+data: [DONE]
+

@@ -1,6 +1,6 @@
 [package]
 name = "margem-app"
-version = "0.1.11"
+version = "0.1.15"
 edition = "2021"
 
 [build-dependencies]
@@ -15,6 +15,24 @@ dunce = "1"
 tauri-plugin-dialog = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# IA (Etapa M): rede só pelo Rust. rustls evita OpenSSL no Windows.
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+futures-util = "0.3"
+async-trait = "0.1"
+tokio = { version = "1", features = ["time"] }
+
+# Chave de API no cofre do sistema (Credential Manager no Windows).
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+[target.'cfg(target_os = "linux")'.dependencies]
+keyring = { version = "3", features = ["linux-native"] }
+notify = "8"
+notify-debouncer-full = "0.6"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
 
 [profile.release]
 lto = true

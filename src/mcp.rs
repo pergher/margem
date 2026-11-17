@@ -11,6 +11,20 @@ use crate::links::line_of;
 use crate::validate::{required_fields, validate};
 use crate::vault::{Note, Vault};
 
+/// Nota com dados de alunos (correção, diário, aluno, ou dentro das pastas sensíveis). Dois cadeados: o tipo e a pasta.
+/// A pasta vale em qualquer profundidade: se o servidor for iniciado uma pasta acima da raiz do vault, `Anos` deixa de ser o
+/// primeiro componente e o cadeado não pode sumir. Também usada pelo app antes de enviar texto a uma IA.
+pub fn nota_sensivel(root: &Path, path: &Path, tipo: Option<&str>) -> bool {
+    let rel = path.strip_prefix(root).unwrap_or(path);
+    let c: Vec<String> = rel.components().map(|c| c.as_os_str().to_string_lossy().to_lowercase()).collect();
+    let sensivel = |x: &String| matches!(x.as_str(), "correcoes" | "correções" | "relatorios" | "relatórios" | "diarios" | "diario" | "diário" | "alunos");
+    // Anos/AAAA/<pasta sensível>
+    let por_pasta = c.iter().position(|x| x == "anos").is_some_and(|i| c.iter().skip(i + 2).any(sensivel))
+        // notas soltas e fichas que vieram de `Correções/` ao reorganizar
+        || c.windows(2).any(|w| w[0] == "_sistema" && (w[1] == "notas" || w[1] == "fichas"));
+    matches!(tipo, Some("correcao" | "diario" | "aluno")) || por_pasta
+}
+
 pub struct Server {
     pub root: PathBuf,
     pub expor_correcoes: bool,
@@ -18,19 +32,7 @@ pub struct Server {
 
 impl Server {
     fn hidden(&self, n: &Note) -> bool {
-        if self.expor_correcoes {
-            return false;
-        }
-        // dois cadeados: o tipo da nota (correcao, diario, aluno) e a pasta. A pasta vale em qualquer profundidade: se o servidor
-        // for iniciado uma pasta acima da raiz do vault, `Anos` deixa de ser o primeiro componente e o cadeado não pode sumir.
-        let rel = n.path.strip_prefix(&self.root).unwrap_or(&n.path);
-        let c: Vec<String> = rel.components().map(|c| c.as_os_str().to_string_lossy().to_lowercase()).collect();
-        let sensivel = |x: &String| matches!(x.as_str(), "correcoes" | "correções" | "relatorios" | "relatórios" | "diarios" | "diario" | "diário" | "alunos");
-        // Anos/AAAA/<pasta sensível>
-        let por_pasta = c.iter().position(|x| x == "anos").is_some_and(|i| c.iter().skip(i + 2).any(sensivel))
-            // notas soltas e fichas que vieram de `Correções/` ao reorganizar
-            || c.windows(2).any(|w| w[0] == "_sistema" && (w[1] == "notas" || w[1] == "fichas"));
-        matches!(n.tipo(), Some("correcao" | "diario" | "aluno")) || por_pasta
+        !self.expor_correcoes && nota_sensivel(&self.root, &n.path, n.tipo())
     }
 
     /// Processa uma mensagem; `None` para notificações.
@@ -190,7 +192,7 @@ impl Server {
     }
 
     /// Pasta de destino de uma nota nova, conforme a estrutura do vault.
-    fn destino_dir(&self, tipo: &str) -> std::path::PathBuf {
+    pub fn destino_dir(&self, tipo: &str) -> std::path::PathBuf {
         let ano = || {
             let mut anos: Vec<String> = std::fs::read_dir(self.root.join("Anos"))
                 .into_iter()

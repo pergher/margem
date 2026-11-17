@@ -48,6 +48,7 @@ const DEV_CMDS = ["list_notes", "list_dirs", "create_note", "create_folder", "re
 const anexos = {}; // simulação: imagens "gravadas" nesta sessão (nome em minúsculas -> data URL)
 const b64 = (bytes) => { let t = ""; for (const b of bytes) t += String.fromCharCode(b); return btoa(t); };
 const salvas = {}; // simulação no navegador: textos "salvos" nesta sessão
+let propostas = [], propostaSeq = 0; // simulação das propostas (Etapa L): só em memória, como no app
 const hist = {}; // simulação do histórico: caminho -> [{ id, ts, texto }] (mais novo primeiro)
 const guardar = async (path, forcar) => {
   const atual = path in salvas ? salvas[path] : await get("/read?path=" + encodeURIComponent(orig[path] ?? path)).catch(() => null);
@@ -57,6 +58,7 @@ const guardar = async (path, forcar) => {
   h.unshift({ id: String(Math.floor(Date.now() / 1000) + h.length), ts: Math.floor(Date.now() / 1000), texto: atual });
 };
 export const invoke = inTauri ? tauriInvoke : async (cmd, a = {}) => {
+  if (cmd.startsWith("ia_")) throw "A IA está disponível só no app.";
   if (DEV_CMDS.includes(cmd)) return dev(cmd, a);
   if (cmd === "read_note" && a.path in salvas) return salvas[a.path];
   if (cmd === "read_note") return a.path in orig ? get("/read?path=" + encodeURIComponent(orig[a.path])) : get("/read?path=" + encodeURIComponent(a.path)).catch(() => "# " + a.path.split("/").pop().replace(/\.md$/, "") + "\n");
@@ -79,6 +81,24 @@ export const invoke = inTauri ? tauriInvoke : async (cmd, a = {}) => {
   if (cmd === "list_history") return (hist[a.path] ?? []).map((v) => ({ id: v.id, ts: v.ts, bytes: v.texto.length }));
   if (cmd === "read_version") return hist[a.path].find((v) => v.id === a.id).texto;
   if (cmd === "restore_version") { await guardar(a.path, true); const t = hist[a.path].find((v) => v.id === a.id).texto; salvas[a.path] = t; return t; }
+  if (cmd === "listar_propostas") return [...propostas];
+  if (cmd === "descartar_proposta") { const n = propostas.length; propostas = propostas.filter((p) => p.id !== a.id); return propostas.length !== n; }
+  if (cmd === "propor_teste") {
+    const base = await invoke("read_note", { path: a.path });
+    const ls = base.split("\n"); let i = ls[0]?.trim() === "---" ? ls.indexOf("---", 1) + 1 : 0;
+    while (i < ls.length && (!ls[i].trim() || ls[i].startsWith("#"))) i++;
+    while (i < ls.length && ls[i].trim()) { ls[i] = ls[i].toUpperCase(); i++; }
+    const p = { id: ++propostaSeq, nota: a.path, nova: null, texto_base: base, texto_novo: ls.join("\n"), resumo: "Primeiro parágrafo em maiúsculas (teste)", criada_em: Math.floor(Date.now() / 1000) };
+    propostas.push(p); return p;
+  }
+  if (cmd === "aplicar_proposta") {
+    const p = propostas.find((x) => x.id === a.id); if (!p) throw "proposta não encontrada (já aplicada ou descartada)";
+    const atual = p.nota in salvas ? salvas[p.nota] : await invoke("read_note", { path: p.nota });
+    if (atual !== p.texto_base) throw "conflito: a nota mudou desde a proposta";
+    await guardar(p.nota, true); salvas[p.nota] = a.textoFinal; propostas = propostas.filter((x) => x.id !== a.id);
+    return { path: p.nota, nova: false, versao: hist[p.nota]?.[0]?.id ?? null };
+  }
+  if (cmd === "ler_do_disco") return invoke("read_note", { path: a.path });
   if (cmd === "read_config") return localStorage.getItem("atalhos");
   if (cmd === "write_config") { localStorage.setItem("atalhos", a.text); return null; }
   throw new Error("comando desconhecido: " + cmd);

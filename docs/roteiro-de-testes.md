@@ -157,3 +157,45 @@ Perguntas finais:
 3. O que falta para trocar o fluxo antigo (papel/Obsidian) por este?
 4. Está pronto para o **vault real** (cópia + simulação)? Se não, o que bloqueia?
 5. Depois dos testes: git, atualização automática, Windows — qual primeiro?
+
+## Etapa K — observador de arquivos (Windows, `tauri dev`)
+
+- [ ] Nota aberta e sem edições: alterar e salvar no Obsidian ou no Bloco de Notas → o texto muda sozinho, status "Atualizada por fora às HH:MM", cursor e Ctrl+Z preservados, sem nova gravação (conferir o histórico: nenhum snapshot novo).
+- [ ] Nota aberta com edições pendentes (digitar sem esperar o autosave) e alterar o arquivo por fora → aparece a faixa; o texto digitado não muda. "Carregar a do disco" troca o texto; "Manter a minha" some com a faixa e o próximo salvamento sobrescreve sem perguntar (versão do disco no histórico).
+- [ ] Criar uma nota com `vault-mcp create_note` → aparece na árvore sem reabrir o app.
+- [ ] Renomear ou apagar a nota aberta por fora → faixa "removida ou renomeada"; o editor não fecha.
+- [ ] Salvar no Margem não gera aviso nem recarga (sem ciclo com o Drive).
+- [ ] Trocar a pasta do vault em Configurações → o observador acompanha a nova pasta.
+- [ ] Alterar a nota com o Margem em segundo plano e voltar à janela → a verificação no foco pega a mudança.
+
+## Etapa L — propostas (Windows, `tauri dev`)
+
+- [ ] Com uma nota aberta, "Propor (teste)" no rodapé → "1 proposta" → o diálogo mostra o primeiro parágrafo em maiúsculas; Aplicar muda o editor; Ctrl+Z do editor e "Desfazer" do aviso funcionam; a nota é salva sozinha.
+- [ ] Mesma coisa com a nota **fechada** (abrir outra): Aplicar grava no disco, cria versão no histórico; "Desfazer" restaura.
+- [ ] Desmarcar um trecho → só o marcado entra. Recusar → nada muda.
+- [ ] Alterar a nota por fora (ou digitar) depois da proposta → Aplicar recusa ("mudou desde a proposta"); nada é gravado.
+- [ ] Faixa da Etapa K: nota suja + mudança por fora → "Ver diferenças" mostra editor × disco; "Usar os trechos marcados" mescla e o próximo salvamento não pergunta.
+- [ ] Duas propostas pendentes: ‹ › troca entre elas; o contador do rodapé diminui.
+
+## Etapa M — painel de IA (Windows, `tauri dev`, com chave real)
+
+- [ ] Configurações › IA: ligar pede o aviso de privacidade; sem aceitar não liga. Colar a chave → "Chave guardada"; ela não reaparece na tela. Conferir no Gerenciador de Credenciais do Windows a entrada `ia-anthropic` (serviço `br.margem.app`). "Apagar chave" remove. Procurar a chave em `%APPDATA%` do app: não pode estar em arquivo nenhum.
+- [ ] "Testar conexão" responde "Conexão ok". Com chave errada: mensagem clara, sem mostrar a chave.
+- [ ] Painel IA (Ctrl+Shift+I): pergunta curta sobre a nota aberta; a resposta chega em streaming; Parar interrompe.
+- [ ] Pergunta que exija consultar o vault ("há textos sobre anáfora?") → linha "Buscou notas…" e resposta.
+- [ ] Numa **aula**: "Adaptar com mais apoio" → cartão "Proposta" → Ver diferenças → aceitar parte → aplicar → Desfazer. O arquivo só muda depois de aplicar.
+- [ ] "Ver o que foi enviado" mostra a nota com o texto ainda não salvo; desmarcar "Incluir a nota aberta" não envia a nota.
+- [ ] Abrir uma **correção** (ou nota em `Anos/*/Correcoes` ou `Relatorios`) e perguntar algo: aparece o aviso de dados de alunos e o conteúdo NÃO é enviado ("Ver o que foi enviado" confirma). Pedir à IA para ler a correção pelo nome: recusado.
+- [ ] Sem internet / chave sem crédito: erro legível no painel, a conversa continua possível.
+- [ ] Verificar o custo na página de uso da Anthropic depois de algumas conversas.
+
+## Etapa N — outros provedores (Windows, `tauri dev`)
+
+- [ ] **Ollama local**: com o Ollama rodando e um modelo baixado, escolher "Local (Ollama)" em Configurações › IA (ajustar o modelo ao que você baixou), Testar conexão. No painel: o selo "Nada sai do computador" aparece, a conversa funciona sem chave e sem internet (desligar o Wi-Fi para confirmar).
+- [ ] Local com o Ollama parado: erro claro ("o servidor local não respondeu… está rodando?"). Modelo inexistente: erro com a dica `ollama pull`.
+- [ ] Local sem ferramentas: a IA responde no texto e não gera cartão de proposta. Marcar "Suporta ferramentas" com um modelo que suporte (ex.: llama3.1) e repetir "Adaptar com mais apoio": deve gerar proposta.
+- [ ] **OpenAI** (ou OpenRouter via "Adicionar compatível…"): colar a chave, Testar conexão, conversa curta, uma ferramenta ("há textos sobre anáfora?") e uma proposta. Se a API recusar `max_completion_tokens`/`max_tokens` ou o nome do modelo, anotar a mensagem.
+- [ ] Trocar de provedor no painel começa uma conversa nova; provedor sem chave aparece desabilitado.
+- [ ] Endereço `http://` fora do computador é recusado ao salvar; `http://localhost:…` é aceito.
+- [ ] Nota de correção aberta com o provedor local: o conteúdo continua NÃO sendo enviado ("Ver o que foi enviado").
+- [ ] Atualizar do app com o `ia.json` da Etapa M: o modelo do Claude configurado antes continua o mesmo.

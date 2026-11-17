@@ -134,3 +134,30 @@ describe("conflito com o disco", () => {
     expect(conf.mock.calls[0][0]).toContain("no exato momento de salvar");
   });
 });
+
+describe("mudança vinda do disco", () => {
+  it("'Manter a minha' sobrescreve no próximo salvamento sem perguntar", async () => {
+    const m = montar();
+    await abrirEEditar(m, "# A\n\nmeu texto");
+    act(() => m.result.current.manterMinha());
+    conflitos = ["conflito: o arquivo foi alterado fora do Margem desde a última leitura"];
+    const confirmar = vi.spyOn(window, "confirm");
+    await act(async () => { await m.result.current.save(); });
+    expect(confirmar).not.toHaveBeenCalled();
+    expect(gravacoes().at(-1)).toMatchObject({ path: "/v/A.md", force: true });
+    expect(disco["/v/A.md"]).toBe("# A\n\nmeu texto");
+  });
+
+  it("aplicarDoDisco troca o texto em silêncio e cancela o autosave pendente", async () => {
+    vi.useFakeTimers();
+    const m = montar();
+    await abrirEEditar(m, "# A\n\nrascunho");
+    m.editor.replaceDoc = vi.fn((t) => { m.editor.texto = t; });
+    act(() => m.result.current.aplicarDoDisco("# A\n\nvindo do disco"));
+    expect(m.editor.replaceDoc).toHaveBeenCalledWith("# A\n\nvindo do disco", { silencioso: true });
+    expect(m.result.current.dirty.current).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+    expect(gravacoes()).toHaveLength(0);
+    expect(m.ultimo()).toMatch(/^Atualizada por fora às/);
+  });
+});

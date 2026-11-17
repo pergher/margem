@@ -7,7 +7,7 @@ import { comboOf, effective, handlers, ACTIONS } from "@/lib/shortcuts";
 
 const passoZoom = (z, d) => clamp(Math.round((z + d) * 10) / 10, 0.7, 2);
 
-export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setShowSide, setFoco, setNumeros, setZoom }) {
+export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA }) {
   useEffect(() => {
     if (!foco) return;
     const esc = (e) => { if (e.key === "Escape" && !e.defaultPrevented) setFoco(false); };
@@ -17,7 +17,7 @@ export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearch
 
   // Os ouvintes são registrados uma vez; o que muda a cada render (go, save, tela, mapa) é lido por esta ref.
   const kb = useRef({});
-  kb.current = { go, save, page, map: effective(overrides) };
+  kb.current = { go, save, page, abrirIA, map: effective(overrides) };
   useEffect(() => {
     const zoomBy = (d) => setZoom((z) => passoZoom(z, d));
     const run = {
@@ -28,6 +28,7 @@ export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearch
       toggleSide: () => setShowSide((v) => !v),
       focus: () => setFoco((v) => !v),
       toggleNumeros: () => setNumeros((v) => !v),
+      ia: () => kb.current.abrirIA?.(),
       back: () => kb.current.go(-1),
       forward: () => kb.current.go(1),
       zoomIn: () => zoomBy(0.1),

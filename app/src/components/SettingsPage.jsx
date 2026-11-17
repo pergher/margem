@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import { IconKeyboard as Keyboard, IconUsers as Users, IconFileText as FileText, IconFolderOpen as FolderOpen, IconDownload as Download, IconPalette as Palette, IconSun as Sun, IconMoon as Moon, IconHome as House, IconBook as BookText, IconHelpCircle as CircleHelp, IconClipboardCheck as ClipboardCheck, IconSearch as Search, IconSettings as Settings, IconFileCheck as FileCheck, IconCalendarEvent as CalendarDays, IconSchool as GraduationCap, IconInfoCircle as Info } from "@tabler/icons-react";
+import { IconKeyboard as Keyboard, IconUsers as Users, IconFileText as FileText, IconFolderOpen as FolderOpen, IconDownload as Download, IconPalette as Palette, IconSun as Sun, IconMoon as Moon, IconHome as House, IconBook as BookText, IconHelpCircle as CircleHelp, IconClipboardCheck as ClipboardCheck, IconSearch as Search, IconSettings as Settings, IconFileCheck as FileCheck, IconCalendarEvent as CalendarDays, IconSchool as GraduationCap, IconInfoCircle as Info, IconSparkles as Sparkles } from "@tabler/icons-react";
 import { invoke, isTauri } from "@/lib/api";
 import { escolherPastaDoVault } from "@/components/VaultGate";
 import { Logo } from "@/components/Logo";
@@ -12,6 +12,7 @@ import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atu
 import { lerLogo } from "@/lib/configProva";
 import { lerTurmas, gravarTurmas, turmasDeTexto, AULAS_PADRAO } from "@/lib/turmas";
 import { useConfigProva } from "@/lib/useConfigProva";
+import { iaApagarChave, iaConfigGravar, iaConfigLer, iaGuardarChave, iaTemChave, iaTestar } from "@/lib/ia";
 import { ShortcutsPage } from "@/components/ShortcutsPage";
 import { CLAROS, ESCUROS, ESTILOS_CALLOUT } from "@/lib/temas";
 import { OPCOES_COR, DESTAQUES_PADRAO } from "@/lib/destaques";
@@ -24,6 +25,7 @@ const SECOES = [
   { id: "aparencia", label: "Aparência", icon: Palette },
   { id: "escola", label: "Escola e professor", icon: GraduationCap },
   { id: "notas", label: "Notas e pasta", icon: FolderOpen, soApp: true },
+  { id: "ia", label: "IA", icon: Sparkles, soApp: true },
   { id: "atalhos", label: "Atalhos", icon: Keyboard },
   { id: "sobre", label: "Sobre o Margem", icon: Info, soApp: true },
 ];
@@ -46,6 +48,7 @@ export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefr
       {secao === "aparencia" && <Aparencia tema={tema} />}
       {secao === "escola" && <EscolaEProfessor items={items} onRefresh={onRefresh} />}
       {secao === "notas" && <PastaDoVault />}
+      {secao === "ia" && <ConfigIA />}
       {secao === "atalhos" && <ShortcutsPage overrides={overrides} setOverrides={setOverrides} />}
       {secao === "sobre" && <Atualizacoes />}
     </div>
@@ -316,5 +319,87 @@ function Temas({ titulo, lista, atual, onPick }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/** IA: desligada por padrão. A chave vai direto para o cofre do sistema e nunca volta para a tela. */
+const PROVEDORES_FIXOS = ["anthropic", "openai", "local"];
+function ConfigIA() {
+  const [c, setC] = useState(null);
+  const [temChave, setTemChave] = useState(false);
+  const [chave, setChave] = useState("");
+  const [aceito, setAceito] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [erro, setErro] = useState("");
+  const selId = c?.provedor;
+  useEffect(() => { iaConfigLer().then(setC).catch((e) => setErro(String(e))); }, []);
+  useEffect(() => { if (selId) iaTemChave(selId).then(setTemChave).catch(() => setTemChave(false)); }, [selId]);
+  if (!c) return <Pagina titulo="IA">{erro ? <Estado tipo="err" className="text-sm">{erro}</Estado> : <Carregando />}</Pagina>;
+  const sel = c.provedores.find((p) => p.id === c.provedor) ?? c.provedores[0];
+  const mudar = (campo) => setC({ ...c, provedores: c.provedores.map((p) => (p.id === sel.id ? { ...p, ...campo } : p)) });
+  const gravar = async (novo) => { setErro(""); try { await iaConfigGravar(novo); setC(await iaConfigLer()); return true; } catch (e) { setErro(String(e)); return false; } };
+  const ligar = async () => { if (!c.aceitou_aviso) { setAceito(false); setMsg("aviso"); return; } await gravar({ ...c, ativa: !c.ativa }); };
+  const confirmarAviso = async () => { if (await gravar({ ...c, aceitou_aviso: true, ativa: true })) setMsg(""); };
+  const guardar = async () => { setErro(""); try { await iaGuardarChave(sel.id, chave); setChave(""); setTemChave(true); setMsg("Chave guardada no cofre do sistema."); } catch (e) { setErro(String(e)); } };
+  const apagar = async () => { setErro(""); try { await iaApagarChave(sel.id); setTemChave(false); setMsg("Chave apagada."); } catch (e) { setErro(String(e)); } };
+  const testar = async () => { setErro(""); setMsg("Testando…"); try { if (!(await gravar(c))) { setMsg(""); return; } setMsg(await iaTestar()); } catch (e) { setMsg(""); setErro(String(e)); } };
+  const adicionar = () => {
+    let n = 1; while (c.provedores.some((p) => p.id === `outro-${n}`)) n++;
+    setC({ ...c, provedor: `outro-${n}`, provedores: [...c.provedores, { id: `outro-${n}`, tipo: "openai-compat", rotulo: `Compatível ${n}`, base_url: "https://", modelo: "modelo", suporta_ferramentas: true, exige_chave: true, local: false }] });
+  };
+  const remover = async () => { const resto = c.provedores.filter((p) => p.id !== sel.id); try { await iaApagarChave(sel.id); } catch { /* sem chave guardada */ } await gravar({ ...c, provedor: resto[0].id, provedores: resto }); };
+  const campo = "h-9 rounded-md border bg-background px-2 text-sm outline-none focus:border-primary";
+  const compat = sel.tipo === "openai-compat";
+  return (
+    <Pagina titulo="IA">
+      <Grupo titulo="Painel de IA" nota="Conversa sobre a nota aberta. A IA só propõe alterações: nada é gravado sem você ver as diferenças e aprovar. Desligada por padrão.">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.ativa} onChange={ligar} />Ligar a IA</label>
+        {msg === "aviso" && (
+          <div role="alertdialog" aria-label="Aviso de privacidade" className="rounded-lg border border-warn/60 bg-warn/10 p-3 text-sm">
+            <p className="font-medium">Antes de ligar</p>
+            <p className="mt-1 text-xs text-muted-foreground">O texto das notas usadas na conversa (a nota aberta e o que a IA consultar) é enviado pela internet ao provedor escolhido (Anthropic, OpenAI ou outro), exceto num modelo local, que roda neste computador. Dados de alunos (correções, relatórios, diário) nunca são enviados, nem a um modelo local. As APIs são cobradas por uso, à parte de assinaturas de aplicativos de chat.</p>
+            <label className="mt-2 flex items-center gap-2 text-xs"><input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} />Entendi e aceito</label>
+            <div className="mt-2 flex gap-2">
+              <button disabled={!aceito} onClick={confirmarAviso} className="rounded-md bg-primary px-3 py-1 text-sm text-primary-foreground disabled:opacity-50">Ligar</button>
+              <button onClick={() => setMsg("")} className="rounded-md border px-3 py-1 text-sm hover:bg-accent">Cancelar</button>
+            </div>
+          </div>)}
+      </Grupo>
+      <Grupo titulo="Provedor" nota={sel.local ? "Local: nada sai do computador e não precisa de chave." : "O provedor em uso no painel. Cada um tem a sua chave."}>
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={sel.id} onChange={(e) => { setC({ ...c, provedor: e.target.value }); setMsg(""); setChave(""); }} aria-label="Provedor" className={cn(campo, "w-56")}>
+            {c.provedores.map((p) => <option key={p.id} value={p.id}>{p.rotulo}</option>)}
+          </select>
+          <button onClick={adicionar} className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Adicionar compatível…</button>
+          {!PROVEDORES_FIXOS.includes(sel.id) && <button onClick={remover} className="rounded-md border px-3 py-1.5 text-sm text-err hover:bg-accent">Remover</button>}
+        </div>
+        {compat && <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">Nome<input value={sel.rotulo} onChange={(e) => mudar({ rotulo: e.target.value })} aria-label="Nome do provedor" className={cn(campo, "w-44")} /></label>
+          <label className="flex items-center gap-2 text-sm">Endereço<input value={sel.base_url} onChange={(e) => mudar({ base_url: e.target.value })} aria-label="Endereço (base_url)" placeholder="https://…/v1" className={cn(campo, "w-72")} /></label>
+        </div>}
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2 text-sm">Modelo<input value={sel.modelo} onChange={(e) => mudar({ modelo: e.target.value })} aria-label="Modelo" className={cn(campo, "w-56")} /></label>
+          <label className="flex items-center gap-2 text-sm">Máx. de tokens<input type="number" min={256} max={32000} value={c.max_tokens} onChange={(e) => setC({ ...c, max_tokens: Number(e.target.value) })} aria-label="Máximo de tokens" className={cn(campo, "w-24")} /></label>
+        </div>
+        {compat && <div className="flex flex-wrap items-center gap-4 text-sm">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={sel.suporta_ferramentas} onChange={(e) => mudar({ suporta_ferramentas: e.target.checked })} />Suporta ferramentas</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={sel.exige_chave} onChange={(e) => mudar({ exige_chave: e.target.checked })} />Pede chave</label>
+        </div>}
+        {!sel.suporta_ferramentas && <p className="text-xs text-muted-foreground">Sem ferramentas a IA só vê a nota aberta e a seleção e responde no texto, sem propor alterações.</p>}
+        <div><button onClick={() => gravar(c)} className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent">Salvar</button></div>
+      </Grupo>
+      {sel.exige_chave && <Grupo titulo={`Chave da API (${sel.rotulo})`} nota="Guardada no cofre do sistema (Gerenciador de Credenciais do Windows). Não fica em arquivo nem aparece de novo nesta tela.">
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="password" autoComplete="off" value={chave} onChange={(e) => setChave(e.target.value)} placeholder={temChave ? "chave guardada (digite para trocar)" : "cole a chave aqui"} aria-label="Chave da API" className={cn(campo, "w-72")} />
+          <button onClick={guardar} disabled={!chave.trim()} className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">Guardar</button>
+          {temChave && <button onClick={apagar} className="rounded-md border px-3 py-1.5 text-sm text-err hover:bg-accent">Apagar chave</button>}
+        </div>
+      </Grupo>}
+      <div className="flex flex-wrap items-center gap-3">
+        <button onClick={testar} disabled={sel.exige_chave && !temChave} className="rounded-md border px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50">Testar conexão</button>
+        {msg && msg !== "aviso" && <span role="status" className="text-sm text-muted-foreground">{msg}</span>}
+      </div>
+      {erro && <Estado tipo="err" className="text-sm">{erro}</Estado>}
+    </Pagina>
   );
 }

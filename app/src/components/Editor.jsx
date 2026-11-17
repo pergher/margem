@@ -56,6 +56,7 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onR
 
   useImperativeHandle(ref, () => ({
     getText: () => view.current.state.doc.toString(),
+    getSelection: () => { const { from, to } = view.current.state.selection.main; return view.current.state.sliceDoc(from, to); },
     setText: (t, rolar = true) => {
       const fm = fmEnd(Text.of(t.split("\n")));
       silent.current = true;
@@ -64,12 +65,15 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onR
       if (rolar) view.current.dispatch({ scrollIntoView: true }); // editores de seção (página única) não rolam a página ao montar
       view.current.contentDOM.blur(); // sem foco, nada fica com a fonte aberta ao abrir a nota
     },
-    /** Troca o texto mudando só o trecho diferente; segue o fluxo normal (onChange, desfazer). */
-    replaceDoc: (t) => {
+    /** Troca o texto mudando só o trecho diferente; segue o fluxo normal (onChange, desfazer).
+     *  Com `{ silencioso: true }` não dispara onChange (o texto veio do disco: não é edição, não deve gerar autosave). */
+    replaceDoc: (t, { silencioso = false } = {}) => {
       const v = view.current, old = v.state.doc.toString();
       let a = 0; while (a < old.length && a < t.length && old[a] === t[a]) a++;
       let b = 0; while (b < old.length - a && b < t.length - a && old[old.length - 1 - b] === t[t.length - 1 - b]) b++;
-      v.dispatch({ changes: { from: a, to: old.length - b, insert: t.slice(a, t.length - b) } });
+      if (silencioso) silent.current = true;
+      try { v.dispatch({ changes: { from: a, to: old.length - b, insert: t.slice(a, t.length - b) } }); }
+      finally { silent.current = false; }
     },
     insertTable: () => {
       const v = view.current, st = v.state, line = st.doc.lineAt(st.selection.main.head);

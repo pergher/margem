@@ -77,6 +77,7 @@ pub fn set_vault_root(h: tauri::AppHandle, app: State<App>, path: String) -> Res
     *lock(&app.root_cell) = p.clone();
     app.invalidar();
     liberar_imagens(&h, &p);
+    crate::observador::iniciar_observador(&h, &p);
     Ok(slash(&p))
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconAlertTriangle as AlertTriangle, IconListTree as ListTree, IconLink as Link2, IconAdjustmentsHorizontal as SlidersHorizontal, IconX as X, IconPlus as Plus, IconHistory as History } from "@tabler/icons-react";
+import { IconAlertTriangle as AlertTriangle, IconListTree as ListTree, IconLink as Link2, IconAdjustmentsHorizontal as SlidersHorizontal, IconX as X, IconPlus as Plus, IconHistory as History, IconSparkles as Sparkles } from "@tabler/icons-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { parseFm } from "@/lib/frontmatter";
@@ -7,7 +7,7 @@ import { invoke } from "@/lib/api";
 import { diffLinhas } from "@/lib/diff";
 import { Estado } from "@/components/ui/estado";
 
-export const TABS = [["sumario", "Sumário", ListTree], ["props", "Propriedades", SlidersHorizontal], ["links", "Links", Link2], ["hist", "Histórico", History]];
+export const TABS = [["sumario", "Sumário", ListTree], ["props", "Propriedades", SlidersHorizontal], ["links", "Links", Link2], ["hist", "Histórico", History], ["ia", "IA", Sparkles]];
 
 export function Chips({ items, onChange }) {
   const [v, setV] = useState("");
@@ -133,7 +133,7 @@ export function Historico({ path, text, onRestore, tick }) {
   );
 }
 
-export function RightPanel({ tab, setTab, info, text, onSet, onOpen, onGoLine, path, onRestore, histTick, children }) {
+export function RightPanel({ tab, setTab, info, text, onSet, onOpen, onGoLine, path, onRestore, histTick, painelIA, children }) {
   const n = info?.issues.length ?? 0;
   return (
     <aside aria-label="Painel" className="flex h-full flex-col bg-muted/50">
@@ -151,6 +151,7 @@ export function RightPanel({ tab, setTab, info, text, onSet, onOpen, onGoLine, p
       {tab === "props" && <Props text={text} info={info} onSet={onSet} />}
       {tab === "links" && <Links info={info} onOpen={onOpen} onGoLine={onGoLine} />}
       {tab === "hist" && <Historico path={path} text={text} onRestore={onRestore} tick={histTick} />}
+      {tab === "ia" && painelIA}
     </aside>
   );
 }

@@ -17,6 +17,7 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
   const cur = useRef(null);          // caminho aberto
   const dirty = useRef(false);
   const timer = useRef(null);
+  const forcar = useRef(null);       // caminho cujo conflito o usuário já decidiu resolver mantendo o que está no editor
 
   const refreshInfo = useCallback(async (path) => {
     try { const i = await invoke("note_info", { path }); if (path === cur.current) setInfo(i); } catch { /* nota sumiu ou ainda não existe */ }
@@ -29,7 +30,8 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
     const path = cur.current, text = ed.current.getText();
     dirty.current = false;
     const salvou = () => { setItems?.((its) => its.map((i) => (i.path === path ? { ...i, modified: Math.floor(Date.now() / 1000) } : i))); refreshInfo(path); setHistTick((n) => n + 1); setStatus("Salvo às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })); };
-    try { await invoke("save_note", { path, text }); salvou(); }
+    const decidiu = forcar.current === path; // "Manter a minha" na faixa: sobrescreve sem perguntar de novo (a versão do disco vai ao histórico)
+    try { await invoke("save_note", decidiu ? { path, text, force: true } : { path, text }); if (decidiu) forcar.current = null; salvou(); }
     catch (e) {
       if (!String(e).startsWith("conflito:")) { dirty.current = true; console.error("save_note falhou", path, e); setStatus("Erro ao salvar: " + e); return; }
       // O arquivo mudou fora do Margem (Drive, Obsidian, Claude). Nada foi gravado: o usuário decide.
@@ -78,7 +80,7 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
     await save();
     const text = await invoke("read_note", { path });
     ed.current.setText(text);
-    cur.current = path; dirty.current = false;
+    cur.current = path; dirty.current = false; forcar.current = null;
     setCurrent(path); setStatus(""); setActiveHeading(-1);
     setWords(text.split(/\s+/).filter(Boolean).length);
     setHeadings(headingsOf(text)); setPropsText(text); setInfo(null); refreshInfo(path);
@@ -90,6 +92,15 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
     setWords(text.split(/\s+/).filter(Boolean).length); setHeadings(headingsOf(text)); setPropsText(text);
     refreshInfo(cur.current); setHistTick((n) => n + 1); setStatus("Versão restaurada");
   };
+  // O texto do disco mudou por fora (Obsidian, Drive, Claude) e já foi lido: troca só o trecho diferente (cursor e desfazer
+  // ficam), em modo silencioso, e cancela qualquer autosave pendente — senão a nota seria regravada logo em seguida.
+  const aplicarDoDisco = (text) => {
+    clearTimeout(timer.current);
+    ed.current.replaceDoc(text, { silencioso: true }); dirty.current = false;
+    setWords(text.split(/\s+/).filter(Boolean).length); setHeadings(headingsOf(text)); setPropsText(text);
+    refreshInfo(cur.current); setHistTick((n) => n + 1);
+    setStatus("Atualizada por fora às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
+  };
 
-  return { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo };
+  return { aplicarDoDisco, manterMinha: () => { forcar.current = cur.current; }, info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo };
 }
