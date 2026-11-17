@@ -42,6 +42,6 @@ Fluxo: você mexe no código aqui → envia ao GitHub → o GitHub compila o ins
 
 ## Notas
 
-- O vault real **nunca** vai ao GitHub: o repositório só tem o código e fixtures anônimas (`tests/fixtures/vault/` está no `.gitignore`).
+- O vault real **nunca** vai ao GitHub: o repositório só tem o código e fixtures anônimas (`tests/fixtures/vault/` está no `.gitignore` e o CI falha se algo dela for rastreado).
 - O workflow **CI** roda `cargo test` do núcleo no Linux e no Windows a cada push.
 - Se o job Release falhar, abra o log do passo vermelho e me mande o trecho do erro.

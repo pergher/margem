@@ -72,7 +72,7 @@ claude mcp add vault -- /caminho/para/target/release/vault-mcp /caminho/para/Esc
 
 ## Editor (protótipo)
 
-Em `app/`. Em desenvolvimento abre o vault de `tests/fixtures/vault` (ou o de `VAULT_ROOT`); o app instalado pede a pasta do vault na primeira abertura (guardada em `vault.json` na pasta de configuração do app). Instalador Windows, atualização automática e publicação: `docs/publicar.md`, mostra a árvore de pastas, edita com renderização ao vivo e salva com `Ctrl+S`.
+Em `app/`. Em desenvolvimento abre o vault fictício de `tests/fixtures/ficticio` (ou o de `VAULT_ROOT`); o app instalado pede a pasta do vault na primeira abertura (guardada em `vault.json` na pasta de configuração do app). Instalador Windows, atualização automática e publicação: `docs/publicar.md`, mostra a árvore de pastas, edita com renderização ao vivo e salva com `Ctrl+S`.
 
 ```bash
 cd app && npm install            # uma vez
@@ -105,4 +105,5 @@ Requisitos no Linux: Node 18+, `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayat
 
 - `tests/fixtures/mini`: vault pequeno, escrito à mão, no formato novo.
 - `tests/fixtures/modelo`: amostras reais no formato antigo (sem dados de alunos).
-- `tests/fixtures/vault`: cópia completa do vault; fica no `.gitignore` e nenhum teste depende dela.
+- `tests/fixtures/ficticio`: vault pequeno, inteiramente inventado (aulas, ciclo, semana, prova, correção com alunos fictícios); usado pelos testes do app e pelo modo de desenvolvimento.
+- `tests/fixtures/vault`: cópia local opcional de dados reais; fica no `.gitignore`, o CI falha se algum arquivo dela for rastreado e nenhum teste depende dela.

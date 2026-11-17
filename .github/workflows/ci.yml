@@ -14,6 +14,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Nenhum arquivo do vault real pode estar no git
+        if: runner.os == 'Linux'
+        run: |
+          if git ls-files tests/fixtures/vault | grep .; then
+            echo "tests/fixtures/vault não pode ser versionado (dados reais de ensino)"; exit 1
+          fi
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy

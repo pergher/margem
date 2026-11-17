@@ -5,7 +5,7 @@ import fs from "node:fs";
 
 // Só em desenvolvimento: serve o vault de teste por HTTP para poder ver o layout num navegador comum.
 function devVault() {
-  const root = path.resolve(process.env.VAULT_DEV || path.resolve(import.meta.dirname, "../tests/fixtures/vault"));
+  const root = path.resolve(process.env.VAULT_DEV || path.resolve(import.meta.dirname, "../tests/fixtures/ficticio"));
   const walk = (d, out = []) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       if (e.name.startsWith(".")) continue;

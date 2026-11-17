@@ -649,7 +649,7 @@ fn main() {
     builder
         .setup(move |app| {
             let root = env_root.clone().or_else(|| saved_root(app.handle())).unwrap_or_else(|| {
-                if cfg!(debug_assertions) { PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/vault")) } else { PathBuf::new() }
+                if cfg!(debug_assertions) { PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/ficticio")) } else { PathBuf::new() }
             });
             liberar_imagens(app.handle(), &root);
             app.manage(App::new(root));
@@ -699,15 +699,31 @@ mod tests {
     }
 
     #[test]
-    fn salva_nota_listada_do_vault_de_teste() {
-        let root = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/vault"));
-        if !root.is_dir() { return; } // o vault de teste é cópia local (fora do git): no CI ele não existe
+    fn salva_nota_listada_do_vault_ficticio() {
+        // Vault inventado e versionado: o teste falha (não pula) se a pasta sumir.
+        let origem = PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/../../tests/fixtures/ficticio"));
+        assert!(origem.is_dir(), "faltou tests/fixtures/ficticio");
+        // Trabalha numa cópia para o teste nunca alterar a fixture versionada.
+        let root = std::env::temp_dir().join(format!("vault-ficticio-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        copiar_pasta(&origem, &root);
         let v = Vault::open(&root).unwrap();
-        let n = v.notes.iter().next().unwrap();
-        let p: String = slash(&n.path);
-        let p = inside_root(&root, &p).expect("caminho da lista deve passar em inside()");
-        let orig = std::fs::read_to_string(&p).unwrap();
-        std::fs::write(&p, &orig).unwrap();
+        assert!(v.notes.len() >= 5, "o vault fictício deveria ter várias notas");
+        for n in v.notes.iter() {
+            let p = inside_root(&root, &slash(&n.path)).expect("caminho da lista deve passar em inside()");
+            let orig = std::fs::read_to_string(&p).unwrap();
+            std::fs::write(&p, &orig).unwrap();
+        }
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    fn copiar_pasta(de: &Path, para: &Path) {
+        std::fs::create_dir_all(para).unwrap();
+        for e in std::fs::read_dir(de).unwrap() {
+            let e = e.unwrap();
+            let dest = para.join(e.file_name());
+            if e.file_type().unwrap().is_dir() { copiar_pasta(&e.path(), &dest); } else { std::fs::copy(e.path(), dest).unwrap(); }
+        }
     }
 
     #[test]
