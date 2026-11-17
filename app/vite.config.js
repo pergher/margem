@@ -94,6 +94,6 @@ export default {
   build: { target: "es2022" },
   // Testes que precisam de DOM declaram `// @vitest-environment jsdom` no topo do arquivo.
   test: { coverage: { provider: "v8", include: ["src/lib/**", "src/components/**"], reporter: ["text-summary", "json-summary"],
-    // Piso da cobertura (linha de base em 2026-11-17: ~21% linhas): subir aos poucos, nunca descer.
-    thresholds: { lines: 19, statements: 19, functions: 40, branches: 75 } } },
+    // Piso da cobertura (linha de base: 21% de linhas em 2026-11-17, 30% depois da divisão do App e da CorrecaoPage): subir aos poucos, nunca descer.
+    thresholds: { lines: 27, statements: 27, functions: 45, branches: 75 } } },
 };

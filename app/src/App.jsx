@@ -29,23 +29,23 @@ import { SemanaPage } from "@/components/SemanaPage";
 import { SaudePage } from "@/components/SaudePage";
 import { DiarioPage } from "@/components/DiarioPage";
 import { CicloPage } from "@/components/CicloPage";
-import { capturing } from "@/components/ShortcutsPage";
 import { SettingsPage } from "@/components/SettingsPage";
 import { EscolherVault, VaultAusente } from "@/components/VaultGate";
-import { store, clamp } from "@/lib/store";
+import { store } from "@/lib/store";
 import { useNotaAberta } from "@/lib/useNotaAberta";
 import { usePreferencias } from "@/lib/usePreferencias";
 import { useNavegacao } from "@/lib/useNavegacao";
+import { useHistoricoNavegacao } from "@/lib/useHistoricoNavegacao";
+import { useAtalhos } from "@/lib/useAtalhos";
 import { criarAula } from "@/lib/aula";
 import { criarCicloVazio } from "@/lib/ciclos";
 import { criarGramatica } from "@/lib/gramatica";
 import { RECURSOS, criarRecurso } from "@/lib/recursos";
-import { lembrarRecente } from "@/lib/recentes";
 import { procurarAtualizacao, antesDeAtualizar } from "@/lib/atualizar";
 import { CicloDaNota } from "@/components/CicloDaNota";
 import { visaoDe } from "@/lib/visoes";
-const NOMES_REC = { Questoes: "Questões" };
-import { loadFromDisk, loadOverrides, effective, comboOf, pretty, handlers, ACTIONS } from "@/lib/shortcuts";
+import { migalhas, secaoAtiva } from "@/lib/migalhas";
+import { loadFromDisk, loadOverrides, effective, pretty } from "@/lib/shortcuts";
 
 function RailButton({ label, active, onClick, disabled, size = "lg", children }) {
   return (
@@ -66,14 +66,12 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [navTick, setNavTick] = useState(0);
   const [overrides, setOverrides] = useState(loadOverrides);
   const [foco, setFoco] = useState(false);
   const ed = useRef(null);
   const P = usePreferencias(() => ed.current?.remeasure());
   const { dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, destaques, setDestaques, numeros, setNumeros, forma, setForma, zoom, setZoom, outlineW, setOutlineW, showSide, setShowSide, showOutline, setShowOutline, panelTab, setPanelTab } = P;
   const { page, setPage, ciclo, setCiclo, inicioModo, setInicioModo, inicioModoRaw, aulasPasta, setAulasPasta, ciclosPasta, setCiclosPasta, gramaticaPasta, setGramaticaPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, recursosAba, setRecursosAba, recursosPasta, setRecursosPasta, textoAtiv, setTextoAtiv, irAno, irMontarProva, irAulas, irRecursos, irSecao } = useNavegacao();
-  const hist = useRef({ stack: [], idx: -1 });
   const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo } = useNotaAberta({ ed, setStatus, setPage, setItems });
 
   useEffect(() => { loadFromDisk().then((o) => o && setOverrides(o)); }, []);
@@ -116,48 +114,17 @@ export default function App() {
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultRoot]);
-  // Histórico de navegação: cada passo é uma nota ({ k: "nota", path }) ou uma tela do app ({ k: "pag", page, … }), para o
-  // Voltar/Avançar também refazerem listagens (ex.: a pasta aberta em Aulas), não só arquivos.
-  const chaveEntrada = (e) => e.k === "nota" ? "n:" + e.path : `p:${e.page}|${e.aulasPasta}|${e.inicioModo}|${e.correcaoFoco}|${e.recursosAba}|${e.recursosPasta}|${e.ciclo?.path ?? ""}`;
-  const empurrar = (e) => {
-    const h = hist.current;
-    if (h.idx >= 0 && chaveEntrada(h.stack[h.idx]) === chaveEntrada(e)) return;
-    h.stack = [...h.stack.slice(0, h.idx + 1), e]; h.idx = h.stack.length - 1;
-    setNavTick((n) => n + 1);
-  };
-  const open = async (path) => {
-    lembrarRecente(path);
-    empurrar({ k: "nota", path });
-    // Nota já aberta: se o arquivo mudou no disco e não há nada por salvar, recarrega; senão só volta ao editor.
-    if (path === cur.current && (dirty.current || await invoke("read_note", { path }).then((t) => t === ed.current.getText()).catch(() => true))) { setPage("editor"); return; }
-    await load(path);
-  };
-  const go = async (delta) => {
-    const h = hist.current, i = h.idx + delta;
-    if (i < 0 || i >= h.stack.length) return;
-    h.idx = i; setNavTick((n) => n + 1);
-    const e = h.stack[i];
-    if (e.k === "nota") await load(e.path);
-    else { setAulasPasta(e.aulasPasta); inicioModoRaw(e.inicioModo); setCorrecaoFoco(e.correcaoFoco); setRecursosAba(e.recursosAba); setRecursosPasta(e.recursosPasta ?? ""); setCiclo(e.ciclo); await save(); setPage(e.page); }
-  };
-  // Toda mudança de tela (ou de pasta em Aulas, aba, etc.) vira um passo do histórico.
-  useEffect(() => {
-    if (page === "editor") return;
-    empurrar({ k: "pag", page, aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo });
-  }, [page, aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo]); // eslint-disable-line react-hooks/exhaustive-deps
-  const canBack = hist.current.idx > 0, canFwd = hist.current.idx < hist.current.stack.length - 1;
+  const { open, go, remap, canBack, canFwd } = useHistoricoNavegacao({
+    page, setPage, ed,
+    nav: { aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo, setAulasPasta, inicioModoRaw, setCorrecaoFoco, setRecursosAba, setRecursosPasta, setCiclo },
+    nota: { cur, dirty, load, save, setCurrent },
+  });
   const link = async (t) => {
     const p = await invoke("resolve_link", { target: t });
     p ? open(p) : setStatus(`Link não resolvido: ${t}`);
   };
 
   // ---------- gerenciar notas e pastas ----------
-  const under = (p, base) => p === base || p.startsWith(base + "/");
-  const remap = (from, to) => {
-    const sub = (p) => (p && under(p, from) ? to + p.slice(from.length) : p);
-    const h = hist.current; h.stack = h.stack.map((e) => e.k === "nota" ? { ...e, path: sub(e.path) } : { ...e, correcaoFoco: sub(e.correcaoFoco) });
-    if (cur.current) { cur.current = sub(cur.current); setCurrent(cur.current); }
-  };
   const fail = (e) => setStatus("Erro: " + e);
   // Pastas e arquivos de Aulas (a página chama estas funções e mostra o erro, se houver).
   const criarPastaEm = async (dir, name) => { const p = await invoke("create_folder", { dir, name }); await refresh(); return p; };
@@ -190,60 +157,7 @@ export default function App() {
     setStatus(`Renomeada; ${r.links} link(s) atualizado(s)`);
     return r.path;
   };
-  useEffect(() => {
-    if (!foco) return;
-    const esc = (e) => { if (e.key === "Escape" && !e.defaultPrevented) setFoco(false); };
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [foco]);
-
-  // ---------- atalhos ----------
-  const kb = useRef({});
-  kb.current = { go, save, page, map: effective(overrides) };
-  useEffect(() => {
-    const zoomBy = (d) => setZoom((z) => clamp(Math.round((z + d) * 10) / 10, 0.7, 2));
-    const run = {
-      search: () => setSearchOpen(true),
-      palette: () => setPaletteOpen(true),
-      save: () => kb.current.save(),
-      insertTable: () => { if (cur.current && kb.current.page === "editor") ed.current.insertTable(); },
-      toggleSide: () => setShowSide((v) => !v),
-      focus: () => setFoco((v) => !v),
-      toggleNumeros: () => setNumeros((v) => !v),
-      back: () => kb.current.go(-1),
-      forward: () => kb.current.go(1),
-      zoomIn: () => zoomBy(0.1),
-      zoomOut: () => zoomBy(-0.1),
-      zoomReset: () => setZoom(1),
-    };
-    const onKey = (e) => {
-      if (capturing) return;
-      const c = comboOf(e);
-      if (!c) return;
-      const id = Object.keys(kb.current.map).find((k) => kb.current.map[k] === c);
-      if (!id) return;
-      if (ACTIONS.find((a) => a.id === id)?.plain) { // tecla simples: só fora de campos de texto e com a tela registrada
-        const t = e.target;
-        if (t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName)) return;
-        if (!handlers[id]) return;
-        e.preventDefault(); e.stopPropagation();
-        handlers[id]();
-        return;
-      }
-      e.preventDefault(); e.stopPropagation();
-      run[id]();
-    };
-    const onWheel = (e) => {
-      if (!(e.ctrlKey || e.metaKey)) return;
-      e.preventDefault();
-      setZoom((z) => clamp(Math.round((z + (e.deltaY < 0 ? 0.1 : -0.1)) * 10) / 10, 0.7, 2));
-    };
-    const onMouse = (e) => { if (e.button === 3) { e.preventDefault(); kb.current.go(-1); } else if (e.button === 4) { e.preventDefault(); kb.current.go(1); } };
-    window.addEventListener("keydown", onKey, true);
-    window.addEventListener("wheel", onWheel, { passive: false });
-    window.addEventListener("mouseup", onMouse);
-    return () => { window.removeEventListener("keydown", onKey, true); window.removeEventListener("wheel", onWheel); window.removeEventListener("mouseup", onMouse); };
-  }, []);
+  useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setShowSide, setFoco, setNumeros, setZoom });
 
   const keys = effective(overrides);
   const commands = [
@@ -293,44 +207,9 @@ export default function App() {
     const novo = { ...prefVisao, diario: "markdown" }; setPrefVisao(novo); store.set("visaoPorTipo", novo);
     await open(path); setPage("editor");
   };
-  const ROTULOS = { semana: { hoje: "Hoje", semana: "Semana", ano: "Ano" }[inicioModo] ?? "Hoje", ciclos: "Ciclos", aulas: "Aulas", gramatica: "Gramática", recursos: "Recursos", correcao: "Produções", diario: "Diário", saude: "Saúde do vault", config: "Configurações" };
-  // Caminho no topo: cada item é { t: texto, ir?: função }. Em Aulas (e numa aula aberta) as pastas são clicáveis e levam à listagem delas.
-  const crumbs = page === "ciclos" ? [{ t: "Ciclos", ir: () => irSecao("ciclos") }, ...(ciclosPasta ? ciclosPasta.split("/") : []).map((t, i, a) => ({ t, ir: () => setCiclosPasta(a.slice(0, i + 1).join("/")) }))]
-    : page === "gramatica" ? [{ t: "Gramática", ir: () => irSecao("gramatica") }, ...(gramaticaPasta ? gramaticaPasta.split("/") : []).map((t, i, a) => ({ t, ir: () => setGramaticaPasta(a.slice(0, i + 1).join("/")) }))]
-    : page === "aulas" ? [{ t: "Aulas", ir: () => irAulas("") }, ...(aulasPasta ? aulasPasta.split("/") : []).map((t, i, a) => ({ t: t.replace(/^_/, ""), ir: () => irAulas(a.slice(0, i + 1).join("/")) }))]
-    : page === "recursos" && recursosAba !== "montar" ? [{ t: "Recursos", ir: () => irRecursos("") }, ...(recursosPasta ? recursosPasta.split("/") : []).map((t, i, a) => ({ t: NOMES_REC[t] ?? t.replace(/^_/, ""), ir: () => irRecursos(a.slice(0, i + 1).join("/")) }))]
-    : page === "ciclo" ? [{ t: "Ciclos", ir: () => irSecao("ciclos") }, { t: ciclo?.titulo ?? "Ciclo" }]
-    : page !== "editor" ? [ROTULOS[page] ?? ""].filter(Boolean).map((t) => ({ t }))
-    : !rel ? []
-    : rel.replace(/\.md$/, "").split("/").map((t, i, a) => {
-      if (/^Acervo\/Aulas\//.test(rel)) { // aula: o caminho começa em "Aulas" (sem "Acervo"); as pastas levam à listagem delas
-        if (i === 0) return null;
-        if (i === 1) return { t, ir: () => irAulas("") };
-        if (i < a.length - 1) return { t, ir: () => irAulas(a.slice(2, i + 1).join("/")) };
-      }
-      if (/^Acervo\/Gram[aá]tica\//.test(rel)) { // gramática: o caminho começa em "Gramática"; as pastas levam à listagem delas
-        if (i === 0) return null;
-        if (i === 1) return { t: "Gramática", ir: () => { setGramaticaPasta(""); setPage("gramatica"); } };
-        if (i < a.length - 1) return { t, ir: () => { setGramaticaPasta(a.slice(2, i + 1).join("/")); setPage("gramatica"); } };
-      }
-      if (/^Acervo\/(Questoes|Textos|Oficinas)\//.test(rel)) { // recurso: o caminho começa em "Recursos"; as pastas levam à listagem delas
-        if (i === 0) return null;
-        if (i === 1) return { t: NOMES_REC[t] ?? t, ir: () => irRecursos(t) };
-        if (i < a.length - 1) return { t, ir: () => irRecursos(a.slice(1, i + 1).join("/")) };
-      }
-      if (/^Acervo\//.test(rel)) { // demais pastas do Acervo: sem "Acervo"; "Ciclos" leva à tela Ciclos
-        if (i === 0) return null;
-        if (i === 1 && t === "Ciclos") return { t, ir: () => irSecao("ciclos") };
-      }
-      if (/^Anos\//.test(rel) && i === 2) { // seções do ano que têm tela própria
-        const tela = { Semanas: "semana", Correcoes: "correcao", Diario: "diario", Diarios: "diario" }[t];
-        if (tela) return { t, ir: () => irSecao(tela) };
-      }
-      return { t };
-    }).filter(Boolean);
-    const secao = page === "editor"
-    ? (!rel ? null : /^Acervo\/Aulas\//.test(rel) ? "aulas" : /^Acervo\/Gram[aá]tica\//.test(rel) ? "gramatica" : /^Acervo\/(Questoes|Textos|Oficinas)\/|\/Provas\//.test(rel) ? "recursos" : /\/Correcoes\//.test(rel) ? "correcao" : null)
-    : ({ semana: "hoje", ciclo: "ciclos", ciclos: "ciclos", aulas: "aulas", gramatica: "gramatica", recursos: "recursos", correcao: "correcao", diario: "diario", saude: "saude", config: "config" })[page];
+  const crumbs = migalhas({ page, rel, inicioModo, ciclo, ciclosPasta, gramaticaPasta, aulasPasta, recursosAba, recursosPasta },
+    { secao: irSecao, aulas: irAulas, recursos: irRecursos, setCiclosPasta, setGramaticaPasta, setPage });
+  const secao = secaoAtiva(page, rel);
   const pick = async (path, line) => { setSearchOpen(false); await open(path); if (line) setTimeout(() => goLine(line), 50); };
   const progRef = useRef(null);
   const aoRolarTexto = (e) => {
