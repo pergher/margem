@@ -8,7 +8,7 @@ Vault de Markdown (compatível com o Obsidian) para ensinar Português do 6º ao
 ## Estrutura
 - `_sistema/`: templates, rubricas, `_codigos.md` (taxonomia), BNCC e CBTC.
 - `Acervo/`: o que vale em qualquer ano (`Aulas/`, `Textos/`, `Questoes/`, `Oficinas/`).
-- `Anos/AAAA/`: o que pertence a um ano letivo (`Planejamento/`, `Provas/`, `Correcoes/`, `Relatorios/`, `Diario/`).
+- `Anos/AAAA/`: o que pertence a um ano letivo (`Planejamento/`, `Correcoes/`, `Relatorios/`, `Diario/`).
 
 ## Regras
 1. Toda nota tem `tipo` no frontmatter: `aula`, `plano`, `ciclo`, `calendario`, `texto`, `banco`, `prova`, `correcao`, `rubrica`, `taxonomia`, `habilidades-bncc`, `habilidades-cbtc`.

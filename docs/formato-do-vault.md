@@ -127,7 +127,8 @@ Escola/
 │   ├── Gramática/   referência por tópico (regra, exemplos, dúvidas), atemporal
 │   ├── Textos/      fichas de texto
 │   ├── Questoes/    bancos de questões
-│   └── Oficinas/    jogos e dinâmicas
+│   ├── Oficinas/    jogos e dinâmicas
+│   └── Provas/      provas montadas (turma e data no cabeçalho)
 └── Anos/
     └── 2026/
         ├── calendario.md
@@ -136,7 +137,6 @@ Escola/
         ├── Semanas/        uma nota `tipo: semana` por semana (aulas dadas ✓, avulsas)
         ├── Diarios/<turma>/   diário de aula por turma e semana (sensível, bloqueado no MCP)
         ├── Alunos/<turma>/    uma nota por aluno, com as ocorrências (sensível, bloqueado no MCP)
-        ├── Provas/
         ├── Correcoes/<turma>-<mes>-<atividade>/   transcrições, fotos, devolutivas, visão da turma
         ├── Relatorios/
         └── Diario/
@@ -145,9 +145,9 @@ Escola/
 - **Acervo** não tem ano nem turma. **Anos/AAAA** é tudo o que pertence a um ano letivo e pode ser arquivado inteiro.
 - Links são por nome, então mover pastas não quebra nada. Exceção: embeds de imagem por caminho (`![[Fotos/Foto 27.jpg]]`) precisam ser ajustados.
 - Nomes de nota são únicos no vault inteiro. Notas de ano levam o ano na frente (`2026-81-Setembro-Poção Mágica · Transcrições`). *(proposta, ainda não confirmada)*
-- Arquivos `.base` ficam em `_sistema/bases/`; notas soltas de trabalho (ex.: ajustes de skill) em `_sistema/notas/`. O `create_note` do MCP grava na pasta do tipo (aula→Acervo/Aulas, texto→Acervo/Textos, banco→Acervo/Questoes, ciclo→Acervo/Ciclos, planejamento→Anos/AAAA, plano→Anos/AAAA/Planejamento, prova→Provas, semana→Semanas, correcao→Correcoes, demais→_sistema).
+- Arquivos `.base` ficam em `_sistema/bases/`; notas soltas de trabalho (ex.: ajustes de skill) em `_sistema/notas/`. O `create_note` do MCP grava na pasta do tipo (aula→Acervo/Aulas, texto→Acervo/Textos, banco→Acervo/Questoes, ciclo→Acervo/Ciclos, planejamento→Anos/AAAA, plano→Anos/AAAA/Planejamento, prova→Acervo/Provas, semana→Semanas, correcao→Correcoes, demais→_sistema).
 - O servidor MCP bloqueia `Anos/*/Correcoes`, `Relatorios`, `Diarios` e `Alunos` por pasta, além do bloqueio por `tipo: correcao`, `diario` e `aluno` (decisão: o Claude não lê o diário nem as notas de aluno pelo MCP).
-- `vault reorganizar <pasta> --ano 2026` move para essa estrutura (simulação por padrão; `--aplicar` grava). Só muda de pasta, nunca renomeia, e troca links por caminho (`[[Escola/Aulas/X]]`, `![[Recursos/imagens/y.png]]`) por links por nome.
+- `vault reorganizar <pasta> --ano 2026` move para essa estrutura (inclusive `Anos/AAAA/Provas/` → `Acervo/Provas/`) (simulação por padrão; `--aplicar` grava). Só muda de pasta, nunca renomeia, e troca links por caminho (`[[Escola/Aulas/X]]`, `![[Recursos/imagens/y.png]]`) por links por nome.
 
 
 ## Aula do acervo: seções e Margem (2026-11-13)
@@ -175,7 +175,7 @@ A tela **Recursos** (antes "Questões") reúne o que a aula usa e que mora no Ac
 |---|---|---|---|
 | Texto | `Acervo/Textos/` (imagens em `Acervo/Textos/imagens/`, fora da lista) | `texto` | título, autor, gênero e começo do texto; filtro por gênero |
 | Banco de questões | `Acervo/Questoes/` | `banco` | nº de questões e de textos-base; "Montar prova com este banco" |
-| Prova | `Anos/AAAA/Provas/` | `prova` | turma, data, nº de questões e valor; fica na raiz e não se move |
+| Prova | `Acervo/Provas/` | `prova` | turma, data, nº de questões e valor (as provas antigas, em `Anos/AAAA/Provas/`, ainda são reconhecidas) |
 | Oficina (jogo, dinâmica) | `Acervo/Oficinas/` | `oficina` (as antigas, `jogo didático`, seguem aceitas na lista) | título e começo do texto |
 
 - A lista abre na raiz do `Acervo` e só mostra as pastas `Textos`, `Questoes` e `Oficinas`; `Aulas`, `Ciclos` e `Gramática` têm tela própria. Cada pasta aceita subpastas, mover, renomear e arrastar.

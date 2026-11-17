@@ -57,6 +57,7 @@ fn destino(rel: &Path, ano: &str) -> Option<Option<(PathBuf, &'static str)>> {
     let anos = ["Anos", a.as_str()];
     let hit = |p: PathBuf, r: &'static str| Some(Some((p, r)));
     match c.as_slice() {
+        ["Anos", _, "Provas", rest @ ..] if !rest.is_empty() => hit(join(&["Acervo", "Provas"], rest), "acervo/provas"), // provas saíram do ano
         ["_sistema", ..] | ["Acervo", ..] | ["Anos", ..] => Some(None),
         ["_templates", rest @ ..] => hit(join(&["_sistema", "templates"], rest), "sistema"),
         ["Sistema", rest @ ..] => hit(join(&["_sistema"], rest), "sistema"),

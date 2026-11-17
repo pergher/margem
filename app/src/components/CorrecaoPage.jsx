@@ -18,7 +18,7 @@ import { Avaliacao } from "./correcao/Avaliacao";
 export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }) {
   const lotes = listaCorrecoes(items);
   const [lote, setLote] = useState(lotes.find((l) => l.path === focoPath)?.path ?? lotes[0]?.path ?? null);
-  useEffect(() => { if (focoPath && lotes.some((l) => l.path === focoPath)) setLote(focoPath); }, [focoPath]);
+  useEffect(() => { if (focoPath && lotes.some((l) => l.path === focoPath)) setLote(focoPath); }, [focoPath, lotes.length]);
   const [d, setD] = useState(null);
   const [erro, setErro] = useState("");
   const [sel, setSel] = useState(0);        // índice original do aluno

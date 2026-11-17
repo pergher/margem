@@ -23,7 +23,7 @@ const Grupo = ({ nome, children }) => (
   <div className="flex flex-wrap items-center gap-2"><span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">{nome}</span>{children}</div>
 );
 
-export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath }) {
+export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, turmaGlobal }) { // turmaGlobal: filtro vindo da página Ano ("" = todas)
   // focoPath: abre já filtrado pela nota de diário ou de aluno escolhida (visão personalizada da nota).
   const foco = focoPath ? items.find((i) => i.path === focoPath) : null;
   const diarios = useMemo(() => listarDiarios(items), [items]);
@@ -37,7 +37,8 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath }) {
   // filtros
   const [q, setQ] = useState("");
   const [tipos, setTipos] = useState([]);
-  const [turmas, setTurmas] = useState([]);
+  const [turmasLocal, setTurmas] = useState([]);
+  const turmas = turmaGlobal ? [turmaGlobal] : turmasLocal;
   const [cats, setCats] = useState([]);
   const [meses, setMeses] = useState([]);
   const [aluno, setAluno] = useState("");
@@ -168,7 +169,7 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath }) {
               <Chip ativo={aprovar} onClick={() => setAprovar((v) => !v)}><ClipboardCheck aria-hidden className="h-3.5 w-3.5" />Transcrição a aprovar</Chip>
               {soDiario && <Chip ativo onClick={() => setSoDiario(null)}>Só o diário aberto <X aria-hidden className="h-3 w-3" /></Chip>}
             </Grupo>
-            {todasTurmas.length > 1 && <Grupo nome="Turma">{todasTurmas.map((t) => <Chip key={t} ativo={turmas.includes(t)} onClick={() => setTurmas((v) => alterna(v, t))}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: corTurma(t) }} />{t}</Chip>)}</Grupo>}
+            {turmaGlobal === undefined && todasTurmas.length > 1 && <Grupo nome="Turma">{todasTurmas.map((t) => <Chip key={t} ativo={turmas.includes(t)} onClick={() => setTurmas((v) => alterna(v, t))}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: corTurma(t) }} />{t}</Chip>)}</Grupo>}
             <Grupo nome="Comportamento">
               {[...CATEGORIAS, OUTRO].map((c) => (
                 <Chip key={c.id} ativo={cats.includes(c.id)} onClick={() => setCats((v) => alterna(v, c.id))}>

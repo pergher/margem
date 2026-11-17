@@ -6,7 +6,7 @@ import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
 import { lerRecentes, haQuanto, tipoDeRel } from "@/lib/recentes";
 import { corTurma } from "@/lib/cores";
 import { invoke } from "@/lib/api";
-import { metaDe } from "@/components/AulasPage";
+import { metaDe } from "@/lib/documentos";
 import { Anos } from "@/components/ui/Anos";
 import { criarAula } from "@/lib/aula";
 import { ResizeHandle } from "@/components/ResizeHandle";

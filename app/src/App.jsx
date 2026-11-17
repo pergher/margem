@@ -14,12 +14,10 @@ import { setProp, lineStart } from "@/lib/frontmatter";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SearchModal } from "@/components/SearchModal";
 import { EntryDialog } from "@/components/EntryDialog";
-import { InicioPage } from "@/components/InicioPage";
-import { RecursosPage } from "@/components/RecursosPage";
-import { GramaticasPage } from "@/components/GramaticasPage";
-import { AulasPage } from "@/components/AulasPage";
-import { CiclosPage } from "@/components/CiclosPage";
-import { CorrecoesPage } from "@/components/CorrecoesPage";
+import { HojePage } from "@/components/HojePage";
+import { AnoAbas } from "@/components/AnoAbas";
+import { DocumentosPage } from "@/components/DocumentosPage";
+import { subDaPasta } from "@/lib/documentos";
 import { ProvaDaNota } from "@/components/ProvaDaNota";
 import { ErrosComuns } from "@/components/ErrosComunsDialog";
 import { AulaDaNota } from "@/components/AulaDaNota";
@@ -71,7 +69,7 @@ export default function App() {
   const ed = useRef(null);
   const P = usePreferencias(() => ed.current?.remeasure());
   const { dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, destaques, setDestaques, numeros, setNumeros, forma, setForma, zoom, setZoom, outlineW, setOutlineW, showSide, setShowSide, showOutline, setShowOutline, panelTab, setPanelTab } = P;
-  const { page, setPage, ciclo, setCiclo, inicioModo, setInicioModo, inicioModoRaw, aulasPasta, setAulasPasta, ciclosPasta, setCiclosPasta, gramaticaPasta, setGramaticaPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, recursosAba, setRecursosAba, recursosPasta, setRecursosPasta, textoAtiv, setTextoAtiv, irAno, irMontarProva, irAulas, irRecursos, irSecao } = useNavegacao();
+  const { page, setPage, ciclo, setCiclo, anoAba, setAnoAba, documentosPasta, setDocumentosPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, documentosAba, setDocumentosAba, textoAtiv, setTextoAtiv, documentosTipo, irAno, irMontarProva, irDocumentos, irSecao } = useNavegacao();
   const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo } = useNotaAberta({ ed, setStatus, setPage, setItems });
 
   useEffect(() => { loadFromDisk().then((o) => o && setOverrides(o)); }, []);
@@ -116,7 +114,7 @@ export default function App() {
   }, [vaultRoot]);
   const { open, go, remap, canBack, canFwd } = useHistoricoNavegacao({
     page, setPage, ed,
-    nav: { aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo, setAulasPasta, inicioModoRaw, setCorrecaoFoco, setRecursosAba, setRecursosPasta, setCiclo },
+    nav: { documentosPasta, anoAba, correcaoFoco, documentosAba, ciclo, setDocumentosPasta, setAnoAba, setCorrecaoFoco, setDocumentosAba, setCiclo },
     nota: { cur, dirty, load, save, setCurrent },
   });
   const link = async (t) => {
@@ -127,6 +125,13 @@ export default function App() {
   // ---------- gerenciar notas e pastas ----------
   const fail = (e) => setStatus("Erro: " + e);
   // Pastas e arquivos de Aulas (a página chama estas funções e mostra o erro, se houver).
+  // Vaults anteriores à pasta Gramática: cria Acervo/Gramática uma vez, para ela já existir.
+  const gramaticaFeita = useRef(false);
+  useEffect(() => {
+    if (!carregado || gramaticaFeita.current || !dirs.some((d) => d.startsWith("Acervo/"))) return;
+    gramaticaFeita.current = true;
+    if (!dirs.some((d) => d.replace(/\/$/, "") === "Acervo/Gramática")) invoke("create_folder", { dir: `${raizDe(items)}/Acervo`, name: "Gramática" }).then(refresh).catch(() => {});
+  }, [carregado, dirs]);
   const criarPastaEm = async (dir, name) => { const p = await invoke("create_folder", { dir, name }); await refresh(); return p; };
   const moverEntrada = async (path, dir) => { await save(); const r = await invoke("move_entry", { path, dir }); remap(path, r.path); await refresh(); setStatus("Movida"); return r.path; };
   const excluirEntrada = (path, nome, n) => new Promise((ok) => setDialog({
@@ -144,7 +149,7 @@ export default function App() {
     const p = await criarGramatica(items, { topico: name, pasta: typeof pasta === "string" ? pasta : "" }); await refresh(); open(p);
   } });
   const novoRecurso = (tipo) => setDialog({ title: RECURSOS[tipo].dialogo, input: true, okLabel: "Criar", onOk: async (name) => {
-    const sub = recursosPasta.split("/")[0] === RECURSOS[tipo].pasta ? recursosPasta.split("/").slice(1).join("/") : ""; // dentro da pasta do tipo, cria na subpasta aberta
+    const sub = subDaPasta(documentosPasta, RECURSOS[tipo].pasta); // dentro da pasta do tipo, cria na subpasta aberta
     const p = await criarRecurso(items, tipo, { nome: name, pasta: sub }); await refresh(); open(p);
   } });
   const createNote = (dir) => setDialog({ title: "Novo arquivo", input: true, okLabel: "Criar", onOk: async (name) => {
@@ -163,14 +168,12 @@ export default function App() {
   const commands = [
     { id: "p-editor", label: "Ir para o editor", run: () => setPage("editor") },
     { id: "p-hoje", label: "Ir para Hoje", hint: "dia início", run: () => irSecao("hoje") },
-    { id: "p-semana", label: "Ir para a Semana", hint: "aula dar aula turma", run: () => { setInicioModo("semana"); setPage("semana"); } },
-    { id: "p-ano", label: "Ir para o Ano", hint: "ciclo", run: irAno },
-    { id: "p-diario", label: "Ir para Diário e alunos", hint: "ocorrência conselho", run: () => setPage("diario") },
+    { id: "p-semana", label: "Ir para a Semana", hint: "aula dar aula turma ano", run: () => irAno("semana") },
+    { id: "p-ano", label: "Ir para o Ano", hint: "ciclo planejamento trimestre", run: () => irAno("plano") },
+    { id: "p-diario", label: "Ir para Diário e alunos", hint: "ocorrência conselho", run: () => irAno("diario") },
     { id: "p-saude", label: "Ir para Saúde do vault", hint: "avisos validar problemas", run: () => setPage("saude") },
     { id: "p-ciclos", label: "Ir para Ciclos", hint: "lista novo", run: () => irSecao("ciclos") },
-    { id: "p-aulas", label: "Ir para Aulas", hint: "acervo planos", run: () => irSecao("aulas") },
-    { id: "p-gramatica", label: "Ir para Gramática", hint: "regra tópico referência", run: () => irSecao("gramatica") },
-    { id: "p-recursos", label: "Ir para Recursos", hint: "textos banco questões provas oficinas acervo", run: () => irSecao("recursos") },
+    { id: "p-documentos", label: "Ir para Documentos", hint: "acervo aulas gramática textos banco questões provas oficinas recursos", run: () => irSecao("documentos") },
     { id: "p-correcao", label: "Ir para Produções", hint: "redações correção trabalhos", run: () => irSecao("correcao") },
     { id: "p-prova", label: "Ir para Montar prova", run: irMontarProva },
     { id: "p-nova-aula", label: "Nova aula", hint: "criar modelo", run: () => novaAula() },
@@ -207,8 +210,8 @@ export default function App() {
     const novo = { ...prefVisao, diario: "markdown" }; setPrefVisao(novo); store.set("visaoPorTipo", novo);
     await open(path); setPage("editor");
   };
-  const crumbs = migalhas({ page, rel, inicioModo, ciclo, ciclosPasta, gramaticaPasta, aulasPasta, recursosAba, recursosPasta },
-    { secao: irSecao, aulas: irAulas, recursos: irRecursos, setCiclosPasta, setGramaticaPasta, setPage });
+  const crumbs = migalhas({ page, rel, anoAba, ciclo, documentosPasta, documentosAba },
+    { secao: irSecao, documentos: irDocumentos, ano: irAno });
   const secao = secaoAtiva(page, rel);
   const pick = async (path, line) => { setSearchOpen(false); await open(path); if (line) setTimeout(() => goLine(line), 50); };
   const progRef = useRef(null);
@@ -234,7 +237,7 @@ export default function App() {
 
   return (
     <div className="flex h-full">
-      {!foco && <Menu ativo={secao === "hoje" ? inicioModo : secao} onGo={irSecao} dark={dark} setDark={setDark} compacto={!showSide} />}
+      {!foco && <Menu ativo={secao === "documentos" && documentosTipo.tipo ? "documentos:" + documentosTipo.tipo : secao === "ano" && page === "ano" ? "ano:" + anoAba : secao} onGo={irSecao} dark={dark} setDark={setDark} compacto={!showSide} />}
 
       <div className="flex min-w-0 flex-1 flex-col">
         {foco && <button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
@@ -270,15 +273,10 @@ export default function App() {
         {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
         {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
         {(carregado || page === "config" || (page === "editor" && !personalizada)) && <>
-        {page === "ciclos" && <CiclosPage items={items} dirs={dirs} pasta={ciclosPasta} setPasta={setCiclosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} onCreate={() => novoCiclo(ciclosPasta)} />}
-        {page === "aulas" && <AulasPage items={items} dirs={dirs} onOpen={open} onCreate={() => novaAula(aulasPasta)} pasta={aulasPasta} setPasta={setAulasPasta} onRefresh={refresh} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} />}
-        {page === "gramatica" && <GramaticasPage items={items} dirs={dirs} onOpen={open} onCreate={() => novaGramatica(gramaticaPasta)} pasta={gramaticaPasta} setPasta={setGramaticaPasta} onRefresh={refresh} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} />}
-        {page === "recursos" && <RecursosPage onNovo={novoRecurso} onAtividade={(p) => { setTextoAtiv(p); irMontarProva(); }} items={items} dirs={dirs} onOpen={open} onRefresh={refresh} aba={recursosAba} setAba={setRecursosAba} pasta={recursosPasta} setPasta={setRecursosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
-        {page === "correcao" && (correcaoFoco
-          ? <CorrecaoPage items={items} onOpen={open} focoPath={correcaoFoco} vistaInicial={correcaoVista} onVoltar={() => { setCorrecaoFoco(null); setCorrecaoVista("aluno"); }} />
-          : <CorrecoesPage items={items} onCorrigir={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); }} onTurma={(p) => { setCorrecaoVista("turma"); setCorrecaoFoco(p); }} onOpen={open} onRename={renomearNota} onDelete={excluirEntrada} />)}
-        {page === "semana" && <InicioPage items={items} onOpen={open} onRefresh={refresh} modo={inicioModo} setModo={setInicioModo} onCorrecao={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); setPage("correcao"); }} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }} />}
-        {page === "diario" && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} />}
+        {page === "documentos" && <DocumentosPage filtroNav={documentosTipo} items={items} dirs={dirs} onOpen={open} onRefresh={refresh} onNovo={(id) => (id === "ciclo" ? novoCiclo(subDaPasta(documentosPasta, "Ciclos")) : id === "aula" ? novaAula(subDaPasta(documentosPasta, "Aulas")) : id === "gramatica" ? novaGramatica(subDaPasta(documentosPasta, "Gramática")) : novoRecurso(id))} onAtividade={(p) => { setTextoAtiv(p); irMontarProva(); }} aba={documentosAba} setAba={setDocumentosAba} pasta={documentosPasta} setPasta={setDocumentosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
+        {page === "inicio" && <HojePage items={items} onOpen={open} onRefresh={refresh} onCorrecao={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); irAno("prod"); }} onSemana={() => irAno("semana")} />}
+        {page === "ano" && <AnoAbas aba={anoAba} setAba={setAnoAba} items={items} onOpen={open} onRefresh={refresh} onMarkdown={abrirMarkdown} onRename={renomearNota} onDelete={excluirEntrada} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }}
+          correcao={{ foco: correcaoFoco, vista: correcaoVista, corrigir: (p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); }, turma: (p) => { setCorrecaoVista("turma"); setCorrecaoFoco(p); }, voltar: () => { setCorrecaoFoco(null); setCorrecaoVista("aluno"); } }} />}
         {page === "saude" && <SaudePage items={items} onOpen={open} onRefresh={refresh} />}
         {page === "ciclo" && ciclo && <CicloPage ciclo={ciclo} items={items} onOpen={open} onAno={() => irSecao("ciclos")} onChange={setCiclo} onRename={renomearNota} />}
         {personalizada && visao.id === "ciclo" && <CicloDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} onAno={() => irSecao("ciclos")} onRename={renomearNota} />}
@@ -292,7 +290,7 @@ export default function App() {
         <ErrosComuns items={items} />
         {page === "editor" && !personalizada && current && <div role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div ref={progRef} className="h-full origin-left bg-primary" style={{ transform: "scaleX(0)" }} /></div>}
         <main onScrollCapture={aoRolarTexto} className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>
-          <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} numeros={numeros} />
+          <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} onRename={(n) => current && renomearNota(current, n).catch((e) => setStatus("Erro: " + (e?.message ?? e)))} numeros={numeros} />
         </main>
 
         {!foco && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">

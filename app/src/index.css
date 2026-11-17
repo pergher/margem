@@ -128,6 +128,9 @@
 .cm-callout-badge { font-weight: 500; font-size: .75rem; background: hsl(var(--c-fg) / .14); border-radius: 999px; padding: .05rem .5rem; }
 
 /* propriedades (frontmatter) */
+.cm-titulo input { width: 100%; font: inherit; letter-spacing: inherit; color: inherit; background: transparent; border: 0; border-radius: 6px; padding: 0 .25rem; margin: 0 -.25rem; outline: none; }
+.cm-titulo input:hover { background: hsl(var(--accent) / .6); }
+.cm-titulo input:focus { background: hsl(var(--background)); box-shadow: 0 0 0 2px hsl(var(--ring)); }
 .cm-titulo { font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: 1.9rem; font-weight: 700; line-height: 1.25; padding: 0 0 1.1rem; letter-spacing: -.01em; }
 .cm-props { padding: 0 0 2rem; font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: .875rem; line-height: 1.5; }
 .cm-props-card { position: relative; display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1.25rem; padding: .9rem 4.5rem .9rem 1.1rem; background: hsl(var(--secondary) / .55); border: 1px solid hsl(var(--border)); border-radius: 10px; }

@@ -47,8 +47,8 @@ pub(crate) fn criar_estrutura(root: &Path) -> std::io::Result<()> {
     let vazia = std::fs::read_dir(root)?.flatten().all(|e| e.file_name().to_string_lossy().starts_with('.'));
     if !vazia { return Ok(()); }
     let ano = 1970 + std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0) / 31_556_952;
-    let mut dirs: Vec<String> = ["_sistema", "Acervo/Aulas", "Acervo/Ciclos", "Acervo/Gramática", "Acervo/Textos", "Acervo/Questoes", "Acervo/Oficinas"].map(String::from).to_vec();
-    dirs.extend(["Semanas", "Provas", "Correcoes", "Diarios", "Alunos", "Relatorios"].map(|d| format!("Anos/{ano}/{d}")));
+    let mut dirs: Vec<String> = ["_sistema", "Acervo/Aulas", "Acervo/Ciclos", "Acervo/Gramática", "Acervo/Textos", "Acervo/Questoes", "Acervo/Oficinas", "Acervo/Provas"].map(String::from).to_vec();
+    dirs.extend(["Semanas", "Correcoes", "Diarios", "Alunos", "Relatorios"].map(|d| format!("Anos/{ano}/{d}")));
     for d in dirs { std::fs::create_dir_all(root.join(d))?; }
     Ok(())
 }

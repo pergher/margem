@@ -295,6 +295,20 @@ fn reorganizar_nao_move_colisoes() {
 }
 
 #[test]
+fn reorganizar_leva_provas_do_ano_para_o_acervo() {
+    use vault_core::reorganizar::{apply, plan};
+    let dir = std::env::temp_dir().join(format!("reorg-prova-{}", std::process::id()));
+    std::fs::remove_dir_all(&dir).ok();
+    escreve(&dir, "Anos/2026/Provas/Prova 61.md", "---\ntipo: prova\n---\n");
+    let p = plan(&dir, "2026", "Escola").unwrap();
+    assert_eq!(p.moves.len(), 1);
+    apply(&dir, &p).unwrap();
+    assert!(dir.join("Acervo/Provas/Prova 61.md").exists() && !dir.join("Anos/2026/Provas/Prova 61.md").exists());
+    assert!(plan(&dir, "2026", "Escola").unwrap().moves.is_empty());
+    std::fs::remove_dir_all(dir).ok();
+}
+
+#[test]
 fn professor_vira_margem() {
     use vault_core::migrate::professor_para_margem;
     let t = "> [!tip] Dica para o professor: **6º ano:** foque no básico.\n> mais uma linha\n\n> [!tip] Para o professor\n> texto\n\n> [!tip] Dica\n> geral\n\n```\n> [!tip] Dica para o professor: no código\n```\n";

@@ -8,7 +8,7 @@ import { useWidth } from "@/lib/useWidth";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { Estado, Carregando, Erro } from "@/components/ui/estado";
 
-/** Visão de uma nota `tipo: prova` (Anos/AAAA/Provas): a prova montada a partir do banco citado, com exportação e edição de turma/data/valor. */
+/** Visão de uma nota `tipo: prova` (Acervo/Provas): a prova montada a partir do banco citado, com exportação e edição de turma/data/valor. */
 export function ProvaDaNota({ item, items, onOpen, tick }) {
   const [wDados, setWDados] = useWidth("provanota.dados", 300);
   const [texto, setTexto] = useState(null);

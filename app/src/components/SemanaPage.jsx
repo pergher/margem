@@ -16,11 +16,12 @@ const nomes = (r) => [...r.matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
 /** Semana: por turma, N espaços (4 por padrão). Cada espaço recebe uma aula do ciclo (com sugestões) ou um texto livre. */
 // Última leitura: ao voltar para a tela ela aparece na hora (sem "Lendo…") e é atualizada por baixo.
 let ultima = null;
-export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
+export function SemanaPage({ items, onOpen, onRefresh, focoPath, turmaGlobal }) { // turmaGlobal: filtro vindo da página Ano ("" = todas); sem ele, a tela tem o seu
   const [dados, setDados] = useState(focoPath ? undefined : ultima?.dados); // { semanas, legado, ciclos, ano, cfg }
   const [idx, setIdx] = useState(focoPath ? -1 : ultima?.idx ?? -1);
   const [erro, setErro] = useState("");
-  const [filtro, setFiltro] = useState(""); // "" = todas as turmas
+  const [filtroLocal, setFiltro] = useState(""); // "" = todas as turmas
+  const filtro = turmaGlobal ?? filtroLocal;
   // O ano da Semana é o do calendário (independe da tela Ano): na virada passa sozinho a usar as turmas do ano novo.
   const carregar = (irParaUltima) => lerCiclos(items, String(new Date().getFullYear())).then(async (c) => {
     const ano = c.anoLetivo;
@@ -102,7 +103,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath }) {
         </div>
       )}
 
-      {colunas.length > 1 && (
+      {turmaGlobal === undefined && colunas.length > 1 && (
         <div role="group" aria-label="Filtrar por turma" className="mt-4 flex flex-wrap items-center gap-1.5">
           {[{ turma: "", nome: "Todas" }, ...colunas.map((c) => ({ turma: c.turma, nome: `Turma ${c.turma}` }))].map((o) => (
             <button key={o.turma} type="button" aria-pressed={filtro === o.turma} onClick={() => setFiltro(o.turma)}

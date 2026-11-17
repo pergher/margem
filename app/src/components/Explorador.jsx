@@ -76,18 +76,20 @@ function MoverDialog({ entrada, titulo, pastas, valida, onEscolher, onClose }) {
  * Cada página só diz quais são os itens, filtros e colunas; o resto é igual em todas.
  *
  * Item: { id, path, nome, pasta ("" = raiz; relativa a `raiz.rel`), rel?, fixo?, pathAcao?, nomeEdit?, …campos próprios }
- *  - `fixo`: fica só na raiz e não se move (ex.: provas, que moram em Anos/AAAA/Provas).
+ *  - `fixo`: fica só na raiz e não se move (ex.: provas, provas antigas, em Anos/AAAA/Provas).
  *  - `pathAcao`/`nomeEdit`: caminho e nome usados para renomear/excluir quando o item é uma pasta-lote (ex.: correção).
  */
 export function Explorador({
   chave, titulo, subtitulo, unidade = ["item", "itens"], buscaDica = "Buscar…", itens, pasta = "", setPasta = () => {},
   raiz = null, pastasRel = [], filtros = [], alternadores = [], favoritos = false, ordens = [], previa, faixa, meta, icone = () => FileText, colunas = [], colunaPasta = true,
-  onOpen, onRename, onMove, onDelete, onNovaPasta, onImportar, botoes, menuExtra, vazio, vazioPasta,
+  onOpen, onRename, onMove, onDelete, onNovaPasta, onImportar, botoes, filtroNav, menuExtra, vazio, vazioPasta,
 }) {
   const [q, setQ] = useState("");
   const [visao, setVisao] = useState(() => ler(`margem.${chave}.visao`, "lista"));
   const [ordem, setOrdem] = useState(() => ler(`margem.${chave}.ordem`, { por: "nome", desc: false }));
-  const [sels, setSels] = useState({});        // filtroId -> [opcaoId]
+  const [sels, setSels] = useState(filtroNav?.sels ?? {});        // filtroId -> [opcaoId]
+  const navVista = useRef(filtroNav?.n);
+  useEffect(() => { if (filtroNav && filtroNav.n !== navVista.current) { navVista.current = filtroNav.n; setSels(filtroNav.sels); } }, [filtroNav?.n]); // clique no submenu do menu lateral
   const [tgl, setTgl] = useState([]);          // alternadores ligados
   const [soFav, setSoFav] = useState(false);
   const [favs, setFavs] = useState(() => ler(`margem.${chave}.fav`, []));

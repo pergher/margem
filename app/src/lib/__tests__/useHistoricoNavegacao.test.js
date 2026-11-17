@@ -8,8 +8,8 @@ vi.mock("@/lib/recentes", () => ({ lembrarRecente: vi.fn() }));
 const { useHistoricoNavegacao, chaveEntrada } = await import("../useHistoricoNavegacao");
 
 function montar(page = "editor") {
-  const nav = { aulasPasta: "", inicioModo: "hoje", correcaoFoco: null, recursosAba: "textos", recursosPasta: "", ciclo: null,
-    setAulasPasta: vi.fn(), inicioModoRaw: vi.fn(), setCorrecaoFoco: vi.fn(), setRecursosAba: vi.fn(), setRecursosPasta: vi.fn(), setCiclo: vi.fn() };
+  const nav = { documentosPasta: "", inicioModo: "hoje", correcaoFoco: null, documentosAba: "", ciclo: null,
+    setDocumentosPasta: vi.fn(), inicioModoRaw: vi.fn(), setCorrecaoFoco: vi.fn(), setDocumentosAba: vi.fn(), setCiclo: vi.fn() };
   const nota = { cur: { current: null }, dirty: { current: false }, save: vi.fn(async () => {}), setCurrent: vi.fn() };
   nota.load = vi.fn(async (p) => { nota.cur.current = p; });
   const setPage = vi.fn();
@@ -21,7 +21,7 @@ function montar(page = "editor") {
 describe("chaveEntrada", () => {
   it("duas visitas iguais têm a mesma chave", () => {
     expect(chaveEntrada({ k: "nota", path: "/a" })).toBe(chaveEntrada({ k: "nota", path: "/a" }));
-    expect(chaveEntrada({ k: "pag", page: "aulas", aulasPasta: "x" })).not.toBe(chaveEntrada({ k: "pag", page: "aulas", aulasPasta: "y" }));
+    expect(chaveEntrada({ k: "pag", page: "documentos", documentosPasta: "x" })).not.toBe(chaveEntrada({ k: "pag", page: "documentos", documentosPasta: "y" }));
   });
 });
 
@@ -57,9 +57,9 @@ describe("useHistoricoNavegacao", () => {
   });
 
   it("mudar de tela vira um passo; voltar restaura a pasta e salva antes", async () => {
-    const m = montar("aulas");
+    const m = montar("documentos");
     await act(async () => { await m.result.current.open("/v/A.md"); });
-    m.rerender({ page: "aulas", setPage: m.setPage, nav: { ...m.nav, aulasPasta: "Crase" }, nota: m.nota, ed: { current: { getText: () => "" } } });
+    m.rerender({ page: "documentos", setPage: m.setPage, nav: { ...m.nav, documentosPasta: "Crase" }, nota: m.nota, ed: { current: { getText: () => "" } } });
     expect(m.result.current.canBack).toBe(true);
     await act(async () => { await m.result.current.go(-1); });
     expect(m.nota.load).toHaveBeenCalled(); // voltou para a nota A

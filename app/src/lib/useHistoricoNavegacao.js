@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@/lib/api";
 import { lembrarRecente } from "@/lib/recentes";
 
-export const chaveEntrada = (e) => e.k === "nota" ? "n:" + e.path : `p:${e.page}|${e.aulasPasta}|${e.inicioModo}|${e.correcaoFoco}|${e.recursosAba}|${e.recursosPasta}|${e.ciclo?.path ?? ""}`;
+export const chaveEntrada = (e) => e.k === "nota" ? "n:" + e.path : `p:${e.page}|${e.documentosPasta}|${e.anoAba}|${e.correcaoFoco}|${e.documentosAba}|${e.ciclo?.path ?? ""}`;
 const under = (p, base) => p === base || p.startsWith(base + "/");
 
 /**
@@ -12,7 +12,7 @@ const under = (p, base) => p === base || p.startsWith(base + "/");
  * `ed`: ref do Editor. Devolve { open, go, canBack, canFwd, remap }.
  */
 export function useHistoricoNavegacao({ page, setPage, nav, nota, ed }) {
-  const { aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo, setAulasPasta, inicioModoRaw, setCorrecaoFoco, setRecursosAba, setRecursosPasta, setCiclo } = nav;
+  const { documentosPasta, anoAba, correcaoFoco, documentosAba, ciclo, setDocumentosPasta, setAnoAba, setCorrecaoFoco, setDocumentosAba, setCiclo } = nav;
   const { cur, dirty, load, save, setCurrent } = nota;
   const hist = useRef({ stack: [], idx: -1 });
   const [, setNavTick] = useState(0); // só para redesenhar os botões Voltar/Avançar
@@ -36,13 +36,13 @@ export function useHistoricoNavegacao({ page, setPage, nav, nota, ed }) {
     h.idx = i; setNavTick((n) => n + 1);
     const e = h.stack[i];
     if (e.k === "nota") await load(e.path);
-    else { setAulasPasta(e.aulasPasta); inicioModoRaw(e.inicioModo); setCorrecaoFoco(e.correcaoFoco); setRecursosAba(e.recursosAba); setRecursosPasta(e.recursosPasta ?? ""); setCiclo(e.ciclo); await save(); setPage(e.page); }
+    else { setDocumentosPasta(e.documentosPasta ?? ""); setAnoAba(e.anoAba ?? "semana"); setCorrecaoFoco(e.correcaoFoco); setDocumentosAba(e.documentosAba ?? ""); setCiclo(e.ciclo); await save(); setPage(e.page); }
   };
   // Toda mudança de tela (ou de pasta em Aulas, aba, etc.) vira um passo do histórico.
   useEffect(() => {
     if (page === "editor") return;
-    empurrar({ k: "pag", page, aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo });
-  }, [page, aulasPasta, inicioModo, correcaoFoco, recursosAba, recursosPasta, ciclo]);
+    empurrar({ k: "pag", page, documentosPasta, anoAba, correcaoFoco, documentosAba, ciclo });
+  }, [page, documentosPasta, anoAba, correcaoFoco, documentosAba, ciclo]);
   // Renomear/mover: o histórico e a nota aberta passam a apontar para o caminho novo.
   const remap = (from, to) => {
     const sub = (p) => (p && under(p, from) ? to + p.slice(from.length) : p);

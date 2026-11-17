@@ -348,8 +348,36 @@ class PropsWidget extends WidgetType {
 class TituloWidget extends WidgetType {
   constructor(t) { super(); this.t = t; }
   eq(o) { return o.t === this.t; }
-  toDOM() { const h = document.createElement("div"); h.className = "cm-titulo"; h.textContent = this.t; return h; }
+  /** Campo de texto: Enter ou sair do campo renomeia o arquivo (evento `cm-renomear`); Esc desfaz; ↓/Enter voltam ao texto. */
+  toDOM(view) {
+    const h = document.createElement("div"); h.className = "cm-titulo";
+    const i = document.createElement("input"); i.value = this.t; i.setAttribute("aria-label", "Título (nome do arquivo)"); i.spellcheck = false;
+    const voltar = () => { view.focus(); };
+    i.addEventListener("keydown", (e) => {
+      e.stopPropagation();
+      if (e.key === "Enter") { e.preventDefault(); i.blur(); voltar(); }
+      else if (e.key === "Escape") { e.preventDefault(); i.value = this.t; voltar(); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); voltar(); }
+    });
+    i.addEventListener("blur", () => { const n = i.value.trim(); if (n && n !== this.t) view.dom.dispatchEvent(new CustomEvent("cm-renomear", { detail: n, bubbles: true })); else i.value = this.t; });
+    h.append(i);
+    return h;
+  }
   ignoreEvent() { return true; }
+}
+/** ↑ (ou ←) na primeira linha do texto leva ao campo do título. */
+export const subirAoTitulo = keymap.of([
+  { key: "ArrowUp", run: (view) => irAoTitulo(view, false) },
+  { key: "ArrowLeft", run: (view) => irAoTitulo(view, true) },
+]);
+function irAoTitulo(view, horizontal) {
+  const st = view.state, r = st.selection.main;
+  if (!r.empty) return false;
+  const naBorda = horizontal ? r.head === 0 : st.doc.lineAt(r.head).number === 1 && view.moveVertically(r, false).head === 0;
+  const campo = view.dom.querySelector(".cm-titulo input");
+  if (!naBorda || !campo) return false;
+  campo.focus(); campo.setSelectionRange(campo.value.length, campo.value.length);
+  return true;
 }
 export const tituloExt = (t) => (t ? EditorView.decorations.of(Decoration.set([Decoration.widget({ widget: new TituloWidget(t), block: true, side: -1 }).range(0)])) : []);
 

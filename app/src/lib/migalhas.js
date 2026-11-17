@@ -1,50 +1,33 @@
 // Caminho no topo da janela ("migalhas") e a seção do menu que fica ativa. Funções puras, extraídas de App.jsx.
-// Cada migalha é { t: texto, ir?: função }; em Aulas, Gramática e Recursos as pastas são clicáveis e levam à listagem delas.
+// Cada migalha é { t: texto, ir?: função }; em Documentos e Ciclos as pastas são clicáveis e levam à listagem delas.
 
-export const NOMES_REC = { Questoes: "Questões" };
+export const NOMES_PASTA = { Questoes: "Questões" };
 
 /** Rótulo da tela quando ela não é uma nota nem uma listagem com pastas. */
-export const rotuloDaTela = (page, inicioModo) => ({
-  semana: { hoje: "Hoje", semana: "Semana", ano: "Ano" }[inicioModo] ?? "Hoje",
-  ciclos: "Ciclos", aulas: "Aulas", gramatica: "Gramática", recursos: "Recursos", correcao: "Produções", diario: "Diário", saude: "Saúde do vault", config: "Configurações",
+export const NOMES_ABA = { semana: "Semana", plano: "Planejamento", prod: "Produções", diario: "Diário" };
+export const rotuloDaTela = (page) => ({
+  inicio: "Hoje", ano: "Ano", documentos: "Documentos", saude: "Saúde do vault", config: "Configurações",
 })[page] ?? "";
 
 /**
- * `estado`: { page, rel (caminho da nota aberta no vault), inicioModo, ciclo, ciclosPasta, gramaticaPasta, aulasPasta, recursosAba, recursosPasta }.
- * `ir`: { secao(nome), aulas(pasta), recursos(pasta), setCiclosPasta, setGramaticaPasta, setPage }.
+ * `estado`: { page, rel (caminho da nota aberta no vault), anoAba, ciclo, documentosPasta, documentosAba }.
+ * `ir`: { secao(nome), documentos(pasta), ano(aba) }.
  */
-export function migalhas({ page, rel, inicioModo, ciclo, ciclosPasta, gramaticaPasta, aulasPasta, recursosAba, recursosPasta }, ir) {
+export function migalhas({ page, rel, anoAba, ciclo, documentosPasta, documentosAba }, ir) {
   const pastas = (pasta) => (pasta ? pasta.split("/") : []);
-  if (page === "ciclos") return [{ t: "Ciclos", ir: () => ir.secao("ciclos") }, ...pastas(ciclosPasta).map((t, i, a) => ({ t, ir: () => ir.setCiclosPasta(a.slice(0, i + 1).join("/")) }))];
-  if (page === "gramatica") return [{ t: "Gramática", ir: () => ir.secao("gramatica") }, ...pastas(gramaticaPasta).map((t, i, a) => ({ t, ir: () => ir.setGramaticaPasta(a.slice(0, i + 1).join("/")) }))];
-  if (page === "aulas") return [{ t: "Aulas", ir: () => ir.aulas("") }, ...pastas(aulasPasta).map((t, i, a) => ({ t: t.replace(/^_/, ""), ir: () => ir.aulas(a.slice(0, i + 1).join("/")) }))];
-  if (page === "recursos" && recursosAba !== "montar") return [{ t: "Recursos", ir: () => ir.recursos("") }, ...pastas(recursosPasta).map((t, i, a) => ({ t: NOMES_REC[t] ?? t.replace(/^_/, ""), ir: () => ir.recursos(a.slice(0, i + 1).join("/")) }))];
+  if (page === "documentos" && documentosAba !== "montar") return [{ t: "Documentos", ir: () => ir.documentos("") }, ...pastas(documentosPasta).map((t, i, a) => ({ t: NOMES_PASTA[t] ?? t.replace(/^_/, ""), ir: () => ir.documentos(a.slice(0, i + 1).join("/")) }))];
   if (page === "ciclo") return [{ t: "Ciclos", ir: () => ir.secao("ciclos") }, { t: ciclo?.titulo ?? "Ciclo" }];
-  if (page !== "editor") return [rotuloDaTela(page, inicioModo)].filter(Boolean).map((t) => ({ t }));
+  if (page === "ano") return [{ t: "Ano" }, { t: NOMES_ABA[anoAba] ?? NOMES_ABA.semana }];
+  if (page !== "editor") return [rotuloDaTela(page)].filter(Boolean).map((t) => ({ t }));
   if (!rel) return [];
   return rel.replace(/\.md$/, "").split("/").map((t, i, a) => {
-    if (/^Acervo\/Aulas\//.test(rel)) { // aula: o caminho começa em "Aulas" (sem "Acervo")
-      if (i === 0) return null;
-      if (i === 1) return { t, ir: () => ir.aulas("") };
-      if (i < a.length - 1) return { t, ir: () => ir.aulas(a.slice(2, i + 1).join("/")) };
-    }
-    if (/^Acervo\/Gram[aá]tica\//.test(rel)) { // gramática: o caminho começa em "Gramática"
-      if (i === 0) return null;
-      if (i === 1) return { t: "Gramática", ir: () => { ir.setGramaticaPasta(""); ir.setPage("gramatica"); } };
-      if (i < a.length - 1) return { t, ir: () => { ir.setGramaticaPasta(a.slice(2, i + 1).join("/")); ir.setPage("gramatica"); } };
-    }
-    if (/^Acervo\/(Questoes|Textos|Oficinas)\//.test(rel)) { // recurso: o caminho começa em "Recursos"
-      if (i === 0) return null;
-      if (i === 1) return { t: NOMES_REC[t] ?? t, ir: () => ir.recursos(t) };
-      if (i < a.length - 1) return { t, ir: () => ir.recursos(a.slice(1, i + 1).join("/")) };
-    }
-    if (/^Acervo\//.test(rel)) { // demais pastas do Acervo: sem "Acervo"; "Ciclos" leva à tela Ciclos
-      if (i === 0) return null;
-      if (i === 1 && t === "Ciclos") return { t, ir: () => ir.secao("ciclos") };
+    if (/^Acervo\//.test(rel)) { // documentos do Acervo: o caminho começa em "Documentos" (sem "Acervo")
+      if (i === 0) return { t: "Documentos", ir: () => ir.documentos("") };
+      if (i < a.length - 1) return { t: NOMES_PASTA[t] ?? t, ir: () => ir.documentos(a.slice(1, i + 1).join("/")) };
     }
     if (/^Anos\//.test(rel) && i === 2) { // seções do ano que têm tela própria
-      const tela = { Semanas: "semana", Correcoes: "correcao", Diario: "diario", Diarios: "diario" }[t];
-      if (tela) return { t, ir: () => ir.secao(tela) };
+      const aba = { Semanas: "semana", Planejamento: "plano", Correcoes: "prod", Diario: "diario", Diarios: "diario" }[t];
+      if (aba) return { t, ir: () => ir.ano(aba) };
     }
     return { t };
   }).filter(Boolean);
@@ -54,11 +37,9 @@ export function migalhas({ page, rel, inicioModo, ciclo, ciclosPasta, gramaticaP
 export function secaoAtiva(page, rel) {
   if (page === "editor") {
     if (!rel) return null;
-    if (/^Acervo\/Aulas\//.test(rel)) return "aulas";
-    if (/^Acervo\/Gram[aá]tica\//.test(rel)) return "gramatica";
-    if (/^Acervo\/(Questoes|Textos|Oficinas)\/|\/Provas\//.test(rel)) return "recursos";
-    if (/\/Correcoes\//.test(rel)) return "correcao";
+    if (/^Acervo\//.test(rel) || /\/Provas\//.test(rel)) return "documentos";
+    if (/^Anos\//.test(rel)) return "ano";
     return null;
   }
-  return ({ semana: "hoje", ciclo: "ciclos", ciclos: "ciclos", aulas: "aulas", gramatica: "gramatica", recursos: "recursos", correcao: "correcao", diario: "diario", saude: "saude", config: "config" })[page];
+  return ({ inicio: "hoje", ano: "ano", ciclo: "documentos", ciclos: "ciclos", documentos: "documentos", saude: "saude", config: "config" })[page];
 }

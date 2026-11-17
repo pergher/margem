@@ -183,16 +183,15 @@ export function gabarito(b, sel) {
   return [{ t: `Gabarito · ${b.titulo || "prova"}`, b: true }, ...ordem.map((q, i) => ({ t: `${i + 1}. ${b.gab?.[q.n] ?? "(sem gabarito no banco)"}` }))];
 }
 
-/** Nota `tipo: prova` (Anos/AAAA/Provas): campos turma, data, questoes, valor + prova e gabarito. */
+/** Nota `tipo: prova` (Acervo/Provas): campos turma, data, questoes, valor + prova e gabarito. */
 export function provaNota(b, sel, { turma, data, valor }, fontes) {
   const ps = (l) => l.map((p) => (p.linha ? "   " + "_".repeat(60) : p.rec ? "   " + p.t : p.b ? `**${p.t}**` : p.i ? `*${p.t}*` : p.t)).join("\n\n");
   return `---\ntipo: prova\nturma: "${turma}"\ndata: ${data}\nquestoes: [${[...sel].sort((x, y) => x - y).join(", ")}]\nvalor: ${valor}\n---\n# Prova ${turma} — ${data}\n\nBanco: [[${b.nome}]]\n\n${ps(paragrafos(b, sel, fontes))}\n\n## Gabarito (professor)\n\n${ps(gabarito(b, sel))}\n`;
 }
 export async function salvarProva(items, b, sel, dados, fontes) {
   const raiz = raizDe(items);
-  const ano = items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean).sort().pop() ?? String(new Date().getFullYear());
-  try { await invoke("create_folder", { dir: `${raiz}/Anos/${ano}`, name: "Provas" }); } catch { /* já existe */ }
-  const path = await invoke("create_note", { dir: `${raiz}/Anos/${ano}/Provas`, name: `Prova ${dados.turma} - ${dados.data}` });
+  try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: "Provas" }); } catch { /* já existe */ }
+  const path = await invoke("create_note", { dir: `${raiz}/Acervo/Provas`, name: `Prova ${dados.turma} - ${dados.data}` });
   await invoke("save_note", { path, text: provaNota(b, sel, dados, fontes) });
   return path;
 }

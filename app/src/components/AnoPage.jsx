@@ -44,7 +44,7 @@ function Aulas({ aulas, semana }) {
 }
 
 let ultimo = null; // última leitura: a tela reaparece na hora e é atualizada por baixo
-function LinhaFora({ c, onCiclo, onIncluir }) {
+function LinhaFora({ c, onCiclo, onIncluir, fixo = false }) {
   const [ano, setAno] = useState(6), [tri, setTri] = useState(1);
   const sel = "rounded-md border bg-background px-1.5 py-1 text-xs";
   return (
@@ -55,22 +55,26 @@ function LinhaFora({ c, onCiclo, onIncluir }) {
       </button>
       <span className="w-64 shrink-0"><Barra aulas={c.aulas} /></span>
       <span className="flex shrink-0 items-center gap-1.5">
+        {!fixo && <>
         <select aria-label={`Ano escolar de ${c.titulo}`} value={ano} onChange={(e) => setAno(Number(e.target.value))} className={sel}>{[6, 7, 8, 9].map((a) => <option key={a} value={a}>{a}º ano</option>)}</select>
         <select aria-label={`Trimestre de ${c.titulo}`} value={tri} onChange={(e) => setTri(Number(e.target.value))} className={sel}>{[1, 2, 3].map((t) => <option key={t} value={t}>{t}º tri</option>)}</select>
+        </>}
         <button onClick={() => onIncluir({ ano, tri })} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent">Incluir</button>
       </span>
     </div>
   );
 }
 
-export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
+export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { // turmaGlobal: filtro vindo da página Ano ("" = todas)
   const [plan, setPlan] = useState(false);
   const [dados, setDados] = useState(ultimo);
   const [erro, setErro] = useState("");
-  const [filtro, setFiltro] = useState(""); // "" = todas as turmas
+  const [filtroLocal, setFiltro] = useState(""); // "" = todas as turmas
+  const filtro = turmaGlobal ?? filtroLocal;
   const [tick, setTick] = useState(0); // força reler depois de mexer no Planejamento
   const [arrasto, setArrasto] = useState(null); // ciclo sendo arrastado
   const [alvo, setAlvo] = useState(null); // onde vai cair: "path" de uma linha (entra antes dela) ou "fim:ano:tri"
+  const [incl, setIncl] = useState(null); // turma para a qual se está incluindo planejamento
   const [novo, setNovo] = useState(null); // diálogo "Criar próximo ano": { txt (turmas), aulas }
   const [anoSel, setAnoSel] = useState(null); // ano letivo mostrado (independente da Semana); null = o mais recente
   useEffect(() => { lerCiclos(items, anoSel).then(async (c) => {
@@ -133,24 +137,39 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
   // Filtro de turma: os ciclos do ano escolar da turma (61 → 6º ano) e os que ela já usa nas semanas.
   const visiveis = ciclos.filter((c) => c.incluido && (!filtro || String(c.ano) === filtro[0] || progresso(c).some((p) => p.turma === filtro)));
   const fora = ciclos.filter((c) => !c.incluido);
-  const anos = [...new Set(visiveis.filter((c) => c.incluido).map((c) => c.ano))];
+  const seriesTurmas = (filtro ? [filtro] : turmas).map((t) => Number(t[0])).filter((n) => n >= 6 && n <= 9);
+  const anos = [...new Set([...visiveis.map((c) => c.ano), ...seriesTurmas])].filter(Boolean).sort((a, b) => a - b);
   const semHabilidade = ciclos.filter((c) => !c.habilidades.length);
   const semTitulo = ciclos.filter((c) => c.vazio);
   const semAulas = ciclos.filter((c) => !c.aulas.length);
-  const tirar = (c) => tirarCicloDoAno(items, c, anoLetivo).then(() => setTick((t) => t + 1)).catch((e) => setErro(String(e?.message ?? e)));
+  const tirar = (c) => tirarCicloDoAno(items, c, anoLetivo).then(() => { setTick((t) => t + 1); onRefresh?.(); }).catch((e) => setErro(String(e?.message ?? e)));
   const soltar = (ano, tri, antes) => {
     const c = arrasto; setArrasto(null); setAlvo(null);
     if (!c || (antes && antes.path === c.path)) return;
-    moverCicloNoAno(items, c, anoLetivo, { ano, tri, antesDe: antes?.name ?? null }).then(() => setTick((t) => t + 1)).catch((e) => setErro(String(e?.message ?? e)));
+    moverCicloNoAno(items, c, anoLetivo, { ano, tri, antesDe: antes?.name ?? null }).then(() => { setTick((t) => t + 1); onRefresh?.(); }).catch((e) => setErro(String(e?.message ?? e)));
   };
   const Lista = ({ lista, vazio }) => lista.length
     ? <div className="flex flex-wrap gap-1.5">{lista.map((c) => <button key={c.path} onClick={() => onCiclo(c)} title={c.name} className="max-w-full truncate rounded-md border px-2 py-0.5 text-xs hover:bg-accent">{c.incluido ? c.titulo : c.name}</button>)}</div>
     : <div className="text-xs text-muted-foreground">{vazio}</div>;
   const Bloco = ({ titulo, children }) => <section className="border-t pt-4 first:border-t-0 first:pt-0"><h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</h2>{children}</section>;
 
+  const incluir = (c, pos) => incluirCicloNoAno(items, c, anoLetivo, pos).then(() => { setIncl(null); setTick((n) => n + 1); onRefresh?.(); }).catch((e) => setErro(String(e?.message ?? e)));
+  const dialogoIncluir = incl && (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-auto bg-black/30 p-6" onMouseDown={() => setIncl(null)}>
+      <div role="dialog" aria-label={`Incluir ciclo no ${incl.ano}º ano, ${incl.tri}º trimestre`} className="w-[min(720px,96vw)] rounded-xl border bg-background p-5 shadow-2xl" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="flex items-center"><h2 className="flex-1 font-serif text-2xl font-semibold">Incluir ciclo · {incl.ano}º ano, {incl.tri}º trimestre</h2><button onClick={() => setIncl(null)} className="text-sm text-muted-foreground hover:text-foreground">fechar</button></div>
+        <p className="mt-1 text-xs text-muted-foreground">Ciclos do Acervo que o Planejamento {anoLetivo} ainda não usa. Clique em Incluir para pôr o ciclo neste trimestre.</p>
+        <div className="-mx-5 mt-3 flex max-h-[60vh] flex-col divide-y overflow-auto border-t">
+          {fora.map((c) => <LinhaFora key={c.path} c={c} fixo onCiclo={(x) => { setIncl(null); onCiclo(x); }} onIncluir={() => incluir(c, { ano: incl.ano, tri: incl.tri })} />)}
+          {!fora.length && <div className="px-5 py-6 text-sm text-muted-foreground">Todos os ciclos do Acervo já estão no ano. Use “Planejar ciclo” para criar outro.</div>}
+        </div>
+        <div className="mt-4 flex justify-end"><button onClick={() => { setIncl(null); setPlan(true); }} className="rounded-md border px-3 py-2 text-sm hover:bg-accent">Planejar novo ciclo…</button></div>
+      </div>
+    </div>
+  );
   return (
     <div className="min-h-0 flex-1 overflow-auto p-8">
-      {dialogo}
+      {dialogo}{dialogoIncluir}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <header>
           <h1 className="font-serif text-3xl font-semibold leading-tight">Ano <span className="text-muted-foreground">{anoLetivo}</span> {navAno}</h1>
@@ -159,7 +178,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
         <div className="flex-1" />{ehUltimoAno && <button onClick={abrirNovoAno} title="Cria o planejamento do ano seguinte, vazio" className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-accent"><Plus className="h-4 w-4" />Criar {Number(anoLetivo) + 1}</button>}<button onClick={() => setPlan(true)} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"><Plus className="h-4 w-4" />Planejar ciclo</button>
       </div>
 
-      {turmas.length > 1 && (
+      {turmaGlobal === undefined && turmas.length > 1 && (
         <div role="group" aria-label="Filtrar por turma" className="mb-6 flex flex-wrap items-center gap-1.5">
           {[{ turma: "", nome: "Todas" }, ...turmas.map((t) => ({ turma: t, nome: `Turma ${t}` }))].map((o) => (
             <button key={o.turma} type="button" aria-pressed={filtro === o.turma} onClick={() => setFiltro(o.turma)}
@@ -182,7 +201,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
                 return (
                   <div key={t} className={"-mx-4 border-t px-4 first:border-t-0 " + (alvo === `fim:${ano}:${t}` ? "bg-accent/40" : "")}
                     onDragOver={(e) => { if (arrasto) { e.preventDefault(); setAlvo(`fim:${ano}:${t}`); } }} onDrop={(e) => { e.preventDefault(); soltar(ano, t, null); }}>
-                    <div className="pb-1 pt-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}º trimestre</div>
+                    <div className="flex items-center pb-1 pt-3"><span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}º trimestre</span><button onClick={() => setIncl({ ano, tri: t })} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Plus className="h-3.5 w-3.5" />Incluir ciclo</button></div>
                     <div className="flex flex-col divide-y">
                       {lista.map((c, idx) => {
                         const prog = progresso(c), sit = situacao(prog);
@@ -204,7 +223,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
                           </div>
                         );
                       })}
-                      {!lista.length && <div className="py-2.5 text-xs text-muted-foreground">A planejar</div>}
+                      {!lista.length && <div className="py-2.5 text-xs text-muted-foreground">A planejar · use “Incluir ciclo”</div>}
                     </div>
                   </div>
                 );
@@ -216,7 +235,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh }) {
               <h2 className="font-serif text-xl font-semibold">Fora de um ano</h2>
               <p className="mb-1 text-xs text-muted-foreground">Ciclos do Acervo que o Planejamento {anoLetivo} não usa. Um ciclo é atemporal: inclua-o no ano quando for aplicá-lo.</p>
               <div className="-mx-4 flex flex-col divide-y">
-                {fora.map((c) => <LinhaFora key={c.path} c={c} onCiclo={onCiclo} onIncluir={(pos) => incluirCicloNoAno(items, c, anoLetivo, pos).then(() => setTick((t) => t + 1)).catch((e) => setErro(String(e?.message ?? e)))} />)}
+                {fora.map((c) => <LinhaFora key={c.path} c={c} onCiclo={onCiclo} onIncluir={(pos) => incluir(c, pos)} />)}
               </div>
             </section>
           )}

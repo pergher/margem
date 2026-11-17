@@ -214,7 +214,7 @@ impl Server {
             "planejamento" => r.join("Anos").join(ano()),
             "calendario" => r.join("Anos").join(ano()),
             "semana" => r.join("Anos").join(ano()).join("Semanas"),
-            "prova" => r.join("Anos").join(ano()).join("Provas"),
+            "prova" => r.join("Acervo/Provas"),
             "diario" => r.join("Anos").join(ano()).join("Diarios"),
             "aluno" => r.join("Anos").join(ano()).join("Alunos"),
             "correcao" => r.join("Anos").join(ano()).join("Correcoes"),

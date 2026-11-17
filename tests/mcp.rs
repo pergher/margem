@@ -65,7 +65,7 @@ fn create_note_nao_sobrescreve_nem_sai_da_pasta() {
     let txt = std::fs::read_to_string(dir.join("Acervo/Aulas/Crase.md")).unwrap();
     assert!(txt.starts_with("---\ntipo: aula\nano: \n"));
     assert!(!call(&s, "create_note", json!({"tipo": "prova", "nome": "Prova 1"})).0);
-    assert!(dir.read_dir().unwrap().any(|e| e.unwrap().file_name() == "Anos"));
+    assert!(dir.join("Acervo/Provas/Prova 1.md").exists());
     std::fs::remove_dir_all(dir).ok();
 }
 

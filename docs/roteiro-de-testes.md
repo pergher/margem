@@ -91,7 +91,7 @@ Legenda: 🅣 = só foi testado no navegador, **precisa conferir no Tauri**.
 - [ ] Marcar/desmarcar questões; verificação à direita (limite de linhas, textos, alertas).
 - [ ] "Incluir a fonte dos textos".
 - [ ] Arrastar as divisórias do banco e da verificação (**novo**).
-- [ ] **Salvar como nota** cria `tipo: prova` em `Anos/AAAA/Provas/`.
+- [ ] **Salvar como nota** cria `tipo: prova` em `Acervo/Provas/`.
 - [ ] **DOCX da prova**: abrir no Word/LibreOffice; fonte, margens, **duas colunas**, cabeçalho com logo.
 - [ ] **Gabarito DOCX**.
 - [ ] **PDF / imprimir**: o diálogo de impressão abre e o layout sai certo. 🅣 principal risco

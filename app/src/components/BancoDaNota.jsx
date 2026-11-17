@@ -5,7 +5,7 @@ import { invoke } from "@/lib/api";
 import { parseBanco } from "@/lib/prova";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { estrutura, corpoDe, novaQuestao, removerQuestao, novoTexto, definirExcluidos, assuntoDe, definirAssunto, trocarGabarito } from "@/lib/bancoEdit";
-import { listaProvas } from "@/components/RecursosPage";
+import { listaProvas } from "@/lib/documentos";
 import { TituloEditavel, EditorSecao, Propriedades, Dado as DadoPainel, PainelShell, ConexoesComuns, TituloPainel, STATUS } from "@/components/AulaDaNota";
 import { Text } from "@/components/RightPanel";
 import { Carregando, Erro } from "@/components/ui/estado";

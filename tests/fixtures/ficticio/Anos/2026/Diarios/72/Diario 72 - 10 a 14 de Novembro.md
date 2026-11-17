@@ -1,0 +1,22 @@
+---
+tipo: diario
+ano: 7
+turma: "72"
+semana: 10 a 14 de Novembro
+transcricao: aprovada
+---
+# Diário 72 — 10 a 14 de Novembro
+
+## Aula 1 — Pronomes: retomada
+
+Dado: Revisão de pronomes pessoais e de tratamento com jogo de cartas.
+
+- [[Aluno Fictício A]] — #positivo liderou o grupo vencedor.
+- [[Aluno Fictício B]] — #celular fotografando o quadro sem autorização; chamado a atenção.
+
+## Aula 2 — Narrativa: devolução da correção
+
+Dado: Devolução das narrativas corrigidas. Cada aluno escolheu um erro para reescrever.
+
+- [[Aluno Fictício A]] — #positivo reescreveu o parágrafo todo.
+- [[Aluno Fictício B]] — #conversa conversou durante a devolução.
