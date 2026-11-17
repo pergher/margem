@@ -105,7 +105,9 @@ export function parseSemanaNota(text) {
   const rotulo = /^rotulo:\s*(.+)$/m.exec(t)?.[1]?.trim() ?? "";
   const corpo = t.replace(/^---\n[\s\S]*?\n---\n?/, "");
   const turmas = corpo.split(/^###\s+/m).slice(1).map((bloco) => {
-    const [titulo, ...resto] = bloco.split("\n");
+    const [titulo, ...todo] = bloco.split("\n");
+    const fim = todo.findIndex((l) => /^#{1,2}\s/.test(l)); // um `# `/`## ` encerra a turma (outra seção da nota não é aula dela)
+    const resto = fim < 0 ? todo : todo.slice(0, fim);
     const linhas = resto.filter((l) => l.trim().startsWith("|")).slice(2);
     const cicloTurma = /^Ciclo:\s*\[\[([^\]|#]+)/m.exec(resto.join("\n"))?.[1]?.trim() ?? null;
     const aulas = linhas.map((l) => l.split("|").slice(1, -1).map(cel)).filter((c) => c[0]).map((c, i) => {

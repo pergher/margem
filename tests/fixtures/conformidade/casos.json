@@ -1,0 +1,339 @@
+[
+ {
+  "nome": "ciclo: tabela básica, ignora frontmatter e cabeçalho",
+  "tipo": "ciclo",
+  "entrada": "---\ntipo: ciclo\nobjetivo: x\n---\n\n# Ciclo\n\n## Aulas\n\n| nº | conteúdo | recurso |\n|---|---|---|\n| 1 | Diagnóstico | |\n| 2 | Acentuação | [[Acentuação]] |\n| 3 | Prova | Livro p. 45 |\n",
+  "esperado": {
+   "aulas": [
+    {
+     "n": 1,
+     "texto": "Diagnóstico",
+     "recurso": ""
+    },
+    {
+     "n": 2,
+     "texto": "Acentuação",
+     "recurso": "[[Acentuação]]"
+    },
+    {
+     "n": 3,
+     "texto": "Prova",
+     "recurso": "Livro p. 45"
+    }
+   ]
+  }
+ },
+ {
+  "nome": "ciclo: barra escapada dentro da célula",
+  "tipo": "ciclo",
+  "entrada": "## Aulas\n\n| nº | conteúdo | recurso |\n|---|---|---|\n| 1 | a \\| b | [[X\\|alias]] |\n",
+  "esperado": {
+   "aulas": [
+    {
+     "n": 1,
+     "texto": "a | b",
+     "recurso": "[[X|alias]]"
+    }
+   ]
+  }
+ },
+ {
+  "nome": "ciclo: só lê a seção Aulas, não outras tabelas",
+  "tipo": "ciclo",
+  "entrada": "## Conteúdos\n\n| 9 | fora | x |\n\n## Aulas\n\n| 1 | Dentro | |\n\n## Notas\n\n| 2 | Fora de novo | |\n",
+  "esperado": {
+   "aulas": [
+    {
+     "n": 1,
+     "texto": "Dentro",
+     "recurso": ""
+    }
+   ]
+  }
+ },
+ {
+  "nome": "ciclo: numeração própria preservada (não reenumera)",
+  "tipo": "ciclo",
+  "entrada": "## Aulas\n\n| nº | conteúdo | recurso |\n|---|---|---|\n| 3 | Terceira | |\n| 7 | Sétima | r |\n",
+  "esperado": {
+   "aulas": [
+    {
+     "n": 3,
+     "texto": "Terceira",
+     "recurso": ""
+    },
+    {
+     "n": 7,
+     "texto": "Sétima",
+     "recurso": "r"
+    }
+   ]
+  }
+ },
+ {
+  "nome": "ciclo: sem seção Aulas",
+  "tipo": "ciclo",
+  "entrada": "# Só texto\n\nnada\n",
+  "esperado": {
+   "aulas": []
+  }
+ },
+ {
+  "nome": "semana: situações pelas marcas no fim da célula Aula",
+  "tipo": "semana",
+  "entrada": "---\ntipo: semana\nano: 6\nrotulo: 2 a 6 de Março\n---\n# Semana\n\n### 61\n\nCiclo: [[Crase]]\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| Diagnóstico ✓ | | [[Crase]] 1 |\n| Regra ↷ | [[Regra]] | [[Crase]] 2 |\n| Extra ⊘ | | |\n| Livre | | |\n| Dúvida ❔ | | [[Crase]] 3 |\n",
+  "esperado": {
+   "rotulo": "2 a 6 de Março",
+   "turmas": [
+    {
+     "turma": "61",
+     "ciclo": "Crase",
+     "aulas": [
+      {
+       "n": 1,
+       "texto": "Diagnóstico",
+       "recurso": "",
+       "situacao": "dada",
+       "ciclo": "Crase",
+       "ciclo_n": 1
+      },
+      {
+       "n": 2,
+       "texto": "Regra",
+       "recurso": "[[Regra]]",
+       "situacao": "adiada",
+       "ciclo": "Crase",
+       "ciclo_n": 2
+      },
+      {
+       "n": 3,
+       "texto": "Extra",
+       "recurso": "",
+       "situacao": "descartada",
+       "ciclo": null,
+       "ciclo_n": null
+      },
+      {
+       "n": 4,
+       "texto": "Livre",
+       "recurso": "",
+       "situacao": null,
+       "ciclo": null,
+       "ciclo_n": null
+      },
+      {
+       "n": 5,
+       "texto": "Dúvida",
+       "recurso": "",
+       "situacao": null,
+       "ciclo": "Crase",
+       "ciclo_n": 3
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nome": "semana: link do ciclo com âncora e alias; duas turmas",
+  "tipo": "semana",
+  "entrada": "---\ntipo: semana\nrotulo: R\n---\n### 61\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| A ✓ | | [[231 - Crase#x\\|y]] 2 |\n\n### 72\n\nCiclo: [[Verbos]]\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| B | | |\n",
+  "esperado": {
+   "rotulo": "R",
+   "turmas": [
+    {
+     "turma": "61",
+     "ciclo": null,
+     "aulas": [
+      {
+       "n": 1,
+       "texto": "A",
+       "recurso": "",
+       "situacao": "dada",
+       "ciclo": "231 - Crase",
+       "ciclo_n": 2
+      }
+     ]
+    },
+    {
+     "turma": "72",
+     "ciclo": "Verbos",
+     "aulas": [
+      {
+       "n": 1,
+       "texto": "B",
+       "recurso": "",
+       "situacao": null,
+       "ciclo": null,
+       "ciclo_n": null
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nome": "semana: linhas com célula Aula vazia são ignoradas e n segue contínuo",
+  "tipo": "semana",
+  "entrada": "### 61\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| | | |\n| Primeira | | |\n| | | |\n| Segunda | | |\n",
+  "esperado": {
+   "rotulo": "",
+   "turmas": [
+    {
+     "turma": "61",
+     "ciclo": null,
+     "aulas": [
+      {
+       "n": 1,
+       "texto": "Primeira",
+       "recurso": "",
+       "situacao": null,
+       "ciclo": null,
+       "ciclo_n": null
+      },
+      {
+       "n": 2,
+       "texto": "Segunda",
+       "recurso": "",
+       "situacao": null,
+       "ciclo": null,
+       "ciclo_n": null
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nome": "semana: barra escapada na célula",
+  "tipo": "semana",
+  "entrada": "### 61\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| a \\| b | r \\| s | |\n",
+  "esperado": {
+   "rotulo": "",
+   "turmas": [
+    {
+     "turma": "61",
+     "ciclo": null,
+     "aulas": [
+      {
+       "n": 1,
+       "texto": "a | b",
+       "recurso": "r | s",
+       "situacao": null,
+       "ciclo": null,
+       "ciclo_n": null
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nome": "semana: tabela de outra seção (## Notas) não vira aula da última turma",
+  "tipo": "semana",
+  "entrada": "---\ntipo: semana\nrotulo: R\n---\n# S\n\n### 61\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| A | | |\n\n## Notas\n\n| x | y | z |\n|---|---|---|\n| Solta | | |\n",
+  "esperado": {
+   "rotulo": "R",
+   "turmas": [
+    {
+     "turma": "61",
+     "ciclo": null,
+     "aulas": [
+      {
+       "n": 1,
+       "texto": "A",
+       "recurso": "",
+       "situacao": null,
+       "ciclo": null,
+       "ciclo_n": null
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nome": "semana: turma sem aulas continua na lista",
+  "tipo": "semana",
+  "entrada": "### 61\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n\n### 62\n\n| Aula | Recurso | Ciclo |\n|---|---|---|\n| B | | |\n",
+  "esperado": {
+   "rotulo": "",
+   "turmas": [
+    {
+     "turma": "61",
+     "ciclo": null,
+     "aulas": []
+    },
+    {
+     "turma": "62",
+     "ciclo": null,
+     "aulas": [
+      {
+       "n": 1,
+       "texto": "B",
+       "recurso": "",
+       "situacao": null,
+       "ciclo": null,
+       "ciclo_n": null
+      }
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "nome": "frontmatter: escalares, número, booleano e vazio",
+  "tipo": "frontmatter",
+  "entrada": "---\ntipo: aula\nano: 6\nstatus: andamento\ndominio_publico: false\nvazio:\n---\n# T\n",
+  "esperado": {
+   "campos": {
+    "tipo": "aula",
+    "ano": "6",
+    "status": "andamento",
+    "dominio_publico": "false",
+    "vazio": ""
+   }
+  }
+ },
+ {
+  "nome": "frontmatter: texto entre aspas com dois-pontos",
+  "tipo": "frontmatter",
+  "entrada": "---\nfonte: \"SILVA, A. Obra. São Paulo: Ed. X, 2020.\"\nobjetivo: Trabalhar verbos\n---\n",
+  "esperado": {
+   "campos": {
+    "fonte": "SILVA, A. Obra. São Paulo: Ed. X, 2020.",
+    "objetivo": "Trabalhar verbos"
+   }
+  }
+ },
+ {
+  "nome": "frontmatter: listas em linha e em bloco",
+  "tipo": "frontmatter",
+  "entrada": "---\nturmas: [\"61\", \"72\"]\nassuntos: [acentuação, crase]\ntags:\n  - a\n  - b\nvazia: []\n---\n",
+  "esperado": {
+   "campos": {
+    "turmas": [
+     "61",
+     "72"
+    ],
+    "assuntos": [
+     "acentuação",
+     "crase"
+    ],
+    "tags": [
+     "a",
+     "b"
+    ],
+    "vazia": []
+   }
+  }
+ },
+ {
+  "nome": "frontmatter: nota sem frontmatter",
+  "tipo": "frontmatter",
+  "entrada": "# Só corpo\n\ntipo: aula\n",
+  "esperado": {
+   "campos": {}
+  }
+ }
+]

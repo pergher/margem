@@ -5,6 +5,7 @@ target/
 # App (Node/Vite/Tauri)
 app/node_modules/
 app/dist/
+app/coverage/
 app/src-tauri/gen/
 
 # Vault de teste: cópia local de dados reais de ensino, nunca versionar

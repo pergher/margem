@@ -105,5 +105,6 @@ Requisitos no Linux: Node 18+, `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libayat
 
 - `tests/fixtures/mini`: vault pequeno, escrito à mão, no formato novo.
 - `tests/fixtures/modelo`: amostras reais no formato antigo (sem dados de alunos).
+- `tests/fixtures/conformidade/casos.json`: casos de leitura (ciclo, semana, frontmatter) com o resultado esperado, lidos por `tests/conformidade.rs` e por `app/src/lib/__tests__/conformidade.test.js`; o Rust e o JavaScript precisam entender o vault igual. Ao mudar uma regra de leitura, atualize o caso e os dois lados.
 - `tests/fixtures/ficticio`: vault pequeno, inteiramente inventado (aulas, ciclo, semana, prova, correção com alunos fictícios); usado pelos testes do app e pelo modo de desenvolvimento.
 - `tests/fixtures/vault`: cópia local opcional de dados reais; fica no `.gitignore`, o CI falha se algum arquivo dela for rastreado e nenhum teste depende dela.
