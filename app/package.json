@@ -8,6 +8,7 @@
     "build": "vite build",
     "tauri": "tauri",
     "test": "vitest run",
+    "cobertura": "vitest run --coverage",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -54,11 +55,15 @@
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@tauri-apps/cli": "^2.0.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@vitejs/plugin-react": "^4.7.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "autoprefixer": "^10.6.2",
     "eslint": "^9.39.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^15.15.0",
+    "jsdom": "^25.0.1",
     "postcss": "^8.5.32",
     "tailwindcss": "^3.4.19",
     "vite": "^5.4.0",

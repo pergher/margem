@@ -92,4 +92,8 @@ export default {
   clearScreen: false,
   server: { port: 1420, strictPort: true },
   build: { target: "es2022" },
+  // Testes que precisam de DOM declaram `// @vitest-environment jsdom` no topo do arquivo.
+  test: { coverage: { provider: "v8", include: ["src/lib/**", "src/components/**"], reporter: ["text-summary", "json-summary"],
+    // Piso da cobertura (linha de base em 2026-11-17: ~21% linhas): subir aos poucos, nunca descer.
+    thresholds: { lines: 19, statements: 19, functions: 40, branches: 75 } } },
 };

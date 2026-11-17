@@ -45,7 +45,7 @@ jobs:
         working-directory: app
       - run: npm run lint
         working-directory: app
-      - run: npm test
+      - run: npm run cobertura # roda os testes e falha se a cobertura ficar abaixo do piso (vite.config.js)
         working-directory: app
       - run: npm run build
         working-directory: app
