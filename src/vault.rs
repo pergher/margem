@@ -61,8 +61,8 @@ pub struct Vault {
     /// `.md` que não puderam ser lidos como UTF-8 (ex.: Latin-1 de arquivos antigos): ficam de fora e aparecem na validação.
     pub ilegiveis: Vec<(PathBuf, String)>,
     by_name: HashMap<String, usize>,
-    /// Nomes de arquivos não-Markdown (imagens, PDFs), para resolver embeds.
-    attachments: std::collections::HashSet<String>,
+    /// Arquivos não-Markdown (imagens, PDFs) por nome em minúsculas, para resolver embeds (o primeiro encontrado vence).
+    attachments: HashMap<String, PathBuf>,
 }
 
 fn norm(s: &str) -> String {
@@ -72,7 +72,7 @@ fn norm(s: &str) -> String {
 impl Vault {
     pub fn open(root: &Path) -> std::io::Result<Vault> {
         let mut files = vec![];
-        let mut attachments = std::collections::HashSet::new();
+        let mut attachments = HashMap::new();
         walk(root, &mut files, &mut attachments)?;
         files.sort();
         let mut notes = vec![];
@@ -94,7 +94,13 @@ impl Vault {
     /// Resolve por nome, nunca por caminho: usa só o último segmento do alvo.
     pub fn has_attachment(&self, target: &str) -> bool {
         let last = target.rsplit('/').next().unwrap_or(target);
-        self.attachments.contains(&norm(last))
+        self.attachments.contains_key(&norm(last))
+    }
+
+    /// Caminho do anexo (não-Markdown) com esse nome, sem percorrer o disco de novo.
+    pub fn attachment_path(&self, target: &str) -> Option<&Path> {
+        let last = target.rsplit('/').next().unwrap_or(target);
+        self.attachments.get(&norm(last)).map(PathBuf::as_path)
     }
 
     pub fn resolve(&self, target: &str) -> Option<&Note> {
@@ -108,7 +114,7 @@ impl Vault {
     }
 }
 
-fn walk(dir: &Path, out: &mut Vec<PathBuf>, att: &mut std::collections::HashSet<String>) -> std::io::Result<()> {
+fn walk(dir: &Path, out: &mut Vec<PathBuf>, att: &mut HashMap<String, PathBuf>) -> std::io::Result<()> {
     for e in fs::read_dir(dir)? {
         let p = e?.path();
         let name = p.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default();
@@ -120,7 +126,7 @@ fn walk(dir: &Path, out: &mut Vec<PathBuf>, att: &mut std::collections::HashSet<
         } else if p.extension().is_some_and(|x| x == "md") {
             out.push(p);
         } else {
-            att.insert(norm(&name));
+            att.entry(norm(&name)).or_insert(p);
         }
     }
     Ok(())
