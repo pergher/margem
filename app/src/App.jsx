@@ -33,6 +33,7 @@ import { store } from "@/lib/store";
 import { useNotaAberta } from "@/lib/useNotaAberta";
 import { useObservador } from "@/lib/useObservador";
 import { AvisoMudouFora } from "@/components/AvisoMudouFora";
+import { AvisoAtualizacao } from "@/components/AvisoAtualizacao";
 import { usePropostas } from "@/lib/usePropostas";
 import { PropostaDialog } from "@/components/PropostaDialog";
 import { BarraRevisao } from "@/components/BarraRevisao";
@@ -88,11 +89,20 @@ export default function App() {
   const [vaultAusente, setVaultAusente] = useState(null);
   const conferirVault = useCallback(() => { if (isTauri) invoke("vault_ausente").then(setVaultAusente).catch(() => {}); }, []);
   useEffect(() => { conferirVault(); window.addEventListener("focus", conferirVault); return () => window.removeEventListener("focus", conferirVault); }, [conferirVault, vaultRoot]);
-  // Procura atualização uma vez, em silêncio, pouco depois de abrir.
+  // Procura atualização pouco depois de abrir, a cada 2 horas e quando a janela volta ao foco (no máx. a cada 30 min).
+  // O aviso fica numa faixa no topo; "Depois" a esconde até a próxima verificação.
+  const [novaVersao, setNovaVersao] = useState(null);
+  const ultimaBusca = useRef(0);
   useEffect(() => {
     if (!isTauri) return;
-    const t = setTimeout(() => procurarAtualizacao().then((u) => u && setStatus(`Nova versão ${u.version} disponível: Configurações › Atualizações`)).catch(() => {}), 8000);
-    return () => clearTimeout(t);
+    const procurar = (minimo) => {
+      if (Date.now() - ultimaBusca.current < minimo) return;
+      ultimaBusca.current = Date.now();
+      procurarAtualizacao().then((u) => setNovaVersao(u ? u.version : null)).catch(() => {});
+    };
+    const t = setTimeout(() => procurar(0), 8000), i = setInterval(() => procurar(0), 2 * 3600e3), f = () => procurar(30 * 60e3);
+    window.addEventListener("focus", f);
+    return () => { clearTimeout(t); clearInterval(i); window.removeEventListener("focus", f); };
   }, []);
   const refresh = useCallback(() => Promise.all([invoke("list_notes"), invoke("list_dirs")]).then(([n, d]) => { setItems(n); setDirs(d); setCarregado(true); }).catch((e) => { setStatus(String(e)); setCarregado(true); }), []);
   useEffect(() => { if (vaultRoot) refresh(); }, [refresh, vaultRoot]);
@@ -317,6 +327,7 @@ export default function App() {
           {temPainel && <RailButton size="sm" label={`${numeros ? "Ocultar" : "Mostrar"} a numeração das linhas (${pretty(keys.toggleNumeros)})`} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
           {temPainel && <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>}
         </header>}
+        <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />
 
         {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
         {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
