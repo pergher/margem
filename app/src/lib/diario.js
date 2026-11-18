@@ -228,3 +228,34 @@ export function serieSemanal(ocs, hoje = new Date(), n = 6) {
     return { w, ini, por: CATEGORIAS.map((c) => ({ cat: c.id, n: ocs.filter((o) => o.data && indiceSemana(o.data) === w && o.cats.some((x) => x.id === c.id)).length })).filter((x) => x.n) };
   });
 }
+
+// ---------- períodos da ficha do aluno: semanas, meses e ano ----------
+const MES_CURTO = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+export const PERIODOS = [
+  { id: "semanas", nome: "Semanas", titulo: "Semana a semana" },
+  { id: "ano", nome: "Ano", titulo: "Mês a mês no ano" },
+];
+
+/**
+ * Janela de tempo e seus intervalos: [{ rotulo, ini, fim }] com `fim` exclusivo; `atual` = índice do intervalo de hoje.
+ * semanas: as 6 últimas; ano: os 12 meses do ano de hoje. `rotulo` descreve a janela.
+ */
+export function periodoDe(tipo, hoje = new Date()) {
+  let buckets, rotulo;
+  // O rótulo mostra segunda a sexta ("2–6/11"): as ocorrências só guardam a semana, não o dia.
+  const semana = (ini) => {
+    const fim = new Date(ini), sex = new Date(ini); fim.setDate(fim.getDate() + 7); sex.setDate(sex.getDate() + 4);
+    return { rotulo: sex.getMonth() === ini.getMonth() ? `${ini.getDate()}–${sex.getDate()}/${ini.getMonth() + 1}` : `${ini.getDate()}/${ini.getMonth() + 1}–${sex.getDate()}/${sex.getMonth() + 1}`, ini, fim };
+  };
+  if (tipo === "semanas") {
+    buckets = Array.from({ length: 6 }, (_, k) => { const ini = segunda(hoje); ini.setDate(ini.getDate() - 7 * (5 - k)); return semana(ini); });
+    rotulo = "Últimas 6 semanas";
+  } else {
+    buckets = Array.from({ length: 12 }, (_, k) => ({ rotulo: MES_CURTO[k], ini: new Date(hoje.getFullYear(), k, 1), fim: new Date(hoje.getFullYear(), k + 1, 1) }));
+    rotulo = `Ano de ${hoje.getFullYear()}`;
+  }
+  return { tipo, rotulo, buckets, ini: buckets[0].ini, fim: buckets[buckets.length - 1].fim, atual: buckets.findIndex((b) => hoje >= b.ini && hoje < b.fim) };
+}
+export const naJanela = (o, p) => !!o.data && o.data >= p.ini && o.data < p.fim;
+/** Contagem de cada comportamento por intervalo do período. */
+export const serieDoPeriodo = (ocs, p) => p.buckets.map((b) => ({ ...b, por: CATEGORIAS.map((c) => ({ cat: c.id, n: ocs.filter((o) => o.data && o.data >= b.ini && o.data < b.fim && o.cats.some((x) => x.id === c.id)).length })).filter((x) => x.n) }));

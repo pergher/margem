@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/api", () => ({ invoke: async () => null }));
-const { comportamentosDe, dataDaSemana, registrosDoDiario, insereTags, acoesDoAluno, inserirAcao, marcarFeita, efeitoDaAcao, sinaisDoAluno, serieSemanal } = await import("../diario");
+const { comportamentosDe, dataDaSemana, registrosDoDiario, insereTags, acoesDoAluno, inserirAcao, marcarFeita, efeitoDaAcao, sinaisDoAluno, serieSemanal, periodoDe, serieDoPeriodo, naJanela } = await import("../diario");
 
 describe("comportamentosDe", () => {
   it("lê etiquetas e as tira do texto", () => {
@@ -78,5 +78,24 @@ describe("ações com o aluno", () => {
     const s = serieSemanal([oc("2026-11-10T12:00", "conversa")], hoje, 6);
     expect(s).toHaveLength(6);
     expect(s[4].por).toEqual([{ cat: "conversa", n: 1 }]);
+  });
+});
+
+describe("períodos", () => {
+  const hoje = new Date(2026, 10, 18);
+  const oc = (d, cat) => ({ data: new Date(d), cats: [{ id: cat, sugerida: false }] });
+  const ocs = [oc("2026-02-10T12:00", "conversa"), oc("2026-09-14T12:00", "celular"), oc("2026-11-10T12:00", "conversa"), oc("2026-11-10T12:00", "briga")];
+  it("ano: 12 meses de janeiro a dezembro, contando por mês", () => {
+    const p = periodoDe("ano", hoje), s = serieDoPeriodo(ocs, p);
+    expect(s.map((b) => b.rotulo).slice(0, 2)).toEqual(["jan", "fev"]);
+    expect(p.atual).toBe(10);
+    expect(s[1].por).toEqual([{ cat: "conversa", n: 1 }]);
+    expect(s[10].por.map((x) => x.cat).sort()).toEqual(["briga", "conversa"]);
+  });
+  it("semanas: 6 semanas, a atual por último", () => {
+    const p = periodoDe("semanas", hoje);
+    expect(p.buckets).toHaveLength(6);
+    expect(p.atual).toBe(5);
+    expect(ocs.filter((o) => naJanela(o, p))).toHaveLength(2);
   });
 });
