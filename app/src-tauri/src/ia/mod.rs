@@ -35,6 +35,9 @@ pub(crate) const SISTEMA: &str = concat!(
     "O professor vê as diferenças e aprova antes de qualquer gravação.\n",
     "- Use as ferramentas de leitura para consultar o vault em vez de adivinhar. Não invente campos de frontmatter nem códigos de conteúdo.\n",
     "- Não inclua dados de alunos (nomes, textos, notas) em nada que você escrever; notas de correção, diário e alunos não estão disponíveis.\n",
+    "- Ao propor conteúdo, faça no máximo 3 consultas ao vault antes de chamar `propor_edicao` ou `propor_nota`. ",
+    "Se uma busca não achar nada, não repita variações: proponha com o que tem e diga o que faltou.\n",
+    "- Se a pergunta trouxer um [Mapa do Margem], use-o em vez de buscar códigos de conteúdo e habilidades.\n",
     "- A nota aberta no editor chega como contexto na pergunta, quando o professor deixa. Preserve o que não precisa mudar.\n",
 );
 
