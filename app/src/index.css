@@ -183,6 +183,14 @@
 .aula-md th, .aula-md td { border-bottom: 1px solid hsl(var(--border)); padding: .45rem .7rem; text-align: left; }
 .aula-md th { font-family: var(--f-ui, sans-serif); font-size: .8em; font-weight: 600; color: hsl(var(--muted-foreground)); }
 .aula-md img { max-width: 100%; border-radius: 8px; }
+/* Resposta da IA no painel estreito: mesma tipografia do app, títulos e espaços menores. */
+.ia-md { font-family: inherit; font-size: .875rem; line-height: 1.55; overflow-wrap: anywhere; }
+.ia-md > * + * { margin-top: .6rem; }
+.ia-md :is(h2, h3, h4, h5) { font-size: 1rem; margin-top: 1rem; padding-bottom: 0; border-bottom: 0; }
+.ia-md ul, .ia-md ol { padding-left: 1.25rem; }
+.ia-md pre { font-size: .8rem; padding: .5rem .7rem; }
+.ia-md table { display: block; overflow-x: auto; }
+.ia-md .ia-link { text-decoration: underline; text-underline-offset: 2px; }
 .aula-callout { --c-fg: var(--chart-1); border: 1px solid hsl(var(--c-fg) / .35); border-left-width: 4px; background: hsl(var(--c-fg) / .08); border-radius: 10px; padding: .7rem 1rem; font-style: normal; color: hsl(var(--foreground)); }
 .aula-callout > * + * { margin-top: .4rem; }
 .aula-callout-t { font-family: var(--f-ui, sans-serif); font-size: .85rem; font-weight: 600; color: hsl(var(--c-fg)); }

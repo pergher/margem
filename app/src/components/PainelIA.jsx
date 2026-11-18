@@ -1,15 +1,22 @@
 // Aba "IA" do painel direito: conversa sobre a nota aberta. A IA só propõe; quem aplica é o usuário, no diálogo de diferenças.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { parseFm } from "@/lib/frontmatter";
 import { acoesPara } from "@/lib/iaAcoes";
+import { htmlIA } from "@/lib/iaMarkdown";
 import { iaConfigGravar, iaConfigLer, iaDisponivel, iaPrevia, iaTemChave } from "@/lib/ia";
+
+/** Texto da resposta da IA, em Markdown renderizado (o HTML já sai escapado e sem links/imagens ativos). */
+function TextoIA({ texto }) {
+  const h = useMemo(() => htmlIA(texto), [texto]);
+  return <div className="aula-md ia-md" dangerouslySetInnerHTML={{ __html: h }} />;
+}
 
 function Mensagem({ m, onVerProposta }) {
   if (m.papel === "usuario") return <div className="ml-6 self-end rounded-lg bg-accent px-3 py-2 text-sm whitespace-pre-wrap">{m.itens[0].texto}</div>;
   return (
     <div className="flex flex-col gap-1.5 text-sm">
-      {m.itens.map((it, i) => it.tipo === "texto" ? <p key={i} className="whitespace-pre-wrap leading-relaxed">{it.texto}</p>
+      {m.itens.map((it, i) => it.tipo === "texto" ? <TextoIA key={i} texto={it.texto} />
         : it.tipo === "ferramenta" ? <p key={i} className="text-xs text-muted-foreground">⚙ {it.resumo}</p>
         : it.tipo === "aviso" ? <p key={i} role="status" className="rounded-md bg-warn/10 px-2 py-1 text-xs text-warn">{it.msg}</p>
         : it.tipo === "erro" ? <p key={i} role="alert" className="rounded-md bg-err/10 px-2 py-1 text-xs text-err">{it.msg}</p>
