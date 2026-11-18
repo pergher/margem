@@ -43,6 +43,7 @@ pub async fn rodar(
                 Evento::Texto(t) => emitir(EventoIA::Texto { texto: t }),
                 Evento::UsoFerramenta { nome, args, .. } => emitir(EventoIA::Ferramenta { resumo: descrever(&nome, &args), nome }),
                 Evento::Uso { tokens_in, tokens_out } => { ult_in = tokens_in; ult_out = tokens_out; emitir(EventoIA::Uso { tokens_in: tot_in + tokens_in, tokens_out: tot_out + tokens_out }) }
+                Evento::Aviso(msg) => emitir(EventoIA::Aviso { msg }),
                 Evento::Fim(_) => {}
             };
             prov.conversar(Requisicao { sistema: cfg.sistema, msgs, ferramentas: &lista, max_tokens: cfg.max_tokens, cancelar }, &mut ao_evento).await

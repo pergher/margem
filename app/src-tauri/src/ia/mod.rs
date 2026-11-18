@@ -7,6 +7,7 @@ pub mod contexto;
 pub mod ferramentas;
 pub mod provedor;
 pub mod openai_compat;
+pub mod retry;
 pub mod segredos;
 pub(crate) mod sse;
 #[cfg(test)]
@@ -243,8 +244,8 @@ pub async fn ia_testar(h: AppHandle) -> Result<String, String> {
     {
         let mut coletar = |e| if let provedor::Evento::Texto(t) = e { resp.push_str(&t); };
         let chamada = prov.conversar(Requisicao { sistema: "Responda de forma curta.", msgs: &msgs, ferramentas: &[], max_tokens: 512, cancelar: &nao }, &mut coletar);
-        match tokio::time::timeout(std::time::Duration::from_secs(40), chamada).await {
-            Err(_) => return Err(format!("{} não respondeu em 40 s (modelo {}). Confira o nome do modelo e a chave.", pcfg.rotulo, pcfg.modelo)),
+        match tokio::time::timeout(std::time::Duration::from_secs(90), chamada).await {
+            Err(_) => return Err(format!("{} não respondeu em 90 s (modelo {}). Confira o nome do modelo e a chave.", pcfg.rotulo, pcfg.modelo)),
             Ok(r) => { r?; }
         }
     }

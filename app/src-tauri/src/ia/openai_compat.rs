@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use serde_json::{json, Value};
 use super::provedor::*;
+use super::retry;
 use super::sse::ParserSse;
 
 /// Modelos locais demoram a carregar antes do primeiro byte.
@@ -143,11 +144,16 @@ impl Provedor for OpenAiCompat {
     async fn conversar(&self, req: Requisicao<'_>, emitir: &mut (dyn FnMut(Evento) + Send)) -> Result<Vec<Parte>, String> {
         let cliente = reqwest::Client::builder().connect_timeout(Duration::from_secs(15)).build().map_err(|e| e.to_string())?;
         let url = self.url();
-        let mut r = cliente.post(&url).header("content-type", "application/json").json(&corpo(&self.modelo, &self.base_url, &req));
-        if let Some(c) = &self.chave { r = r.bearer_auth(c); }
-        let resp = r.send().await.map_err(|e| if self.local { format!("O servidor local não respondeu em {url}. O Ollama (ou similar) está rodando?") } else { format!("sem conexão com o provedor: {}", e.without_url()) })?;
-        let status = resp.status();
-        if !status.is_success() { return Err(erro_http(status, &resp.text().await.unwrap_or_default(), self.local, &url)); }
+        let corpo_json = corpo(&self.modelo, &self.base_url, &req);
+        let montar = || {
+            let r = cliente.post(&url).header("content-type", "application/json").json(&corpo_json);
+            if let Some(c) = &self.chave { r.bearer_auth(c) } else { r }
+        };
+        let resp = match retry::enviar(&montar, "O provedor", req.cancelar, emitir).await {
+            Ok(r) => r,
+            Err(retry::Falha::Http(status, texto)) => return Err(erro_http(status, &texto, self.local, &url)),
+            Err(retry::Falha::Rede(e)) => return Err(if self.local { format!("O servidor local não respondeu em {url}. O Ollama (ou similar) está rodando?") } else { format!("sem conexão com o provedor: {}", e.without_url()) }),
+        };
         let (mut sse, mut acc) = (ParserSse::default(), Acumulador::default());
         let mut fluxo = resp.bytes_stream();
         loop {

@@ -32,6 +32,8 @@ pub enum Evento {
     /// Chamada de ferramenta já completa (argumentos decodificados).
     UsoFerramenta { id: String, nome: String, args: Value },
     Uso { tokens_in: u64, tokens_out: u64 },
+    /// Aviso para a tela (por exemplo, "tentando de novo"); não faz parte da resposta.
+    Aviso(String),
     /// Motivo de parada informado pelo provedor (`end_turn`, `tool_use`, `max_tokens`...).
     Fim(String),
 }

@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use futures_util::StreamExt;
 use serde_json::{json, Value};
 use super::provedor::*;
+use super::retry;
 use super::sse::ParserSse;
 
 pub const URL: &str = "https://api.anthropic.com/v1/messages";
@@ -129,11 +130,15 @@ fn erro_http(status: reqwest::StatusCode, corpo: &str) -> String {
 impl Provedor for Anthropic {
     async fn conversar(&self, req: Requisicao<'_>, emitir: &mut (dyn FnMut(Evento) + Send)) -> Result<Vec<Parte>, String> {
         let cliente = reqwest::Client::builder().connect_timeout(Duration::from_secs(15)).build().map_err(|e| e.to_string())?;
-        let resp = cliente.post(&self.url)
+        let corpo_json = corpo(&self.modelo, &req);
+        let montar = || cliente.post(&self.url)
             .header("x-api-key", &self.chave).header("anthropic-version", VERSAO_API).header("content-type", "application/json")
-            .json(&corpo(&self.modelo, &req)).send().await.map_err(|e| format!("sem conexão com a Anthropic: {}", e.without_url()))?;
-        let status = resp.status();
-        if !status.is_success() { return Err(erro_http(status, &resp.text().await.unwrap_or_default())); }
+            .json(&corpo_json);
+        let resp = match retry::enviar(&montar, "A Anthropic", req.cancelar, emitir).await {
+            Ok(r) => r,
+            Err(retry::Falha::Http(status, texto)) => return Err(erro_http(status, &texto)),
+            Err(retry::Falha::Rede(e)) => return Err(format!("sem conexão com a Anthropic: {}", e.without_url())),
+        };
         let (mut sse, mut acc) = (ParserSse::default(), Acumulador::default());
         let mut fluxo = resp.bytes_stream();
         loop {
