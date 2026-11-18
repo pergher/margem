@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
-import { IconBuildingCommunity as Diretoria, IconCalendarEvent as Agendar, IconCopy as Copy, IconMailForward as Notificar, IconMessageCircle as Conversar } from "@tabler/icons-react";
+import { IconBuildingCommunity as Diretoria, IconCalendarEvent as Agendar, IconCopy as Copy, IconMailForward as Notificar, IconMessageCircle as Conversar, IconSpeakerphone as Informar } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { rotuloDe } from "@/lib/semana";
-import { CATEGORIAS, NEGATIVOS, TIPOS_ACAO, acoesDoAluno, criarAluno, dataIso, efeitoDaAcao, inserirAcao, marcarFeita, naJanela, periodoDe, PERIODOS, serieDoPeriodo, sinaisDoAluno, tipoAcao } from "@/lib/diario";
+import { CATEGORIAS, ESTADOS_AGENDA, NEGATIVOS, TIPOS_ACAO, acoesDoAluno, atualizarAcao, criarAluno, dataIso, efeitoDaAcao, inserirAcao, naJanela, nomeEstado, pendente, periodoDe, PERIODOS, serieDoPeriodo, sinaisDoAluno, tipoAcao } from "@/lib/diario";
+import { mensagemDaAcao } from "@/lib/mensagens";
+import { AvancarReuniao } from "@/components/AvancarReuniao";
 import { Chip } from "@/components/Explorador";
-import { Estado } from "@/components/ui/estado";
+import { Estado, useToast } from "@/components/ui/estado";
 
 const lerPeriodo = () => { try { const v = localStorage.getItem("margem.diario.periodo"); return PERIODOS.some((p) => p.id === v) ? v : "semanas"; } catch { return "semanas"; } };
 
 // Cores só para distinguir os comportamentos nos gráficos (os pontos do resto da página indicam gravidade).
 const COR = { conversa: "#d4a017", produtividade: "#7e6bc4", espelho: "#3a8fb7", andando: "#e07b39", briga: "#c23b3b", celular: "#5b7083", positivo: "#3f9a62" };
-const ICONE = { conversar: Conversar, diretoria: Diretoria, agendar: Agendar, notificar: Notificar };
+const ICONE = { conversar: Conversar, diretoria: Diretoria, agendar: Agendar, notificar: Notificar, informar: Informar };
 const nomeCat = (id) => CATEGORIAS.find((c) => c.id === id)?.nome ?? "Sem categoria";
 const minusculaMes = (s) => s.replace(/ de ([A-Za-zçÇ]+)/g, (x) => x.toLowerCase());
 const rotuloSemana = (r) => (r.data ? minusculaMes(rotuloDe(r.data)) : r.semana || "Sem data");
@@ -23,7 +25,7 @@ const entrada = "h-9 rounded-md border bg-background px-2.5 text-sm outline-none
 
 /**
  * Aba "Alunos" do Diário: lista de alunos da turma (com sinais) e, ao lado, a ficha do aluno escolhido
- * com comportamentos, linha do tempo semanal e ações (conversar, diretoria, agendar e notificar os pais).
+ * com comportamentos, linha do tempo semanal e ações (conversar, encaminhar, agendar, notificar e informar à direção).
  */
 export function DiarioAlunos({ regs, alunos, items, ano, turmas, turmaInicial, alunoInicial, mostrar, onOpen, onRefresh }) {
   const [turma, setTurma] = useState(turmaInicial || turmas[0] || "");
@@ -72,8 +74,8 @@ export function DiarioAlunos({ regs, alunos, items, ano, turmas, turmaInicial, a
     await invoke("save_note", { path, text: inserirAcao(await invoke("read_note", { path }), a) });
     setCompor(null);
   });
-  const concluir = (linha) => gravar(async () => {
-    await invoke("save_note", { path: ficha.path, text: marcarFeita(await invoke("read_note", { path: ficha.path }), linha) });
+  const avancar = (linha, patch) => gravar(async () => {
+    await invoke("save_note", { path: ficha.path, text: atualizarAcao(await invoke("read_note", { path: ficha.path }), linha, patch) });
   });
 
   return (
@@ -103,13 +105,13 @@ export function DiarioAlunos({ regs, alunos, items, ano, turmas, turmaInicial, a
 
       {atual ? (
         <Ficha key={`${turma}/${atual.n}`} periodo={periodo} periodoId={periodoId} onPeriodo={escolherPeriodo} r={atual} acoes={acoesPor[atual.n] ?? []} hoje={hoje} nome={mostrar(atual.n)} filtro={filtro} setFiltro={setFiltro}
-          compor={compor} setCompor={setCompor} temFicha={!!ficha} onFicha={() => onOpen(ficha.path)} onRegistrar={registrarAcao} onConcluir={concluir} erro={erro} limparErro={() => setErro("")} />
+          compor={compor} setCompor={setCompor} temFicha={!!ficha} onFicha={() => onOpen(ficha.path)} onRegistrar={registrarAcao} onAvancar={avancar} erro={erro} limparErro={() => setErro("")} />
       ) : <p className="py-6 text-sm text-muted-foreground">Escolha um aluno.</p>}
     </div>
   );
 }
 
-function Ficha({ periodo, periodoId, onPeriodo, r, acoes, hoje, nome, filtro, setFiltro, compor, setCompor, temFicha, onFicha, onRegistrar, onConcluir, erro, limparErro }) {
+function Ficha({ periodo, periodoId, onPeriodo, r, acoes, hoje, nome, filtro, setFiltro, compor, setCompor, temFicha, onFicha, onRegistrar, onAvancar, erro, limparErro }) {
   const { sin } = r;
   const ocs = useMemo(() => r.ocs.filter((o) => naJanela(o, periodo)), [r.ocs, periodo]);
   const serie = useMemo(() => serieDoPeriodo(ocs, periodo), [ocs, periodo]);
@@ -122,7 +124,7 @@ function Ficha({ periodo, periodoId, onPeriodo, r, acoes, hoje, nome, filtro, se
   const ordenadas = [...acoes].sort((a, b) => b.data.localeCompare(a.data));
   const resumo = () => [
     ...ocs.filter((o) => !o.cats.every((c) => c.id === "positivo")).sort((a, b) => (a.ord ?? 0) - (b.ord ?? 0)).map((o) => `${rotuloSemana(o)} (${o.aula}): ${o.texto}`),
-    ...ordenadas.slice().reverse().map((a) => `${dataBr(a.data, a.hora)} — ${tipoAcao(a.tipo).nome} (${a.estado})${a.texto ? `: ${a.texto}` : ""}`),
+    ...ordenadas.slice().reverse().map((a) => `${dataBr(a.data, a.hora)} — ${tipoAcao(a.tipo).longo} (${nomeEstado(a.estado)})${a.texto ? `: ${a.texto}` : ""}`),
   ].join("\n");
 
   return (
@@ -147,8 +149,8 @@ function Ficha({ periodo, periodoId, onPeriodo, r, acoes, hoje, nome, filtro, se
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{nomeCat(s.cat)}: {s.n} ocorrências em 4 semanas</div>
                   <div className="text-[13px] text-muted-foreground">
-                    {s.planejada ? `Ação planejada: ${tipoAcao(s.planejada.tipo).nome.toLowerCase()} (${dataBr(s.planejada.data, s.planejada.hora)}).${s.semMelhora ? " A ação anterior não trouxe melhora." : ""}`
-                      : s.semMelhora ? `Já houve ${s.feitas === 1 ? "uma ação" : `${s.feitas} ações`} sem melhora. Próximo passo possível: encaminhar à diretoria ou agendar com os pais.`
+                    {s.planejada ? `Ação em andamento: ${tipoAcao(s.planejada.tipo).longo.toLowerCase()} (${dataBr(s.planejada.data, s.planejada.hora)}).${s.semMelhora ? " A ação anterior não trouxe melhora." : ""}`
+                      : s.semMelhora ? `Já houve ${s.feitas === 1 ? "uma ação" : `${s.feitas} ações`} sem melhora. Próximo passo possível: encaminhar à direção ou agendar com os responsáveis.`
                         : "Ainda sem ação planejada."}
                   </div>
                 </div>
@@ -219,7 +221,7 @@ function Ficha({ periodo, periodoId, onPeriodo, r, acoes, hoje, nome, filtro, se
             <button key={t.id} aria-pressed={compor?.tipo === t.id} onClick={() => setCompor(compor?.tipo === t.id ? null : { tipo: t.id })} className={cn("inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent", compor?.tipo === t.id && "border-primary bg-primary/10")}><I aria-hidden className="h-4 w-4" />{t.nome}</button>
           ); })}
         </div>
-        {compor && <FormAcao key={compor.tipo + (compor.cat ?? "")} compor={compor} ocs={r.ocs} onCancel={() => setCompor(null)} onOk={onRegistrar} />}
+        {compor && <FormAcao key={compor.tipo + (compor.cat ?? "")} compor={compor} ocs={r.ocs} acoes={acoes} nomeReal={r.n} turma={r.ocs[0]?.turma} hoje={hoje} onCancel={() => setCompor(null)} onOk={onRegistrar} />}
         {ordenadas.length === 0 && !compor && <p className="py-2 text-sm text-muted-foreground">Nenhuma ação registrada para este aluno.</p>}
         {ordenadas.map((a) => {
           const I = ICONE[a.tipo], e = efeitoDaAcao(a, r.ocs, hoje);
@@ -227,17 +229,17 @@ function Ficha({ periodo, periodoId, onPeriodo, r, acoes, hoje, nome, filtro, se
             <div key={a.linha} className="mb-2 flex gap-3 rounded-lg border p-3">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><I aria-hidden className="h-4 w-4" /></span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm font-medium">{tipoAcao(a.tipo).nome}
-                  <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", a.estado === "feita" ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn")}>{a.estado === "feita" ? "Feita" : "Planejada"}</span>
+                <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-sm font-medium">{tipoAcao(a.tipo).longo}
+                  {(a.tipo === "agendar" || pendente(a)) && <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", pendente(a) ? "bg-warn/15 text-warn" : "bg-ok/15 text-ok")}>{nomeEstado(a.estado)}</span>}
                   <span className="inline-flex items-center gap-1.5 text-xs font-normal text-muted-foreground">{a.cat && <><Ponto id={a.cat} className="!h-2 !w-2" />{nomeCat(a.cat)} · </>}{dataBr(a.data, a.hora)}</span>
                 </div>
                 {a.texto && <p className="text-sm">{a.texto}</p>}
-                {a.estado === "feita" && a.cat && (
+                {!pendente(a) && a.cat && (
                   <div className={cn("border-l-[3px] pl-2.5 text-[13px] text-muted-foreground", e?.tendencia === "diminuiu" ? "border-ok" : e?.tendencia === "aumentou" ? "border-err" : "border-border")}>
                     {e ? <>Depois desta ação, {nomeCat(a.cat).toLowerCase()} <b className="text-foreground">{e.tendencia === "igual" ? "sem mudança" : e.tendencia}</b>: {e.antes} {e.antes === 1 ? "ocorrência" : "ocorrências"} nas 2 semanas anteriores, {e.depois} {e.semanas === 2 ? "nas 2 seguintes" : "na semana seguinte"}.</> : "Ainda sem semanas depois desta ação para comparar."}
                   </div>
                 )}
-                {a.estado === "planejada" && <div><button onClick={() => onConcluir(a.linha)} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent">Marcar como feita</button></div>}
+                {pendente(a) && <div><AvancarReuniao acao={a} onAvancar={(patch) => onAvancar(a.linha, patch)} /></div>}
               </div>
             </div>
           );
@@ -259,29 +261,49 @@ const Bloco = ({ titulo, dica, lado, children }) => (
 
 const Campo = ({ nome, children, cheio }) => <label className={cn("flex flex-col gap-1", cheio && "sm:col-span-2")}><span className="text-xs font-medium text-muted-foreground">{nome}</span>{children}</label>;
 
-function FormAcao({ compor, ocs, onCancel, onOk }) {
-  const agenda = compor.tipo === "agendar";
-  const usados = [...new Set(ocs.flatMap((o) => o.cats.map((c) => c.id)))].filter((c) => NEGATIVOS.includes(c));
-  const opcoes = usados.length ? usados : NEGATIVOS;
-  const [cat, setCat] = useState(compor.cat && opcoes.includes(compor.cat) ? compor.cat : opcoes[0]);
+// Cada ação pede só o que importa: conversar → comentário (com ou sem comportamento); encaminhar e informar → comentário opcional;
+// agendar → estado (solicitada/agendada/realizada) e hora; notificar → comentário. Todas têm data.
+function FormAcao({ compor, ocs, acoes, nomeReal, turma, hoje, onCancel, onOk }) {
+  const toast = useToast();
+  const { tipo } = compor, agenda = tipo === "agendar", conversa = tipo === "conversar", obrigatorio = conversa || tipo === "notificar";
+  const [cat, setCat] = useState(compor.cat ?? "");
   const [data, setData] = useState(hojeIso()), [hora, setHora] = useState(""), [texto, setTexto] = useState("");
-  const [estado, setEstado] = useState(agenda ? "planejada" : "feita"), [salvando, setSalvando] = useState(false);
+  const [estado, setEstado] = useState("solicitada"), [salvando, setSalvando] = useState(false);
   const salvar = async () => {
     setSalvando(true);
     const h = hora ? (/^(\d{1,2}):00$/.test(hora) ? `${+hora.split(":")[0]}h` : `${+hora.split(":")[0]}h${hora.split(":")[1]}`) : "";
-    try { await onOk({ data, hora: h, tipo: compor.tipo, cat, estado, texto: texto.trim() }); } catch { setSalvando(false); }
+    try { await onOk({ data, hora: agenda ? h : "", tipo, cat, estado: agenda ? estado : "feita", texto: texto.trim() }); } catch { setSalvando(false); }
   };
+  const msg = mensagemDaAcao(tipo, estado, { nome: nomeReal, turma, ocs, acoes, comentario: texto, hoje });
+  const copiar = async () => { try { await navigator.clipboard.writeText(msg.texto); toast("Mensagem copiada.", { tipo: "ok" }); } catch { toast("Não deu para copiar.", { tipo: "err" }); } };
   return (
     <div className="mb-3 grid gap-3 rounded-lg border border-primary p-3.5 sm:grid-cols-2">
-      <h4 className="text-sm font-medium sm:col-span-2">{tipoAcao(compor.tipo).nome}</h4>
-      <Campo nome="Sobre qual comportamento"><select value={cat} onChange={(e) => setCat(e.target.value)} className={entrada}>{opcoes.map((c) => <option key={c} value={c}>{nomeCat(c)}</option>)}</select></Campo>
-      <Campo nome="Estado"><select value={estado} onChange={(e) => setEstado(e.target.value)} className={entrada}><option value="planejada">Planejada</option><option value="feita">Feita</option></select></Campo>
-      <Campo nome="Data"><input type="date" value={data} onChange={(e) => setData(e.target.value)} className={entrada} /></Campo>
-      <Campo nome={agenda ? "Hora" : "Hora (opcional)"}><input type="time" value={hora} onChange={(e) => setHora(e.target.value)} className={entrada} /></Campo>
-      <Campo nome="Anotação" cheio><textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} placeholder={agenda ? "Assunto da reunião" : "O que foi dito ou combinado"} className="rounded-md border bg-background p-2.5 text-sm outline-none focus:border-primary" /></Campo>
+      <h4 className="text-sm font-medium sm:col-span-2">{tipoAcao(tipo).longo}</h4>
+      {conversa && (
+        <Campo nome="Tipo de registro">
+          <select value={cat} onChange={(e) => setCat(e.target.value)} className={entrada}>
+            <option value="">Comentário normal</option>
+            {CATEGORIAS.filter((c) => NEGATIVOS.includes(c.id)).map((c) => <option key={c.id} value={c.id}>#{c.tag} · {c.nome}</option>)}
+          </select>
+        </Campo>
+      )}
+      {!conversa && cat && <p className="text-xs text-muted-foreground sm:col-span-2">Sobre: <b className="font-medium text-foreground">{nomeCat(cat)}</b></p>}
+      {agenda && <Campo nome="Estado"><select value={estado} onChange={(e) => setEstado(e.target.value)} className={entrada}>{ESTADOS_AGENDA.map((e) => <option key={e.id} value={e.id}>{e.nome}</option>)}</select></Campo>}
+      <Campo nome={agenda ? (estado === "solicitada" ? "Data da solicitação" : estado === "agendada" ? "Data da reunião" : "Data da reunião realizada") : "Data"}><input type="date" value={data} onChange={(e) => setData(e.target.value)} className={entrada} /></Campo>
+      {agenda && estado !== "solicitada" && <Campo nome="Hora (opcional)"><input type="time" value={hora} onChange={(e) => setHora(e.target.value)} className={entrada} /></Campo>}
+      <Campo nome={obrigatorio ? "Comentário" : "Comentário (opcional)"} cheio>
+        <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={conversa ? 3 : 2} placeholder={conversa ? "O que foi conversado com o aluno" : tipo === "notificar" ? "O que foi comunicado aos responsáveis" : agenda ? "Assunto da reunião" : "Observações"} className="rounded-md border bg-background p-2.5 text-sm outline-none focus:border-primary" />
+      </Campo>
+      {msg && (
+        <details className="rounded-md border bg-background sm:col-span-2" open>
+          <summary className="flex cursor-pointer items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground">{msg.titulo} · sugestão para copiar e enviar por outro app</summary>
+          <pre className="whitespace-pre-wrap border-t px-3 py-2.5 font-sans text-[13px] leading-relaxed">{msg.texto}</pre>
+          <div className="flex justify-end border-t px-3 py-1.5"><button type="button" onClick={copiar} className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline"><Copy className="h-3.5 w-3.5" />Copiar mensagem</button></div>
+        </details>
+      )}
       <div className="flex justify-end gap-3 sm:col-span-2">
         <button onClick={onCancel} className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">Cancelar</button>
-        <button onClick={salvar} disabled={!data || salvando} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-40">{salvando ? "Salvando…" : "Registrar ação"}</button>
+        <button onClick={salvar} disabled={!data || salvando || (obrigatorio && !texto.trim())} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground disabled:opacity-40">{salvando ? "Salvando…" : "Registrar"}</button>
       </div>
     </div>
   );

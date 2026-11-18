@@ -4,7 +4,7 @@ import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { corTurma } from "@/lib/cores";
 import { lerSemanas, rotuloDe } from "@/lib/semana";
-import { CATEGORIAS, aulasDoDiario, criarAluno, criarDiario, dataDaSemana, insereTags, inserirOcorrencia, mudarEstado, listarAlunos, listarDiarios, nomeDoMes, registrosDoDiario, turmasDe } from "@/lib/diario";
+import { CATEGORIAS, abreviar, aulasDoDiario, criarAluno, criarDiario, dataDaSemana, insereTags, inserirOcorrencia, mudarEstado, listarAlunos, listarDiarios, nomeDoMes, registrosDoDiario, turmasDe } from "@/lib/diario";
 import { Chip, norm } from "@/components/Explorador";
 import { Carregando, Estado, Vazio } from "@/components/ui/estado";
 import { DiarioAlunos } from "@/components/DiarioAlunos";
@@ -13,7 +13,6 @@ const ler = (k, p) => { try { return JSON.parse(localStorage.getItem(k)) ?? p; }
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sem armazenamento: segue sem lembrar */ } };
 
 // "Paulo Pergher" -> "Pa. Pe." (duas letras do primeiro e do último nome)
-const abreviar = (nome) => { const p = nome.trim().split(/\s+/); return (p.length > 1 ? [p[0], p[p.length - 1]] : p).map((x) => x.slice(0, 2) + ".").join(" "); };
 const minusculaMes = (s) => s.replace(/ de ([A-Za-zçÇ]+)/g, (x) => x.toLowerCase());
 const rotuloSemana = (r) => (r.data ? minusculaMes(rotuloDe(r.data)) : r.semana || "Sem data");
 const alterna = (set, v) => (set.includes(v) ? set.filter((x) => x !== v) : [...set, v]);

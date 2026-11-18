@@ -17,6 +17,8 @@ export const ESTADOS = [
 const raiz = (items) => raizDe(items);
 const pasta = (items, ano, tipo, turma) => `${raiz(items)}/Anos/${ano}/${tipo}/${turma}`;
 const prop = (text, k) => new RegExp(`^${k}:[ \\t]*["']?(.*?)["']?[ \\t]*$`, "m").exec(text.split(/\n---/)[0])?.[1] ?? "";
+/** "Paulo Pergher" → "Pa. Pe." (nomes de aluno ocultos na tela). */
+export const abreviar = (nome) => { const p = nome.trim().split(/\s+/); return (p.length > 1 ? [p[0], p[p.length - 1]] : p).map((x) => x.slice(0, 2) + ".").join(" "); };
 export const turmasDe = (s) => [...new Set((s.match(/\d{2}/g) ?? []))];
 
 export function listarDiarios(items) {
@@ -140,14 +142,32 @@ export function registrosDoDiario(text, d) {
 // Uma linha por ação: "- 2026-11-18 14h — #agendar #conversa #planejada texto livre".
 // Tipo (#conversar, #diretoria, #agendar, #notificar), comportamento (as mesmas etiquetas do diário) e estado (#planejada | #feita).
 export const TIPOS_ACAO = [
-  { id: "conversar", nome: "Conversar com o aluno" },
-  { id: "diretoria", nome: "Encaminhar à diretoria" },
-  { id: "agendar", nome: "Agendar com os pais" },
-  { id: "notificar", nome: "Notificar os pais" },
+  { id: "conversar", nome: "Conversar", longo: "Conversar com o aluno" },
+  { id: "diretoria", nome: "Encaminhar", longo: "Encaminhar à direção" },
+  { id: "agendar", nome: "Agendar", longo: "Agendar com os responsáveis" },
+  { id: "notificar", nome: "Notificar", longo: "Notificar os responsáveis" },
+  { id: "informar", nome: "Informar à direção", longo: "Informar à direção" },
 ];
 export const tipoAcao = (id) => TIPOS_ACAO.find((t) => t.id === id);
 export const NEGATIVOS = COMPORTAMENTOS.map((c) => c.id);
+// Agendar tem um ciclo próprio (solicitada → agendada → realizada); as demais ações são registradas já feitas.
+export const ESTADOS_AGENDA = [
+  { id: "solicitada", nome: "Solicitada" },
+  { id: "agendada", nome: "Agendada" },
+  { id: "realizada", nome: "Realizada" },
+];
+export const nomeEstado = (id) => ESTADOS_AGENDA.find((e) => e.id === id)?.nome ?? (id === "planejada" ? "Planejada" : "Feita");
+/** Ainda por acontecer (solicitada, agendada, ou o antigo "planejada"). */
+export const pendente = (a) => ["solicitada", "agendada", "planejada"].includes(a.estado);
+const ESTADO_RE = /#(?:solicitada|agendada|realizada|planejada|feita)\b/;
 const TITULO_ACOES = /^##\s+A[çc][õo]es\s*$/i;
+
+// Linhas antigas usavam #planejada/#feita; em "agendar" valem como agendada/realizada.
+function estadoDe(tipo, tags) {
+  const e = ["solicitada", "agendada", "realizada", "planejada", "feita"].find((x) => tags.includes(x));
+  if (tipo === "agendar") return e === "solicitada" || e === "agendada" || e === "realizada" ? e : e === "planejada" ? "agendada" : "realizada";
+  return e === "planejada" ? "planejada" : "feita";
+}
 
 /** Ações da nota do aluno: [{ linha, data: "AAAA-MM-DD", hora, tipo, cat, estado, texto }]. */
 export function acoesDoAluno(text) {
@@ -164,7 +184,7 @@ export function acoesDoAluno(text) {
     out.push({
       linha: i, data: m[1], hora: m[2] ?? "", tipo,
       cat: CATEGORIAS.find((c) => tags.includes(c.tag))?.id ?? "",
-      estado: tags.includes("planejada") ? "planejada" : "feita",
+      estado: estadoDe(tipo, tags),
       texto: m[3].replace(/(?:^|\s)#[\p{L}-]+/gu, " ").replace(/\s+/g, " ").trim(),
     });
   });
@@ -172,7 +192,7 @@ export function acoesDoAluno(text) {
 }
 
 /** Acrescenta a ação ao fim da seção "## Ações" (criando a seção, se não existir). */
-export function inserirAcao(text, { data, hora, tipo, cat, estado, texto }) {
+export function inserirAcao(text, { data, hora, tipo, cat, estado = tipo === "agendar" ? "solicitada" : "feita", texto }) {
   const linha = `- ${data}${hora ? ` ${hora}` : ""} — #${tipo}${cat ? ` #${CATEGORIAS.find((c) => c.id === cat)?.tag ?? cat}` : ""} #${estado} ${String(texto ?? "").replace(/\n/g, " ")}`.trimEnd();
   const linhas = text.split("\n"), ini = linhas.findIndex((l) => TITULO_ACOES.test(l));
   if (ini < 0) return `${text.replace(/\s+$/, "")}\n\n## Ações\n\n${linha}\n`;
@@ -190,6 +210,28 @@ export function marcarFeita(text, linha) {
   return linhas.join("\n");
 }
 
+/** Muda o estado (e, se vierem, a data e a hora) da ação na linha indicada. */
+export function atualizarAcao(text, linha, { estado, data, hora }) {
+  const linhas = text.split("\n"), m = /^(\s*-\s+)(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}h(?:\d{2})?))?(.*)$/.exec(linhas[linha] ?? "");
+  if (!m) return text;
+  let resto = m[4];
+  if (estado) resto = ESTADO_RE.test(resto) ? resto.replace(ESTADO_RE, `#${estado}`) : `${resto} #${estado}`;
+  const h = hora === undefined ? m[3] : hora; // "" apaga a hora; sem `hora`, mantém
+  linhas[linha] = `${m[1]}${data ?? m[2]}${h ? ` ${h}` : ""}${resto}`;
+  return linhas.join("\n");
+}
+
+/** Solicitações e agendamentos de reunião ainda em aberto, em todas as notas de aluno (para a página Hoje). */
+export async function reunioesEmAberto(items) {
+  const out = [];
+  for (const f of listarAlunos(items)) {
+    let text; try { text = await invoke("read_note", { path: f.path }); } catch { continue; }
+    for (const a of acoesDoAluno(text)) if (a.tipo === "agendar" && (a.estado === "solicitada" || a.estado === "agendada")) out.push({ ...a, aluno: f.name, turma: f.turma, path: f.path });
+  }
+  // Agendadas primeiro, da mais próxima à mais distante; depois as solicitações, da mais antiga.
+  return out.sort((a, b) => (a.estado === b.estado ? a.data.localeCompare(b.data) : a.estado === "agendada" ? -1 : 1));
+}
+
 // Semanas contadas desde 1970 (segunda a domingo), para comparar ocorrências e ações.
 const MS_SEMANA = 7 * 864e5;
 const segunda = (d) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
@@ -199,7 +241,7 @@ const conta = (ocs, cat, de, ate) => ocs.filter((o) => o.cats.some((c) => c.id =
 
 /** Ocorrências nas 2 semanas até a ação x nas 2 seguintes (até hoje). `null` se não é "feita" ou ainda não há semana depois. */
 export function efeitoDaAcao(a, ocs, hoje = new Date()) {
-  if (a.estado !== "feita" || !a.cat) return null;
+  if (pendente(a) || a.estado === "solicitada" || !a.cat) return null;
   const w = indiceSemana(dataIso(a.data)), atual = indiceSemana(hoje), fim = Math.min(w + 2, atual);
   if (w + 1 > atual) return null;
   const antes = conta(ocs, a.cat, w - 1, w), depois = conta(ocs, a.cat, w + 1, fim);
@@ -213,8 +255,8 @@ export function sinaisDoAluno(ocs, acoes, hoje = new Date(), limite = 3) {
     const n = conta(ocs, c, atual - 3, atual);
     if (n < limite) continue;
     const doCat = acoes.filter((a) => a.cat === c);
-    const feitas = doCat.filter((a) => a.estado === "feita").map((a) => ({ ...a, efeito: efeitoDaAcao(a, ocs, hoje) })).filter((a) => a.efeito);
-    out.push({ cat: c, n, planejada: doCat.find((a) => a.estado === "planejada") ?? null, semMelhora: feitas.length > 0 && feitas.every((a) => a.efeito.depois >= a.efeito.antes), feitas: feitas.length });
+    const feitas = doCat.filter((a) => !pendente(a)).map((a) => ({ ...a, efeito: efeitoDaAcao(a, ocs, hoje) })).filter((a) => a.efeito);
+    out.push({ cat: c, n, planejada: doCat.find(pendente) ?? null, semMelhora: feitas.length > 0 && feitas.every((a) => a.efeito.depois >= a.efeito.antes), feitas: feitas.length });
   }
   return out;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/api", () => ({ invoke: async () => null }));
-const { comportamentosDe, dataDaSemana, registrosDoDiario, insereTags, acoesDoAluno, inserirAcao, marcarFeita, efeitoDaAcao, sinaisDoAluno, serieSemanal, periodoDe, serieDoPeriodo, naJanela } = await import("../diario");
+const { comportamentosDe, dataDaSemana, registrosDoDiario, insereTags, acoesDoAluno, inserirAcao, marcarFeita, atualizarAcao, pendente, efeitoDaAcao, sinaisDoAluno, serieSemanal, periodoDe, serieDoPeriodo, naJanela } = await import("../diario");
 
 describe("comportamentosDe", () => {
   it("lê etiquetas e as tira do texto", () => {
@@ -47,13 +47,31 @@ describe("registrosDoDiario", () => {
 
 describe("ações com o aluno", () => {
   const nota = "---\ntipo: aluno\n---\n# Diego\n\nObservações.\n";
-  const a = { data: "2026-11-20", hora: "14h", tipo: "agendar", cat: "conversa", estado: "planejada", texto: "reunião sobre conversa" };
-  it("cria a seção, lê de volta e marca como feita", () => {
+  const a = { data: "2026-11-20", hora: "14h", tipo: "agendar", cat: "conversa", estado: "agendada", texto: "reunião sobre conversa" };
+  it("cria a seção, lê de volta e avança o estado", () => {
     const t = inserirAcao(nota, a);
-    expect(t).toContain("## Ações\n\n- 2026-11-20 14h — #agendar #conversa #planejada reunião sobre conversa");
+    expect(t).toContain("## Ações\n\n- 2026-11-20 14h — #agendar #conversa #agendada reunião sobre conversa");
     const [x] = acoesDoAluno(t);
-    expect(x).toMatchObject({ data: "2026-11-20", hora: "14h", tipo: "agendar", cat: "conversa", estado: "planejada", texto: "reunião sobre conversa" });
-    expect(acoesDoAluno(marcarFeita(t, x.linha))[0].estado).toBe("feita");
+    expect(x).toMatchObject({ data: "2026-11-20", hora: "14h", tipo: "agendar", cat: "conversa", estado: "agendada", texto: "reunião sobre conversa" });
+    expect(acoesDoAluno(atualizarAcao(t, x.linha, { estado: "realizada" }))[0].estado).toBe("realizada");
+    expect(acoesDoAluno(marcarFeita("## Ações\n- 2026-01-01 — #conversar #planejada x", 1))[0].estado).toBe("feita");
+  });
+  it("lê estados novos e antigos de 'agendar' e atualiza a linha", () => {
+    let t = inserirAcao(nota, { data: "2026-11-18", tipo: "agendar", texto: "pedido" });
+    expect(t).toContain("- 2026-11-18 — #agendar #solicitada pedido");
+    const [x] = acoesDoAluno(t);
+    expect(x.estado).toBe("solicitada");
+    expect(pendente(x)).toBe(true);
+    t = atualizarAcao(t, x.linha, { estado: "agendada", data: "2026-11-25", hora: "14h" });
+    expect(acoesDoAluno(t)[0]).toMatchObject({ estado: "agendada", data: "2026-11-25", hora: "14h", texto: "pedido" });
+    t = atualizarAcao(t, x.linha, { estado: "realizada" });
+    expect(acoesDoAluno(t)[0]).toMatchObject({ estado: "realizada", data: "2026-11-25", hora: "14h" });
+    expect(pendente(acoesDoAluno(t)[0])).toBe(false);
+    expect(acoesDoAluno("## Ações\n\n- 2026-01-01 — #agendar #planejada x\n- 2026-01-02 — #agendar #feita y")).toMatchObject([{ estado: "agendada" }, { estado: "realizada" }]);
+  });
+  it("registra informar à direção e conversar sem comportamento", () => {
+    const t = inserirAcao(inserirAcao(nota, { data: "2026-11-18", tipo: "informar", texto: "" }), { data: "2026-11-18", tipo: "conversar", texto: "conversa tranquila" });
+    expect(acoesDoAluno(t)).toMatchObject([{ tipo: "informar", estado: "feita", cat: "" }, { tipo: "conversar", cat: "", texto: "conversa tranquila" }]);
   });
   it("acrescenta ao fim da seção existente e ignora linhas de outras seções", () => {
     const t = inserirAcao(inserirAcao(nota, a) + "\n## Outra\n\n- 2026-01-01 — #conversar #feita fora\n", { ...a, tipo: "conversar", hora: "", estado: "feita", data: "2026-11-18" });
