@@ -26,6 +26,10 @@
     --ok: 152 40% 62%; --warn: 35 85% 65%; --err: 4 75% 70%;
     --ano-6: 217 85% 68%; --ano-7: 275 70% 74%; --ano-8: 332 80% 71%; --ano-9: 78 55% 58%; --ano-0: 38 8% 62%;
   }
+  /* Controles nativos (select, scrollbar, date) seguem o tema; as opções do select herdam as cores do app */
+  :root { color-scheme: light; }
+  .dark { color-scheme: dark; }
+  select option, select optgroup { background-color: hsl(var(--background)); color: hsl(var(--foreground)); }
   * { @apply border-border; }
   /* Tokens (rodada 2026-11-13): raios 8/12/pílula; espaçamento 4·8·12·16·24·32; controles 40px; texto 15px;
      estados: --ok/--warn/--err (sempre com ícone ou texto). Ver docs/afazeres.md. */
