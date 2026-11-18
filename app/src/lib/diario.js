@@ -135,3 +135,96 @@ export function registrosDoDiario(text, d) {
   }
   return regs;
 }
+
+// ---------- ações com o aluno (nota do aluno, seção "## Ações") ----------
+// Uma linha por ação: "- 2026-11-18 14h — #agendar #conversa #planejada texto livre".
+// Tipo (#conversar, #diretoria, #agendar, #notificar), comportamento (as mesmas etiquetas do diário) e estado (#planejada | #feita).
+export const TIPOS_ACAO = [
+  { id: "conversar", nome: "Conversar com o aluno" },
+  { id: "diretoria", nome: "Encaminhar à diretoria" },
+  { id: "agendar", nome: "Agendar com os pais" },
+  { id: "notificar", nome: "Notificar os pais" },
+];
+export const tipoAcao = (id) => TIPOS_ACAO.find((t) => t.id === id);
+export const NEGATIVOS = COMPORTAMENTOS.map((c) => c.id);
+const TITULO_ACOES = /^##\s+A[çc][õo]es\s*$/i;
+
+/** Ações da nota do aluno: [{ linha, data: "AAAA-MM-DD", hora, tipo, cat, estado, texto }]. */
+export function acoesDoAluno(text) {
+  const linhas = text.split("\n"), out = [];
+  let dentro = false;
+  linhas.forEach((l, i) => {
+    if (/^##\s/.test(l)) { dentro = TITULO_ACOES.test(l); return; }
+    if (!dentro) return;
+    const m = /^\s*-\s+(\d{4}-\d{2}-\d{2})(?:\s+(\d{1,2}h(?:\d{2})?))?\s*(?:[—–-]\s*)?(.*)$/.exec(l);
+    if (!m) return;
+    const tags = [...m[3].matchAll(/(?:^|\s)#([\p{L}-]+)/gu)].map((x) => x[1].toLowerCase());
+    const tipo = TIPOS_ACAO.find((t) => tags.includes(t.id))?.id;
+    if (!tipo) return;
+    out.push({
+      linha: i, data: m[1], hora: m[2] ?? "", tipo,
+      cat: CATEGORIAS.find((c) => tags.includes(c.tag))?.id ?? "",
+      estado: tags.includes("planejada") ? "planejada" : "feita",
+      texto: m[3].replace(/(?:^|\s)#[\p{L}-]+/gu, " ").replace(/\s+/g, " ").trim(),
+    });
+  });
+  return out;
+}
+
+/** Acrescenta a ação ao fim da seção "## Ações" (criando a seção, se não existir). */
+export function inserirAcao(text, { data, hora, tipo, cat, estado, texto }) {
+  const linha = `- ${data}${hora ? ` ${hora}` : ""} — #${tipo}${cat ? ` #${CATEGORIAS.find((c) => c.id === cat)?.tag ?? cat}` : ""} #${estado} ${String(texto ?? "").replace(/\n/g, " ")}`.trimEnd();
+  const linhas = text.split("\n"), ini = linhas.findIndex((l) => TITULO_ACOES.test(l));
+  if (ini < 0) return `${text.replace(/\s+$/, "")}\n\n## Ações\n\n${linha}\n`;
+  let fim = linhas.findIndex((l, i) => i > ini && /^##\s/.test(l));
+  if (fim < 0) fim = linhas.length;
+  while (fim > ini + 1 && linhas[fim - 1].trim() === "") fim--;
+  linhas.splice(fim, 0, linha);
+  return linhas.join("\n");
+}
+
+/** Troca #planejada por #feita na linha indicada. */
+export function marcarFeita(text, linha) {
+  const linhas = text.split("\n");
+  if (linhas[linha] != null) linhas[linha] = linhas[linha].replace(/#planejada\b/, "#feita");
+  return linhas.join("\n");
+}
+
+// Semanas contadas desde 1970 (segunda a domingo), para comparar ocorrências e ações.
+const MS_SEMANA = 7 * 864e5;
+const segunda = (d) => { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+export const indiceSemana = (d) => Math.round(segunda(d).getTime() / MS_SEMANA);
+export const dataIso = (s) => { const [a, m, d] = s.split("-").map(Number); return new Date(a, m - 1, d); };
+const conta = (ocs, cat, de, ate) => ocs.filter((o) => o.cats.some((c) => c.id === cat) && o.data && indiceSemana(o.data) >= de && indiceSemana(o.data) <= ate).length;
+
+/** Ocorrências nas 2 semanas até a ação x nas 2 seguintes (até hoje). `null` se não é "feita" ou ainda não há semana depois. */
+export function efeitoDaAcao(a, ocs, hoje = new Date()) {
+  if (a.estado !== "feita" || !a.cat) return null;
+  const w = indiceSemana(dataIso(a.data)), atual = indiceSemana(hoje), fim = Math.min(w + 2, atual);
+  if (w + 1 > atual) return null;
+  const antes = conta(ocs, a.cat, w - 1, w), depois = conta(ocs, a.cat, w + 1, fim);
+  return { antes, depois, semanas: fim - w, tendencia: depois < antes ? "diminuiu" : depois > antes ? "aumentou" : "igual" };
+}
+
+/** Sinais: comportamento negativo com `limite` ou mais ocorrências nas últimas 4 semanas, com o que já foi feito a respeito. */
+export function sinaisDoAluno(ocs, acoes, hoje = new Date(), limite = 3) {
+  const atual = indiceSemana(hoje), out = [];
+  for (const c of NEGATIVOS) {
+    const n = conta(ocs, c, atual - 3, atual);
+    if (n < limite) continue;
+    const doCat = acoes.filter((a) => a.cat === c);
+    const feitas = doCat.filter((a) => a.estado === "feita").map((a) => ({ ...a, efeito: efeitoDaAcao(a, ocs, hoje) })).filter((a) => a.efeito);
+    out.push({ cat: c, n, planejada: doCat.find((a) => a.estado === "planejada") ?? null, semMelhora: feitas.length > 0 && feitas.every((a) => a.efeito.depois >= a.efeito.antes), feitas: feitas.length });
+  }
+  return out;
+}
+
+/** As últimas `n` semanas (a atual por último): [{ ini: Date, por: [{ cat, n }] }]. */
+export function serieSemanal(ocs, hoje = new Date(), n = 6) {
+  const atual = indiceSemana(hoje);
+  return Array.from({ length: n }, (_, k) => {
+    const w = atual - (n - 1 - k);
+    const ini = segunda(hoje); ini.setDate(ini.getDate() - 7 * (n - 1 - k));
+    return { w, ini, por: CATEGORIAS.map((c) => ({ cat: c.id, n: ocs.filter((o) => o.data && indiceSemana(o.data) === w && o.cats.some((x) => x.id === c.id)).length })).filter((x) => x.n) };
+  });
+}
