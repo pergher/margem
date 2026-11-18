@@ -84,6 +84,7 @@ Regra: dado que o app lê e grava mora **na nota a que pertence**, em tabela ou 
 | critérios e notas de uma redação | nota da correção, `### Avaliação` de cada aluno | tabela `Critério \| Nota \| Comentário`; "Nota final" é a última linha |
 | pesos e gradação dos critérios | `_dados.json` na pasta da correção | `peso`, `gradacao`, níveis dos descritores (só leitura para o app) |
 | ocorrências de aluno | diário da turma, seção `## Aula N — texto` | linha `- [[Nome]] — #etiqueta texto`; a nota do aluno não guarda cópia, o app junta lendo os diários. Etiquetas: `#conversa` `#produtividade` `#espelho` `#andando` `#briga` `#celular` `#positivo` (sem etiqueta, a página Diário sugere pelo texto e marca como “sugerido”) |
+| ações com o aluno | nota do aluno, seção `## Ações` | linha `- AAAA-MM-DD [14h] — #tipo [#comportamento] #estado texto`; tipo: `#conversar` `#diretoria` (Encaminhar) `#agendar` `#notificar` `#informar` (Informar à direção); estado: em `#agendar` é `#solicitada`, `#agendada` ou `#realizada` (a página Hoje lista as duas primeiras); nos demais, `#feita` (`#planejada` antigo continua válido) |
 | situação da aula | nota de semana | marca no fim da célula *Aula* (ver acima) |
 | habilidades/códigos BNCC | nota do ciclo | texto da habilidade com o código no início (ex.: `EF69LP…`); sem campo próprio por ora |
 

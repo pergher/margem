@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconArrowRight as ArrowRight, IconFileText as FileText } from "@tabler/icons-react";
+import { IconArrowRight as ArrowRight, IconCalendarEvent as Reuniao, IconFileText as FileText } from "@tabler/icons-react";
 import { lerCiclos } from "@/lib/ciclos";
 import { lerSemanas, segundaDe, rotuloDe, situacaoAula } from "@/lib/semana";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
@@ -15,6 +15,8 @@ import { SituacaoAula } from "@/components/ui/SituacaoAula";
 import { Inline } from "@/components/ui/Inline";
 import { Estado, Carregando, Vazio, Erro, useToast } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
+import { abreviar, atualizarAcao, dataIso, reunioesEmAberto } from "@/lib/diario";
+import { AvancarReuniao } from "@/components/AvancarReuniao";
 
 const tint = (cor, p = 14) => `color-mix(in srgb, ${cor} ${p}%, transparent)`;
 const nomes = (r) => [...String(r ?? "").matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
@@ -106,6 +108,8 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
               </div>}
           </section>
 
+          <Reunioes items={items} onRefresh={onRefresh} />
+
           <section>
             <h2 className="mb-3 text-lg font-semibold">Documentos recentes</h2>
             {recentes.length === 0
@@ -130,6 +134,43 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
         </aside>
       </div>
     </div></div>
+  );
+}
+
+const lerOcultar = () => { try { return JSON.parse(localStorage.getItem("margem.diario.ocultar") ?? "true") !== false; } catch { return true; } };
+const quando = (a) => { const d = dataIso(a.data); return `${d.getDate()}/${d.getMonth() + 1}${a.hora ? `, ${a.hora}` : ""}`; };
+
+/** Solicitações e agendamentos de reunião com responsáveis (vêm das ações "Agendar" nas fichas dos alunos). Some quando não há nenhum. */
+function Reunioes({ items, onRefresh }) {
+  const toast = useToast();
+  const [lista, setLista] = useState([]);
+  const [recarga, setRecarga] = useState(0);
+  const ocultar = lerOcultar();
+  useEffect(() => { let vivo = true; reunioesEmAberto(items).then((l) => vivo && setLista(l)).catch(() => {}); return () => { vivo = false; }; }, [items, recarga]);
+  if (!lista.length) return null;
+  const avancar = async (r, patch) => {
+    try {
+      await invoke("save_note", { path: r.path, text: atualizarAcao(await invoke("read_note", { path: r.path }), r.linha, patch) });
+      setRecarga((x) => x + 1); await onRefresh?.();
+    } catch (e) { toast(`Não deu para atualizar: ${e.message ?? e}`, { tipo: "err" }); }
+  };
+  return (
+    <section aria-label="Reuniões com responsáveis">
+      <h2 className="mb-3 text-lg font-semibold">Reuniões com responsáveis</h2>
+      <div className="overflow-hidden rounded-xl border">
+        {lista.map((r) => (
+          <div key={`${r.path}#${r.linha}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3 last:border-b-0">
+            <Reuniao aria-hidden className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.7} />
+            <div className="min-w-0 flex-1 basis-52">
+              <div className="flex flex-wrap items-center gap-x-2 text-sm font-medium">{ocultar ? abreviar(r.aluno) : r.aluno}<span className="text-xs font-normal text-muted-foreground">turma {r.turma}</span></div>
+              {r.texto && <div className="truncate text-sm text-muted-foreground">{r.texto}</div>}
+            </div>
+            <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", r.estado === "agendada" ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn")}>{r.estado === "agendada" ? `Agendada · ${quando(r)}` : `Solicitada em ${quando(r)}`}</span>
+            <AvancarReuniao acao={r} onAvancar={(patch) => avancar(r, patch)} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
