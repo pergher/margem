@@ -11,19 +11,22 @@ transcricao: aguardando-revisao
 
 Dado: Produção textual em sala (Crônica). Recolhidos 22 textos.
 
-- [[Aluno Fictício 1]] — #positivo texto completo e bem organizado.
-- [[Aluno Fictício 4]] — #briga discussão com colega por causa da borracha; conversei no corredor.
+- [[Al1]] — #positivo texto completo e bem organizado.
+- [[Al4]] — #briga discussão com colega por causa da borracha; conversei no corredor.
 
 ## Aula 2 — Revisão da crônica em duplas
 
 Dado: Revisão cruzada com lista de conferência (título, final, pontuação).
 
-- [[Aluno Fictício 3]] — #espelho ficou se olhando no espelhinho e arrumando o cabelo.
-- [[Aluno Fictício 5]] — #conversa
+- [[Al3]] — #espelho ficou se olhando no espelhinho e arrumando o cabelo.
+- [[Al5]] — #conversa
 
 ## Aula 3 — Crase: primeiras ideias
 
 Dado: Introdução ao uso da crase com exemplos do cotidiano.
 
-- [[Aluno Fictício 2]] — #positivo fez todos os exercícios e pediu mais.
-- [[Aluno Fictício 4]] — sem material.
+- [[Al2]] — #positivo fez todos os exercícios e pediu mais.
+- [[Al4]] — sem material.
+- [[Al3]] — #celular de novo com o celular na carteira.
+- [[Al2]] — #produtividade não fez a revisão.
+- [[Al2]] — #produtividade sem material.

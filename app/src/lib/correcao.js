@@ -1,6 +1,7 @@
 // Lê "Transcrições e devolutivas.md" de uma correção: um bloco "## Aluno" com foto, "### Texto" e "### Avaliação" (tabela).
 import { invoke } from "@/lib/api";
 import { setProp } from "@/lib/frontmatter";
+import { abreviar } from "@/lib/diario";
 
 export const MARCAS = /\[[^\]]*\?\]|\[ilegível\]/g;
 
@@ -110,9 +111,9 @@ export function estatisticas(d) {
   };
 }
 
-export function devolutiva(d, a, nome = true) {
+export function devolutiva(d, a) {
   const max = a.criterios.reduce((t, c) => t + maxDe(d, c.nome), 0);
-  return [`# ${nome ? a.nome : "Aluno " + a.n} — ${d.atividade || "Produção textual"}${d.turma ? ` (turma ${d.turma})` : ""}`, "",
+  return [`# ${abreviar(a.nome)} — ${d.atividade || "Produção textual"}${d.turma ? ` (turma ${d.turma})` : ""}`, "",
     `**Nota: ${fmt(a.total)} de ${fmt(max)}**`, "",
     ...a.criterios.map((c) => `- **${c.nome}** (${c.nota}): ${c.comentario}`)].join("\n") + "\n";
 }

@@ -6,12 +6,12 @@ import { Inline } from "./Inline";
 import { Rating } from "./Rating";
 import { baixar } from "./baixar";
 
-export function Avaliacao({ largura, d, a, est, nomes, abertos, alternar, setCrit, mudarNota, copiar, nomeArq }) {
+export function Avaliacao({ largura, d, a, est, abertos, alternar, setCrit, mudarNota, copiar, nomeArq }) {
   return (
         <section aria-label="Avaliação" style={{ width: largura, minWidth: 280 }} className="flex shrink flex-col">
           <div className={CAB + " gap-x-3"}><span className="flex-1 font-semibold">Avaliação</span>
-            <button onClick={() => copiar(devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">copiar devolutiva</button>
-            <button onClick={() => baixar(nomeArq(a), devolutiva(d, a, nomes))} className="text-xs font-normal text-primary hover:underline">baixar</button></div>
+            <button onClick={() => copiar(devolutiva(d, a))} className="text-xs font-normal text-primary hover:underline">copiar devolutiva</button>
+            <button onClick={() => baixar(nomeArq(a), devolutiva(d, a))} className="text-xs font-normal text-primary hover:underline">baixar</button></div>
           <ul className="min-h-0 flex-1 space-y-1 overflow-auto px-3 py-2">
             {a.criterios.map((c, ci) => {
               const aberto = abertos.has(c.nome), temCom = !!c.comentario?.trim();

@@ -16,7 +16,7 @@ Média: 6. Cada critério vale 0, 1 ou 2 pontos.
 
 Escreva uma crônica (10 a 15 linhas) sobre um fato banal do seu dia que, olhado de perto, ficou engraçado ou emocionante.
 
-## Aluno Fictício 1
+## Al1
 
 ### Texto
 
@@ -30,7 +30,7 @@ Hoje de manhã o meu cachorro {comeu|comeu} meu chinelo e {eu|eu} fiquei {braba|
 | Coesão | 2 | o final fecha bem a cena |
 | **Nota final** | **3,5** | |
 
-## Aluno Fictício 2
+## Al2
 
 ### Texto
 
@@ -44,7 +44,7 @@ O onibus atrasou e eu cheguei {atrazado|atrasado} na aula. A professora {fez|fez
 | Coesão | 1,5 | falta ligar as ideias com conectivos |
 | **Nota final** | **2,5** | |
 
-## Aluno Fictício 3
+## Al3
 
 ### Texto
 
@@ -58,7 +58,7 @@ Minha avó faz bolo todo domingo e a casa inteira {cheira|cheira} a canela. Onte
 | Coesão | 2 | humor e afeto bem dosados |
 | **Nota final** | **4** | |
 
-## Aluno Fictício 4
+## Al4
 
 ### Texto
 
@@ -72,7 +72,7 @@ Na fila da cantina um menino {furo|furou} a fila e ninguém {falo|falou} nada. [
 | Coesão | | |
 | **Nota final** | **1** | |
 
-## Aluno Fictício 5
+## Al5
 
 ### Texto
 

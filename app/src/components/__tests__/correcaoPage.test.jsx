@@ -61,13 +61,12 @@ describe("CorrecaoPage", () => {
     expect(screen.getByText("Nenhuma correção ainda")).toBeTruthy();
   });
 
-  it("mostra o cabeçalho, a lista de alunos (nomes ocultos), a transcrição e a avaliação", async () => {
+  it("mostra o cabeçalho, a lista de alunos, a transcrição e a avaliação", async () => {
     await abrir();
     expect(screen.getByRole("heading", { name: "Conto" })).toBeTruthy();
     const lista = within(screen.getByLabelText("Alunos"));
-    expect(lista.getByText("Aluno 01")).toBeTruthy();
-    expect(lista.getByText("Aluno 02")).toBeTruthy();
-    expect(lista.queryByText("Ana")).toBeNull();
+    expect(lista.getByText("Ana")).toBeTruthy();
+    expect(lista.getByText("Beto")).toBeTruthy();
     const transc = within(screen.getByLabelText("Transcrição"));
     expect(transc.getByText("tudo", { exact: false })).toBeTruthy();
     const aval = within(screen.getByLabelText("Avaliação"));
@@ -76,15 +75,14 @@ describe("CorrecaoPage", () => {
     expect(screen.getByLabelText("Foto do manuscrito")).toBeTruthy();
   });
 
-  it("mostrar nomes troca os rótulos da lista", async () => {
+  it("não oferece botão para mostrar nomes", async () => {
     await abrir();
-    fireEvent.click(screen.getByLabelText("Mostrar nomes"));
-    expect(within(screen.getByLabelText("Alunos")).getByText("Ana")).toBeTruthy();
+    expect(screen.queryByLabelText("Mostrar nomes")).toBeNull();
   });
 
   it("escolher outro aluno troca a transcrição", async () => {
     await abrir();
-    fireEvent.click(within(screen.getByLabelText("Alunos")).getByText("Aluno 02"));
+    fireEvent.click(within(screen.getByLabelText("Alunos")).getByText("Beto"));
     expect(within(screen.getByLabelText("Transcrição")).getByText("Texto do Beto.")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Aluno anterior"));
     expect(within(screen.getByLabelText("Transcrição")).queryByText("Texto do Beto.")).toBeNull();

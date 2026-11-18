@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { IconEye as Eye, IconEyeOff as EyeOff, IconDownload as Download, IconChevronRight as ChevronRight, IconArrowRight as ArrowRight } from "@tabler/icons-react";
+import { IconDownload as Download, IconChevronRight as ChevronRight, IconArrowRight as ArrowRight } from "@tabler/icons-react";
 import { Estado } from "@/components/ui/estado";
 import { Button } from "@/components/ui/button";
 import { fmt, num } from "@/lib/correcao";
@@ -29,7 +29,7 @@ function Variacao({ dif }) {
   );
 }
 
-export function Turma({ d, est, rotulo, nomes, setNomes, onAluno, onTodas }) {
+export function Turma({ d, est, rotulo, onAluno, onTodas }) {
   const [ordem, setOrdem] = useState("original");
   const [abertos, setAbertos] = useState(new Set());
   const [filtro, setFiltro] = useState("todos");
@@ -60,7 +60,6 @@ export function Turma({ d, est, rotulo, nomes, setNomes, onAluno, onTodas }) {
     <div className="min-h-0 flex-1 overflow-auto"><div className="flex w-full flex-col gap-8 px-8 py-8">
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="mr-auto text-lg font-semibold">Visão da turma <span className="font-normal text-muted-foreground">· {n} produções</span></h2>
-        <Button size="sm" variant="outline" onClick={() => setNomes(!nomes)}>{nomes ? <EyeOff aria-hidden className="h-4 w-4" /> : <Eye aria-hidden className="h-4 w-4" />}{nomes ? "Ocultar nomes" : "Mostrar nomes"}</Button>
         <Button size="sm" variant="outline" onClick={onTodas}><Download aria-hidden className="h-4 w-4" />Baixar todas as devolutivas</Button>
       </div>
 

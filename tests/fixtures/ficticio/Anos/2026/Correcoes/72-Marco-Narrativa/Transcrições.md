@@ -10,7 +10,7 @@ transcricao: aprovada
 
 # Correção · 72 · Narrativa
 
-## Aluno Fictício A
+## AlA
 
 ### Texto
 
@@ -24,7 +24,7 @@ Era uma vez um gato que fugiu ~~da~~ de casa.
 | Coesão | 2 | bom |
 | **Nota final** | **3,5** | |
 
-## Aluno Fictício B
+## AlB
 
 ### Texto
 

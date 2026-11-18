@@ -27,7 +27,7 @@ export function NovaCorrecaoDialog({ items, turmas, turmaInicial, onClose, onCri
           <label className="text-sm font-medium">Mês<select value={d.mes} onChange={set("mes")} className={campo}>{MESES_NOMES.map((m) => <option key={m}>{m}</option>)}</select></label>
           <label className="text-sm font-medium">Rubrica<select value={d.rubrica} onChange={set("rubrica")} className={campo}><option value="">Sem rubrica (nota única)</option>{rubricas.map((r) => <option key={r.path} value={r.path}>{r.name}</option>)}</select></label>
         </div>
-        <label className="mt-3 block text-sm font-medium">Alunos (um por linha)<textarea value={alunos} onChange={(e) => setAlunos(e.target.value)} placeholder={"Nome do aluno\nOutro aluno"} className={campo + " h-32 font-mono text-xs"} /></label>
+        <label className="mt-3 block text-sm font-medium">Alunos (um por linha)<textarea value={alunos} onChange={(e) => setAlunos(e.target.value)} placeholder={"Nome do aluno (grava só a sigla, ex.: PaPe)\nOutro aluno"} className={campo + " h-32 font-mono text-xs"} /></label>
         <label className="mt-3 block text-sm font-medium">Enunciado (opcional)<textarea value={d.enunciado} onChange={set("enunciado")} className={campo + " h-16"} /></label>
         {msg && <div role="alert" className="mt-3 text-sm text-err">{msg}</div>}
         <div className="mt-5 flex justify-end gap-2">

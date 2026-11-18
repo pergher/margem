@@ -1,6 +1,20 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/api", () => ({ invoke: async () => null }));
-const { comportamentosDe, dataDaSemana, registrosDoDiario, insereTags, acoesDoAluno, inserirAcao, marcarFeita, atualizarAcao, pendente, efeitoDaAcao, sinaisDoAluno, serieSemanal, periodoDe, serieDoPeriodo, naJanela } = await import("../diario");
+const { comportamentosDe, dataDaSemana, registrosDoDiario, insereTags, acoesDoAluno, inserirAcao, marcarFeita, atualizarAcao, pendente, efeitoDaAcao, sinaisDoAluno, serieSemanal, periodoDe, serieDoPeriodo, naJanela, abreviar } = await import("../diario");
+
+describe("abreviar", () => {
+  it("duas letras do primeiro nome e duas do último sobrenome", () => {
+    expect(abreviar("Paulo Pergher")).toBe("PaPe");
+    expect(abreviar("maria da Silva Souza")).toBe("MaSo");
+    expect(abreviar("  Ana   Lima ")).toBe("AnLi");
+  });
+  it("não muda quem já é sigla ou tem uma palavra só", () => {
+    expect(abreviar("PaPe")).toBe("PaPe");
+    expect(abreviar(abreviar("Paulo Pergher"))).toBe("PaPe");
+    expect(abreviar("")).toBe("");
+    expect(abreviar(undefined)).toBe("");
+  });
+});
 
 describe("comportamentosDe", () => {
   it("lê etiquetas e as tira do texto", () => {

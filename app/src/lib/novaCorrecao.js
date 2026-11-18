@@ -2,10 +2,13 @@
 // "Transcrições e devolutivas" com um bloco por aluno, já com os critérios da rubrica e as notas em branco.
 import { raizDe } from "@/lib/raiz";
 import { invoke } from "@/lib/api";
-import { listarAlunos } from "@/lib/diario";
+import { abreviar, listarAlunos } from "@/lib/diario";
 
 export const MESES_NOMES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 const limpa = (s) => s.trim().replace(/[\\/:*?"<>|#^[\]]+/g, " ").replace(/\s+/g, " ");
+
+/** Siglas iguais (dois alunos que dão "AnSi") ganham número no fim, para nenhum bloco sumir: AnSi, AnSi2. */
+const unicos = (l) => { const vistos = {}; return l.map((n) => { vistos[n] = (vistos[n] ?? 0) + 1; return vistos[n] > 1 ? `${n}${vistos[n]}` : n; }); };
 
 /** Rubricas do vault (notas `Rubrica…` ou dentro de uma pasta de rubricas). */
 export const listarRubricas = (items) => items.filter((i) => /(^|\/)rubricas?\b/i.test(i.rel) || /^Rubrica/i.test(i.name));
@@ -37,7 +40,7 @@ export function textoDaCorrecao({ turma, mes, atividade, rubrica, criterios, alu
 
 /** Cria o lote e devolve o caminho da nota. Falha se a pasta já existir. */
 export async function criarCorrecao(items, { ano, turma, mes, atividade, rubricaItem, alunos, enunciado }) {
-  const nomeAtiv = limpa(atividade), nomes = [...new Set(alunos.map(limpa).filter(Boolean))];
+  const nomeAtiv = limpa(atividade), nomes = unicos(alunos.map((a) => abreviar(limpa(a))).filter(Boolean));
   if (!nomeAtiv) throw new Error("Dê um nome à atividade.");
   if (!turma) throw new Error("Escolha a turma.");
   if (!nomes.length) throw new Error("Informe ao menos um aluno.");

@@ -11,12 +11,12 @@ transcricao: aprovada
 
 Dado: Revisão de pronomes pessoais e de tratamento com jogo de cartas.
 
-- [[Aluno Fictício A]] — #positivo liderou o grupo vencedor.
-- [[Aluno Fictício B]] — #celular fotografando o quadro sem autorização; chamado a atenção.
+- [[AlA]] — #positivo liderou o grupo vencedor.
+- [[AlB]] — #celular fotografando o quadro sem autorização; chamado a atenção.
 
 ## Aula 2 — Narrativa: devolução da correção
 
 Dado: Devolução das narrativas corrigidas. Cada aluno escolheu um erro para reescrever.
 
-- [[Aluno Fictício A]] — #positivo reescreveu o parágrafo todo.
-- [[Aluno Fictício B]] — #conversa conversou durante a devolução.
+- [[AlA]] — #positivo reescreveu o parágrafo todo.
+- [[AlB]] — #conversa conversou durante a devolução.

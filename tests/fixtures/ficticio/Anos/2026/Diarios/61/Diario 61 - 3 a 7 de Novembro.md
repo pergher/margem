@@ -11,19 +11,19 @@ transcricao: aprovada
 
 Dado: Atividade diagnóstica sobre acentuação em duplas. Correção oral no quadro.
 
-- [[Aluno Fictício 1]] — #positivo explicou a regra das oxítonas para a turma.
-- [[Aluno Fictício 2]] — #produtividade largou a atividade e ficou sem fazer durante a correção.
+- [[Al1]] — #positivo explicou a regra das oxítonas para a turma.
+- [[Al2]] — #produtividade largou a atividade e ficou sem fazer durante a correção.
 
 ## Aula 2 — Acentuação: oxítonas e paroxítonas
 
 Dado: Aula expositiva com a tabela de tonicidade. Exercícios 1 a 4; o 4 ficou para casa.
 
-- [[Aluno Fictício 3]] — #celular usando o celular embaixo da carteira; guardou após o aviso.
-- [[Aluno Fictício 4]] — atrasou 10 minutos.
+- [[Al3]] — #celular usando o celular embaixo da carteira; guardou após o aviso.
+- [[Al4]] — atrasou 10 minutos.
 
 ## Aula 3 — Leitura: crônica
 
 Dado: Leitura em voz alta de uma crônica de jornal. Discussão: o que torna "banal" um fato divertido.
 
-- [[Aluno Fictício 5]] — #positivo participou bem e propôs o tema da própria crônica.
-- [[Aluno Fictício 2]] — #andando saiu do lugar três vezes.
+- [[Al5]] — #positivo participou bem e propôs o tema da própria crônica.
+- [[Al2]] — #andando saiu do lugar três vezes.

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { IconArrowLeft as ArrowLeft, IconChartBar as ChartColumn, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconCircleCheck as CircleCheck } from "@tabler/icons-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
+import { abreviar } from "@/lib/diario";
 import { listaCorrecoes, lerCorrecao, estatisticas, devolutiva, opcoesDe, num, gravarNota, aprovarTranscricao } from "@/lib/correcao";
 import { Carregando, Erro, Vazio, useToast } from "@/components/ui/estado";
 import { handlers } from "@/lib/shortcuts";
@@ -22,7 +23,6 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
   const [d, setD] = useState(null);
   const [erro, setErro] = useState("");
   const [sel, setSel] = useState(0);        // índice original do aluno
-  const [nomes, setNomes] = useState(false);
   const [vista, setVista] = useState(vistaInicial ?? "aluno");
   const [ordem, setOrdem] = useState("original");
   const [ver, setVer] = useState({ orto: true, pont: true, corr: false });
@@ -54,7 +54,7 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
   const est = estatisticas(d);
   const turma = d.turma?.replace(/"/g, "") ?? "";
   const a = d.alunos[sel];
-  const rotulo = (x) => (nomes ? x.nome : `Aluno ${String(x.n).padStart(2, "0")}`);
+  const rotulo = (x) => abreviar(x.nome);
   const pend = est.marcas;
   const lista = d.alunos.map((x, i) => ({ x, i })).sort((p, q) => ordem === "nota-" ? (q.x.total ?? -1) - (p.x.total ?? -1) : ordem === "nota+" ? (p.x.total ?? 99) - (q.x.total ?? 99) : ordem === "pendencia" ? q.x.marcas - p.x.marcas || p.i - q.i : p.i - q.i);
   const q = busca.trim().toLowerCase();
@@ -74,7 +74,7 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
   const mudarNota = (c, v) => gravarNota(d.path, a.nome, c.nome, v).then(carregar).then(() => dizer("Nota gravada")).catch((e) => setErro(String(e)));
   const aprovar = () => aprovarTranscricao(d.path).then(carregar).then(() => dizer("Transcrição aprovada")).catch((e) => setErro(String(e)));
   const copiar = (t) => navigator.clipboard?.writeText(t).then(() => dizer("Devolutiva copiada"));
-  const nomeArq = (x) => `Devolutiva ${nomes ? x.nome : "Aluno " + String(x.n).padStart(2, "0")}.md`;
+  const nomeArq = (x) => `Devolutiva ${abreviar(x.nome)}.md`;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -106,9 +106,9 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
       </header>
       <PainelEnunciado d={d} onSalvo={carregar} dizer={dizer} onErro={setErro} />
 
-      {vista === "turma" ? <Turma d={d} est={est} rotulo={rotulo} nomes={nomes} setNomes={setNomes} onAluno={(i) => { setSel(i); setVista("aluno"); }} onTodas={() => baixar(`Devolutivas ${d.turma} - ${d.atividade}.md`, d.alunos.map((x) => devolutiva(d, x, nomes)).join("\n---\n\n"))} /> : (
+      {vista === "turma" ? <Turma d={d} est={est} rotulo={rotulo} onAluno={(i) => { setSel(i); setVista("aluno"); }} onTodas={() => baixar(`Devolutivas ${d.turma} - ${d.atividade}.md`, d.alunos.map((x) => devolutiva(d, x)).join("\n---\n\n"))} /> : (
       <div className="flex min-h-0 flex-1 overflow-x-auto"> {/* em janela estreita as colunas encolhem até o mínimo e, abaixo disso, rola de lado */}
-        <ListaAlunos largura={wLista} d={d} pend={pend} nomes={nomes} setNomes={setNomes} ordem={ordem} setOrdem={setOrdem} visiveis={visiveis} sel={sel} setSel={setSel} rotulo={rotulo} />
+        <ListaAlunos largura={wLista} d={d} pend={pend} ordem={ordem} setOrdem={setOrdem} visiveis={visiveis} sel={sel} setSel={setSel} rotulo={rotulo} />
         <ResizeHandle width={wLista} setWidth={setWLista} min={150} max={360} side="left" />
 
         <PainelFoto largura={wFoto} a={a} zoom={zoom} setZoom={setZoom} rot={rot} setRot={setRot} lupa={lupa} setLupa={setLupa} />
@@ -117,7 +117,7 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
         <Transcricao a={a} ver={ver} setVer={setVer} titulo={titulo} par={par} />
 
         <ResizeHandle width={wAval} setWidth={setWAval} min={300} max={640} side="right" />
-        <Avaliacao largura={wAval} d={d} a={a} est={est} nomes={nomes} abertos={abertos} alternar={alternar} setCrit={setCrit} mudarNota={mudarNota} copiar={copiar} nomeArq={nomeArq} />
+        <Avaliacao largura={wAval} d={d} a={a} est={est} abertos={abertos} alternar={alternar} setCrit={setCrit} mudarNota={mudarNota} copiar={copiar} nomeArq={nomeArq} />
       </div>)}
     </div>
   );

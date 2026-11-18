@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { IconBook2 as BookOpen, IconClipboardCheck as ClipboardCheck, IconEye as Eye, IconEyeOff as EyeOff, IconPencil as Pencil, IconPlus as Plus, IconSearch as Search, IconUser as User, IconUserPlus as UserPlus, IconX as X } from "@tabler/icons-react";
+import { IconBook2 as BookOpen, IconClipboardCheck as ClipboardCheck, IconPencil as Pencil, IconPlus as Plus, IconSearch as Search, IconUser as User, IconUserPlus as UserPlus, IconX as X } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { corTurma } from "@/lib/cores";
@@ -30,7 +30,6 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
   const [regs, setRegs] = useState(null);
   const [recarga, setRecarga] = useState(0);
   const [erro, setErro] = useState("");
-  const [ocultar, setOcultar] = useState(() => ler("margem.diario.ocultar", true)); // nomes de alunos abreviados (Pa. Pe.)
   const [dialogo, setDialogo] = useState(null); // "registrar" | "diario" | "aluno"
   // filtros
   const [q, setQ] = useState("");
@@ -42,7 +41,6 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
   const [vista, setVista] = useState(() => ler("margem.diario.vista", "aulas")); // "aulas" | "alunos"
   const [alunoFoco, setAlunoFoco] = useState("");
 
-  useEffect(() => gravar("margem.diario.ocultar", ocultar), [ocultar]);
   useEffect(() => gravar("margem.diario.vista", vista), [vista]);
   useEffect(() => { lerSemanas(items).then(setSemanas).catch(() => {}); }, [items]);
   useEffect(() => {
@@ -61,7 +59,6 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
 
   const ano = items.map((i) => /^Anos\/(\d{4})\//.exec(i.rel)?.[1]).filter(Boolean).sort().pop() ?? String(new Date().getFullYear());
   const todasTurmas = useMemo(() => [...new Set([...diarios.map((d) => d.turma), ...alunos.map((a) => a.turma), ...semanas.flatMap((s) => s.turmas.flatMap((t) => turmasDe(t.turma)))])].sort(), [diarios, alunos, semanas]);
-  const mostrar = (n) => (ocultar ? abreviar(n) : n);
   const mesesTodos = useMemo(() => [...new Set((regs ?? []).map((r) => r.mes).filter(Boolean))].sort().reverse(), [regs]);
   const algumFiltro = !!(q.trim() || turmas.length || meses.length || aprovar || soDiario);
   const limpar = () => { setQ(""); setTurmas([]); setMeses([]); setAprovar(false); setSoDiario(null); };
@@ -125,14 +122,11 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
             <button key={id} role="tab" aria-selected={vista === id} onClick={() => setVista(id)} className={cn("inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors", vista === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><I aria-hidden className="h-4 w-4" />{nome}</button>
           ))}
         </div>
-        <button onClick={() => setOcultar((v) => !v)} aria-pressed={ocultar} title="Abrevia os nomes dos alunos (Pa. Pe.)" className="ml-auto inline-flex h-9 items-center gap-2 rounded-md border bg-background px-3 text-sm text-muted-foreground hover:text-foreground">
-          {ocultar ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}{ocultar ? "Nomes ocultos" : "Nomes visíveis"}
-        </button>
       </div>
 
       {regs === null ? <Carregando>Lendo os diários…</Carregando>
         : !diarios.length && !alunos.length ? <Vazio titulo="Nenhum diário ainda" acao={{ rotulo: "Criar o primeiro diário", onClick: () => setDialogo("diario") }}>Cada semana tem um diário por turma, com uma seção por aula e as ocorrências dos alunos.</Vazio>
-        : vista === "alunos" ? <DiarioAlunos regs={regs} alunos={alunos} items={items} ano={ano} turmas={turmaGlobal ? [turmaGlobal] : todasTurmas} turmaInicial={turmas[0]} alunoInicial={alunoFoco} mostrar={mostrar} onOpen={onOpen} onRefresh={onRefresh} />
+        : vista === "alunos" ? <DiarioAlunos regs={regs} alunos={alunos} items={items} ano={ano} turmas={turmaGlobal ? [turmaGlobal] : todasTurmas} turmaInicial={turmas[0]} alunoInicial={alunoFoco} onOpen={onOpen} onRefresh={onRefresh} />
         : <>
           <label className="flex h-10 min-w-[14rem] items-center gap-2 rounded-full border bg-background px-4 text-sm text-muted-foreground focus-within:border-primary">
             <Search aria-hidden className="h-4 w-4 shrink-0" />
@@ -233,7 +227,7 @@ function Registrar({ turmas, turmaInicial, diarios, alunos, onClose, onOk }) {
   }, [diario]);  
   const deTurma = alunos.filter((a) => a.turma === turma);
   const [novo, setNovo] = useState("");
-  const alvo = (novo.trim() || nome).trim();
+  const alvo = novo.trim() ? abreviar(novo) : nome.trim(); // nome novo: só a sigla vai para o vault
   const salvar = async () => { setSalvando(true); setErro(""); try { await onOk({ diario, n, nome: alvo, ids, texto: texto.trim(), turma }); } catch (e) { setErro(String(e?.message ?? e)); setSalvando(false); } };
   return (
     <Caixa titulo="Registrar ocorrência" onClose={onClose}>
@@ -243,8 +237,8 @@ function Registrar({ turmas, turmaInicial, diarios, alunos, onClose, onOk }) {
       </div>
       <Campo nome="Aula"><select value={n} onChange={(e) => setN(Number(e.target.value))} className={entrada}>{aulas.map((a, i) => <option key={i} value={i + 1}>{a.titulo}</option>)}{!aulas.length && <option value={1}>Fim da nota</option>}</select></Campo>
       <div className="grid grid-cols-2 gap-3">
-        <Campo nome="Aluno"><select value={nome} onChange={(e) => { setNome(e.target.value); setNovo(""); }} className={entrada}><option value="">Escolher…</option>{deTurma.map((a) => <option key={a.path} value={a.name}>{a.name}</option>)}</select></Campo>
-        <Campo nome="ou aluno novo"><input value={novo} onChange={(e) => setNovo(e.target.value)} placeholder="Nome completo" className={entrada} /></Campo>
+        <Campo nome="Aluno"><select value={nome} onChange={(e) => { setNome(e.target.value); setNovo(""); }} className={entrada}><option value="">Escolher…</option>{deTurma.map((a) => <option key={a.path} value={a.name}>{abreviar(a.name)}</option>)}</select></Campo>
+        <Campo nome="ou aluno novo"><input value={novo} onChange={(e) => setNovo(e.target.value)} placeholder="Nome completo (grava só PaPe)" className={entrada} /></Campo>
       </div>
       <div className="flex flex-col gap-1.5"><span className="text-xs font-medium text-muted-foreground">Comportamento</span>
         <div className="flex flex-wrap gap-2">{CATEGORIAS.map((c) => <Chip key={c.id} ativo={ids.includes(c.id)} onClick={() => setIds((v) => alterna(v, c.id))}><span aria-hidden className={cn("h-2 w-2 rounded-full", c.ponto)} />{c.nome}</Chip>)}</div></div>
@@ -257,7 +251,7 @@ function Registrar({ turmas, turmaInicial, diarios, alunos, onClose, onOk }) {
 
 function NovoAluno({ turmas, turmaInicial, onClose, onOk }) {
   const [turma, setTurma] = useState(turmaInicial ?? turmas[0] ?? ""), [nome, setNome] = useState(""), [erro, setErro] = useState("");
-  const salvar = async () => { try { await onOk(turma.trim(), nome.trim()); } catch (e) { setErro(String(e?.message ?? e)); } };
+  const salvar = async () => { try { await onOk(turma.trim(), abreviar(nome)); } catch (e) { setErro(String(e?.message ?? e)); } };
   return (
     <Caixa titulo="Novo aluno" onClose={onClose}>
       <Campo nome="Turma"><input list="turmas-diario" value={turma} onChange={(e) => setTurma(e.target.value)} className={entrada} /><datalist id="turmas-diario">{turmas.map((t) => <option key={t} value={t} />)}</datalist></Campo>

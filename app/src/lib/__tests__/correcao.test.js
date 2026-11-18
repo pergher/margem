@@ -113,9 +113,13 @@ describe("editarNota", () => {
 describe("devolutiva", () => {
   it("monta o texto do aluno", () => {
     const d = C.parseCorrecao(NOTA);
-    const t = C.devolutiva(d, d.alunos[0], false);
-    expect(t).toContain("# Aluno 1 — Conto (turma 71)");
+    const t = C.devolutiva(d, d.alunos[0]);
+    expect(t).toContain("# Ana — Conto (turma 71)");
     expect(t).toContain("**Nota: 1,5 de 2**");
+  });
+  it("identifica o aluno pela sigla", () => {
+    const d = C.parseCorrecao(NOTA);
+    expect(C.devolutiva(d, { ...d.alunos[0], nome: "Paulo Pergher" })).toContain("# PaPe — Conto");
   });
 });
 

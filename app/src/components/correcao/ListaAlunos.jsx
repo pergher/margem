@@ -1,13 +1,12 @@
-import { IconEye as Eye, IconEyeOff as EyeOff, IconAlertTriangle as AlertTriangle, IconCircleCheck as CircleCheck } from "@tabler/icons-react";
+import { IconAlertTriangle as AlertTriangle, IconCircleCheck as CircleCheck } from "@tabler/icons-react";
 import { fmt } from "@/lib/correcao";
 import { CAB, campo } from "./estilos";
 
-export function ListaAlunos({ largura, d, pend, nomes, setNomes, ordem, setOrdem, visiveis, sel, setSel, rotulo }) {
+export function ListaAlunos({ largura, d, pend, ordem, setOrdem, visiveis, sel, setSel, rotulo }) {
   return (
         <aside aria-label="Alunos" style={{ width: largura, minWidth: 130 }} className="flex shrink flex-col">
           <div className={CAB}>
             <span className="min-w-0 flex-1 truncate font-semibold">{d.alunos.length} produções{pend ? <span className="font-normal text-warn"> · {pend} marcas</span> : ""}</span>
-            <button title={nomes ? "Ocultar nomes" : "Mostrar nomes"} aria-label={nomes ? "Ocultar nomes" : "Mostrar nomes"} onClick={() => setNomes(!nomes)} className="text-muted-foreground hover:text-foreground">{nomes ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
           </div>
           <div className="space-y-2 p-3">
             <select value={ordem} onChange={(e) => setOrdem(e.target.value)} aria-label="Ordenar" className={campo}>
@@ -25,7 +24,6 @@ export function ListaAlunos({ largura, d, pend, nomes, setNomes, ordem, setOrdem
               </li>
             ))}
           </ul>
-          {!nomes && <p className="shrink-0 border-t px-4 py-2 text-xs text-muted-foreground">Nomes ocultos por padrão.</p>}
         </aside>
   );
 }

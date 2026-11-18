@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { IconArrowRight as ArrowRight, IconCalendarEvent as Reuniao, IconFileText as FileText } from "@tabler/icons-react";
+import { IconArrowRight as ArrowRight, IconAlertTriangle as Alerta, IconInfoCircle as Info, IconHeartbeat as Saude, IconNotebook as Caderno, IconCalendarEvent as Reuniao, IconFileText as FileText } from "@tabler/icons-react";
 import { lerCiclos } from "@/lib/ciclos";
 import { lerSemanas, segundaDe, rotuloDe, situacaoAula } from "@/lib/semana";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
@@ -15,14 +15,14 @@ import { SituacaoAula } from "@/components/ui/SituacaoAula";
 import { Inline } from "@/components/ui/Inline";
 import { Estado, Carregando, Vazio, Erro, useToast } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
-import { abreviar, atualizarAcao, dataIso, reunioesEmAberto } from "@/lib/diario";
+import { CATEGORIAS, abreviar, alunosEmAlerta, atualizarAcao, dataIso, diariosParaRever, reunioesEmAberto } from "@/lib/diario";
 import { AvancarReuniao } from "@/components/AvancarReuniao";
 
 const tint = (cor, p = 14) => `color-mix(in srgb, ${cor} ${p}%, transparent)`;
 const nomes = (r) => [...String(r ?? "").matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
 
 /** Hoje, sem horário: a próxima aula de cada turma na semana atual, a correção em curso e os arquivos abertos há pouco. */
-export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
+export function HojePage({ items, onOpen, onCorrecao, onSemana, onDiario, onSaude, onRefresh }) {
   const toast = useToast();
   const [wAside, setWAside] = useWidth("hoje.lateral", 340);
   const criar = async (aula, turma) => {
@@ -108,7 +108,7 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
               </div>}
           </section>
 
-          <Reunioes items={items} onRefresh={onRefresh} />
+          <EmAlerta items={items} onOpen={onOpen} onDiario={onDiario} />
 
           <section>
             <h2 className="mb-3 text-lg font-semibold">Documentos recentes</h2>
@@ -131,23 +131,22 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onRefresh }) {
                 <button onClick={() => onCorrecao(lote.path)} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Continuar correção</button>
               </>}
           </section>
+          <Reunioes items={items} onRefresh={onRefresh} />
+          <Pendencias items={items} onDiario={onDiario} onSaude={onSaude} />
         </aside>
       </div>
     </div></div>
   );
 }
 
-const lerOcultar = () => { try { return JSON.parse(localStorage.getItem("margem.diario.ocultar") ?? "true") !== false; } catch { return true; } };
 const quando = (a) => { const d = dataIso(a.data); return `${d.getDate()}/${d.getMonth() + 1}${a.hora ? `, ${a.hora}` : ""}`; };
 
-/** Solicitações e agendamentos de reunião com responsáveis (vêm das ações "Agendar" nas fichas dos alunos). Some quando não há nenhum. */
+/** Solicitações e agendamentos de reunião com responsáveis (vêm das ações "Agendar" nas fichas dos alunos). */
 function Reunioes({ items, onRefresh }) {
   const toast = useToast();
   const [lista, setLista] = useState([]);
   const [recarga, setRecarga] = useState(0);
-  const ocultar = lerOcultar();
   useEffect(() => { let vivo = true; reunioesEmAberto(items).then((l) => vivo && setLista(l)).catch(() => {}); return () => { vivo = false; }; }, [items, recarga]);
-  if (!lista.length) return null;
   const avancar = async (r, patch) => {
     try {
       await invoke("save_note", { path: r.path, text: atualizarAcao(await invoke("read_note", { path: r.path }), r.linha, patch) });
@@ -157,18 +156,77 @@ function Reunioes({ items, onRefresh }) {
   return (
     <section aria-label="Reuniões com responsáveis">
       <h2 className="mb-3 text-lg font-semibold">Reuniões com responsáveis</h2>
-      <div className="overflow-hidden rounded-xl border">
+      {lista.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma reunião solicitada ou agendada.</p> : <div className="overflow-hidden rounded-xl border">
         {lista.map((r) => (
           <div key={`${r.path}#${r.linha}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3 last:border-b-0">
             <Reuniao aria-hidden className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.7} />
             <div className="min-w-0 flex-1 basis-52">
-              <div className="flex flex-wrap items-center gap-x-2 text-sm font-medium">{ocultar ? abreviar(r.aluno) : r.aluno}<span className="text-xs font-normal text-muted-foreground">turma {r.turma}</span></div>
-              {r.texto && <div className="truncate text-sm text-muted-foreground">{r.texto}</div>}
+              <div className="flex flex-wrap items-center gap-x-2 text-sm font-medium">{abreviar(r.aluno)}<span className="text-xs font-normal text-muted-foreground">turma {r.turma}</span></div>
+              {r.texto && <div className="line-clamp-2 text-sm text-muted-foreground">{r.texto}</div>}
             </div>
             <span className={cn("rounded-full px-2 py-0.5 text-[11px] font-semibold", r.estado === "agendada" ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn")}>{r.estado === "agendada" ? `Agendada · ${quando(r)}` : `Solicitada em ${quando(r)}`}</span>
             <AvancarReuniao acao={r} onAvancar={(patch) => avancar(r, patch)} />
           </div>
         ))}
+      </div>}
+    </section>
+  );
+}
+
+/** Alunos com comportamento negativo recorrente (3+ em 4 semanas) sem ação planejada, ou com ação que não trouxe melhora. */
+function EmAlerta({ items, onOpen, onDiario }) {
+  const [lista, setLista] = useState([]);
+  useEffect(() => { let vivo = true; alunosEmAlerta(items).then((l) => vivo && setLista(l)).catch(() => {}); return () => { vivo = false; }; }, [items]);
+  const nome = (id) => CATEGORIAS.find((c) => c.id === id)?.nome ?? id;
+  return (
+    <section aria-label="Alunos em alerta">
+      <h2 className="mb-3 flex items-center justify-between gap-1 text-lg font-semibold">Alunos em alerta
+        <span className="group relative">
+          <button aria-label="Como o alerta é calculado" className="rounded-full p-1 text-muted-foreground hover:text-foreground focus-visible:text-foreground"><Info aria-hidden className="h-4 w-4" /></button>
+          <span role="tooltip" className="invisible absolute right-0 top-full z-20 mt-1 w-64 rounded-lg border bg-background p-3 text-xs font-normal text-foreground shadow-lg group-focus-within:visible group-hover:visible">Três ou mais ocorrências do mesmo comportamento nas últimas 4 semanas, sem ação planejada.</span>
+        </span>
+      </h2>
+      {lista.length === 0 ? <p className="text-sm text-muted-foreground">Nenhum aluno em alerta.</p> : <div className="overflow-hidden rounded-xl border">
+        {lista.map((a) => (
+          <button key={`${a.turma}|${a.aluno}`} onClick={() => (a.path ? onOpen(a.path) : onDiario?.())} className="flex w-full flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3 text-left last:border-b-0 hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+            <Alerta aria-hidden className="h-4 w-4 shrink-0 text-warn" strokeWidth={1.7} />
+            <div className="min-w-0 flex-1 basis-52">
+              <div className="flex flex-wrap items-center gap-x-2 text-sm font-medium">{abreviar(a.aluno)}<span className="text-xs font-normal text-muted-foreground">turma {a.turma}</span></div>
+              <div className="truncate text-sm text-muted-foreground">{a.sinais.map((x) => `${nome(x.cat)} (${x.n})`).join(" · ")}</div>
+            </div>
+            <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[11px] font-semibold text-warn">{a.sinais.every((x) => x.motivo === "sem-melhora") ? "Ação sem melhora" : a.sinais.some((x) => x.motivo === "sem-melhora") ? "Sem ação / sem melhora" : "Sem ação"}</span>
+          </button>
+        ))}
+      </div>}
+    </section>
+  );
+}
+
+/** Duas linhas compactas: diários por transcrever/revisar e avisos da Saúde do vault (sem os de nível "info"). */
+function Pendencias({ items, onDiario, onSaude }) {
+  const [d, setD] = useState(undefined), [avisos, setAvisos] = useState(undefined); // undefined = lendo; null = indisponível
+  useEffect(() => {
+    let vivo = true;
+    diariosParaRever(items).then((r) => vivo && setD(r)).catch(() => vivo && setD(null));
+    invoke("vault_health").then((l) => vivo && setAvisos(l.filter((x) => x.severity !== "info").length)).catch(() => vivo && setAvisos(null));
+    return () => { vivo = false; };
+  }, [items]);
+  const diarios = d === undefined ? "Lendo…" : d === null ? "Não deu para ler" : !d.pendente && !d.revisao ? "Nenhum diário por revisar"
+    : [d.revisao && `${d.revisao} aguardando revisão`, d.pendente && `${d.pendente} sem transcrição`].filter(Boolean).join(" · ");
+  const saude = avisos === undefined ? "Lendo…" : avisos === null ? "Não deu para verificar" : avisos === 0 ? "Tudo certo" : `${avisos} ${avisos === 1 ? "aviso" : "avisos"}`;
+  const linha = (Icone, rotulo, texto, ok, onClick) => (
+    <button onClick={onClick} className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left last:border-b-0 hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+      <Icone aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.7} />
+      <span className="min-w-0 flex-1"><span className="block text-xs text-muted-foreground">{rotulo}</span><span className={cn("block text-sm", ok ? "text-muted-foreground" : "font-medium")}>{texto}</span></span>
+      <ArrowRight aria-hidden className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </button>
+  );
+  return (
+    <section aria-label="Pendências">
+      <h2 className="mb-3 text-lg font-semibold">Pendências</h2>
+      <div className="overflow-hidden rounded-xl border">
+        {linha(Caderno, "Diário", diarios, d && !d.pendente && !d.revisao, onDiario)}
+        {linha(Saude, "Saúde do vault", saude, avisos === 0, onSaude)}
       </div>
     </section>
   );

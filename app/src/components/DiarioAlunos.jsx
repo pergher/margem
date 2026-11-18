@@ -3,7 +3,7 @@ import { IconBuildingCommunity as Diretoria, IconCalendarEvent as Agendar, IconC
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { rotuloDe } from "@/lib/semana";
-import { CATEGORIAS, ESTADOS_AGENDA, NEGATIVOS, TIPOS_ACAO, acoesDoAluno, atualizarAcao, criarAluno, dataIso, efeitoDaAcao, inserirAcao, naJanela, nomeEstado, pendente, periodoDe, PERIODOS, serieDoPeriodo, sinaisDoAluno, tipoAcao } from "@/lib/diario";
+import { CATEGORIAS, abreviar, ESTADOS_AGENDA, NEGATIVOS, TIPOS_ACAO, acoesDoAluno, atualizarAcao, criarAluno, dataIso, efeitoDaAcao, inserirAcao, naJanela, nomeEstado, pendente, periodoDe, PERIODOS, serieDoPeriodo, sinaisDoAluno, tipoAcao } from "@/lib/diario";
 import { mensagemDaAcao } from "@/lib/mensagens";
 import { AvancarReuniao } from "@/components/AvancarReuniao";
 import { Chip } from "@/components/Explorador";
@@ -27,7 +27,7 @@ const entrada = "h-9 rounded-md border bg-background px-2.5 text-sm outline-none
  * Aba "Alunos" do Diário: lista de alunos da turma (com sinais) e, ao lado, a ficha do aluno escolhido
  * com comportamentos, linha do tempo semanal e ações (conversar, encaminhar, agendar, notificar e informar à direção).
  */
-export function DiarioAlunos({ regs, alunos, items, ano, turmas, turmaInicial, alunoInicial, mostrar, onOpen, onRefresh }) {
+export function DiarioAlunos({ regs, alunos, items, ano, turmas, turmaInicial, alunoInicial, onOpen, onRefresh }) {
   const [turma, setTurma] = useState(turmaInicial || turmas[0] || "");
   const [sel, setSel] = useState(alunoInicial || "");
   const [filtro, setFiltro] = useState(null);
@@ -92,7 +92,7 @@ export function DiarioAlunos({ regs, alunos, items, ano, turmas, turmaInicial, a
         {resumos.length === 0 && <p className="px-3.5 py-4 text-sm text-muted-foreground">Nenhum aluno nesta turma ainda.</p>}
         {resumos.map((r) => (
           <button key={r.n} onClick={() => setSel(r.n)} aria-current={r.n === sel} className={cn("flex w-full flex-col gap-1 border-b border-l-[3px] px-3.5 py-2.5 text-left last:border-b-0 hover:bg-accent/60", r.n === sel ? "border-l-primary bg-accent/60" : "border-l-transparent")}>
-            <span className="flex items-center gap-2 text-sm font-medium">{mostrar(r.n)}
+            <span className="flex items-center gap-2 text-sm font-medium">{abreviar(r.n)}
               {r.sin.length > 0 && <span className="ml-auto rounded-full bg-warn/15 px-2 py-0.5 text-[11px] font-semibold text-warn">{r.sin.length} {r.sin.length === 1 ? "sinal" : "sinais"}</span>}
             </span>
             <span className="flex min-h-[1.125rem] flex-wrap gap-x-2.5 gap-y-0.5 text-xs text-muted-foreground">
@@ -104,7 +104,7 @@ export function DiarioAlunos({ regs, alunos, items, ano, turmas, turmaInicial, a
       </aside>
 
       {atual ? (
-        <Ficha key={`${turma}/${atual.n}`} periodo={periodo} periodoId={periodoId} onPeriodo={escolherPeriodo} r={atual} acoes={acoesPor[atual.n] ?? []} hoje={hoje} nome={mostrar(atual.n)} filtro={filtro} setFiltro={setFiltro}
+        <Ficha key={`${turma}/${atual.n}`} periodo={periodo} periodoId={periodoId} onPeriodo={escolherPeriodo} r={atual} acoes={acoesPor[atual.n] ?? []} hoje={hoje} nome={abreviar(atual.n)} filtro={filtro} setFiltro={setFiltro}
           compor={compor} setCompor={setCompor} temFicha={!!ficha} onFicha={() => onOpen(ficha.path)} onRegistrar={registrarAcao} onAvancar={avancar} erro={erro} limparErro={() => setErro("")} />
       ) : <p className="py-6 text-sm text-muted-foreground">Escolha um aluno.</p>}
     </div>

@@ -17,8 +17,16 @@ export const ESTADOS = [
 const raiz = (items) => raizDe(items);
 const pasta = (items, ano, tipo, turma) => `${raiz(items)}/Anos/${ano}/${tipo}/${turma}`;
 const prop = (text, k) => new RegExp(`^${k}:[ \\t]*["']?(.*?)["']?[ \\t]*$`, "m").exec(text.split(/\n---/)[0])?.[1] ?? "";
-/** "Paulo Pergher" → "Pa. Pe." (nomes de aluno ocultos na tela). */
-export const abreviar = (nome) => { const p = nome.trim().split(/\s+/); return (p.length > 1 ? [p[0], p[p.length - 1]] : p).map((x) => x.slice(0, 2) + ".").join(" "); };
+/**
+ * Identificação do aluno: duas primeiras letras do primeiro nome + duas do último sobrenome ("Paulo Pergher" → "PaPe").
+ * Quem já tem uma palavra só (por exemplo "PaPe") fica como está, então aplicar de novo não muda nada.
+ */
+export const abreviar = (nome) => {
+  const p = String(nome ?? "").trim().split(/\s+/).filter(Boolean);
+  if (p.length < 2) return p[0] ?? "";
+  const dois = (x) => x.charAt(0).toLocaleUpperCase("pt-BR") + x.slice(1, 2).toLocaleLowerCase("pt-BR");
+  return dois(p[0]) + dois(p[p.length - 1]);
+};
 export const turmasDe = (s) => [...new Set((s.match(/\d{2}/g) ?? []))];
 
 export function listarDiarios(items) {
@@ -259,6 +267,45 @@ export function sinaisDoAluno(ocs, acoes, hoje = new Date(), limite = 3) {
     out.push({ cat: c, n, planejada: doCat.find(pendente) ?? null, semMelhora: feitas.length > 0 && feitas.every((a) => a.efeito.depois >= a.efeito.antes), feitas: feitas.length });
   }
   return out;
+}
+
+/**
+ * Alunos em alerta, de todas as turmas: comportamento negativo com sinal (ver `sinaisDoAluno`) e sem ação planejada.
+ * `motivo`: "sem-acao" (nada feito a respeito) ou "sem-melhora" (houve ação, mas as ocorrências não diminuíram).
+ * Devolve [{ aluno, turma, ano, path (ficha, ou null), sinais: [{ cat, n, motivo }] }], os mais graves primeiro.
+ */
+export async function alunosEmAlerta(items, hoje = new Date()) {
+  const ocs = [];
+  for (const d of listarDiarios(items)) {
+    try { ocs.push(...registrosDoDiario(await invoke("read_note", { path: d.path }), d).filter((r) => r.tipo === "ocorrencia" && r.aluno)); } catch { /* diário ilegível */ }
+  }
+  const fichas = listarAlunos(items), chaves = new Map();
+  for (const o of ocs) chaves.set(`${o.turma}|${o.aluno}`, { aluno: o.aluno, turma: o.turma, ano: o.ano });
+  const out = [];
+  for (const [k, { aluno, turma, ano }] of chaves) {
+    const ficha = fichas.find((f) => f.turma === turma && f.ano === ano && f.name === aluno) ?? null;
+    let acoes = [];
+    if (ficha) { try { acoes = acoesDoAluno(await invoke("read_note", { path: ficha.path })); } catch { /* sem ações lidas */ } }
+    const sinais = sinaisDoAluno(ocs.filter((o) => `${o.turma}|${o.aluno}` === k), acoes, hoje)
+      .filter((x) => !x.planejada)
+      .map((x) => ({ cat: x.cat, n: x.n, motivo: x.feitas > 0 ? (x.semMelhora ? "sem-melhora" : null) : "sem-acao" }))
+      .filter((x) => x.motivo);
+    if (sinais.length) out.push({ aluno, turma, ano, path: ficha?.path ?? null, sinais });
+  }
+  const peso = (a) => a.sinais.reduce((s, x) => s + x.n, 0);
+  return out.sort((a, b) => peso(b) - peso(a) || a.aluno.localeCompare(b.aluno, "pt-BR"));
+}
+
+/** Diários ainda não aprovados: { pendente, revisao } (transcrição por fazer / aguardando revisão). */
+export async function diariosParaRever(items) {
+  const r = { pendente: 0, revisao: 0 };
+  for (const d of listarDiarios(items)) {
+    try {
+      const t = lerMeta(await invoke("read_note", { path: d.path })).transcricao;
+      if (t === "pendente") r.pendente++; else if (t === "aguardando-revisao") r.revisao++;
+    } catch { /* diário ilegível */ }
+  }
+  return r;
 }
 
 /** As últimas `n` semanas (a atual por último): [{ ini: Date, por: [{ cat, n }] }]. */
