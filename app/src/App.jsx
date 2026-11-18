@@ -13,6 +13,7 @@ import { RightPanel } from "@/components/RightPanel";
 import { setProp, lineStart } from "@/lib/frontmatter";
 import { CommandPalette } from "@/components/CommandPalette";
 import { SearchModal } from "@/components/SearchModal";
+import { CapturaDialog } from "@/components/CapturaDialog";
 import { EntryDialog } from "@/components/EntryDialog";
 import { HojePage } from "@/components/HojePage";
 import { AnoAbas } from "@/components/AnoAbas";
@@ -72,6 +73,8 @@ export default function App() {
   const [status, setStatus] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [capturaOpen, setCapturaOpen] = useState(false);
+  const [caixaTick, setCaixaTick] = useState(0); // muda a cada captura, para o Hoje reler a caixa
   const [overrides, setOverrides] = useState(loadOverrides);
   const [foco, setFoco] = useState(false);
   const ed = useRef(null);
@@ -190,7 +193,7 @@ export default function App() {
     setStatus(`Renomeada; ${r.links} link(s) atualizado(s)`);
     return r.path;
   };
-  useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA: () => { setShowOutline(true); setPanelTab("ia"); } });
+  useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setCapturaOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA: () => { setShowOutline(true); setPanelTab("ia"); } });
 
   const keys = effective(overrides);
   const commands = [
@@ -198,6 +201,7 @@ export default function App() {
     { id: "p-hoje", label: "Ir para Hoje", hint: "dia início", run: () => irSecao("hoje") },
     { id: "p-semana", label: "Ir para a Semana", hint: "aula dar aula turma ano", run: () => irAno("semana") },
     { id: "p-ano", label: "Ir para o Ano", hint: "ciclo planejamento trimestre", run: () => irAno("plano") },
+    { id: "p-fechamento", label: "Ir para o Fechamento do trimestre", hint: "pendências fechar trimestre notas conselho", run: () => irAno("fechamento") },
     { id: "p-diario", label: "Ir para Diário e alunos", hint: "ocorrência conselho", run: () => irAno("diario") },
     { id: "p-saude", label: "Ir para Saúde do vault", hint: "avisos validar problemas", run: () => setPage("saude") },
     { id: "p-ciclos", label: "Ir para Ciclos", hint: "lista novo", run: () => irSecao("ciclos") },
@@ -211,6 +215,7 @@ export default function App() {
     { id: "p-nova-gramatica", label: "Nova gramática", hint: "criar modelo tópico", run: () => novaGramatica() },
     { id: "p-config", label: "Ir para Configurações", run: () => setPage("config") },
     { id: "buscar", label: "Buscar arquivo", keys: pretty(keys.search), run: () => setSearchOpen(true) },
+    { id: "captura", label: "Captura rápida", hint: "caixa de entrada anotar tarefa ideia", keys: pretty(keys.captura), run: () => setCapturaOpen(true) },
     { id: "salvar", label: "Salvar agora", keys: pretty(keys.save), run: () => save() },
     { id: "tabela", label: "Inserir tabela", keys: pretty(keys.insertTable), run: () => { if (cur.current) { setPage("editor"); setTimeout(() => ed.current?.insertTable(), 50); } } },
     { id: "nota", label: "Novo arquivo", hint: "criar", run: () => createNote(raizDe(items)) },
@@ -333,7 +338,7 @@ export default function App() {
         {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
         {(carregado || page === "config" || (page === "editor" && !personalizada)) && <>
         {page === "documentos" && <DocumentosPage filtroNav={documentosTipo} items={items} dirs={dirs} onOpen={open} onRefresh={refresh} onNovo={(id) => (id === "ciclo" ? novoCiclo(subDaPasta(documentosPasta, "Ciclos")) : id === "aula" ? novaAula(subDaPasta(documentosPasta, "Aulas")) : id === "gramatica" ? novaGramatica(subDaPasta(documentosPasta, "Gramática")) : novoRecurso(id))} onAtividade={(p) => { setTextoAtiv(p); irMontarProva(); }} aba={documentosAba} setAba={setDocumentosAba} pasta={documentosPasta} setPasta={setDocumentosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
-        {page === "inicio" && <HojePage items={items} onOpen={open} onRefresh={refresh} onCorrecao={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); irAno("prod"); }} onSemana={() => irAno("semana")} onDiario={() => irAno("diario")} onSaude={() => setPage("saude")} />}
+        {page === "inicio" && <HojePage items={items} caixaTick={caixaTick} onCapturar={() => setCapturaOpen(true)} onFechamento={() => irAno("fechamento")} onOpen={open} onRefresh={refresh} onCorrecao={(p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); irAno("prod"); }} onSemana={() => irAno("semana")} onDiario={() => irAno("diario")} onSaude={() => setPage("saude")} />}
         {page === "ano" && <AnoAbas aba={anoAba} setAba={setAnoAba} items={items} onOpen={open} onRefresh={refresh} onMarkdown={abrirMarkdown} onRename={renomearNota} onDelete={excluirEntrada} onCiclo={(c) => { const rel = items.find((i) => i.path === c.path)?.rel; if (visaoDe(rel)?.id === "ciclo") open(c.path); else { setCiclo(c); setPage("ciclo"); } }}
           correcao={{ foco: correcaoFoco, vista: correcaoVista, corrigir: (p) => { setCorrecaoVista("aluno"); setCorrecaoFoco(p); }, turma: (p) => { setCorrecaoVista("turma"); setCorrecaoFoco(p); }, voltar: () => { setCorrecaoFoco(null); setCorrecaoVista("aluno"); } }} />}
         {page === "saude" && <SaudePage items={items} onOpen={open} onRefresh={refresh} />}
@@ -397,6 +402,7 @@ export default function App() {
 
       {dialog && <EntryDialog {...dialog} onClose={() => { setDialog(null); ed.current?.focus(); }} />}
       {paletteOpen && <CommandPalette commands={commands} items={items} onOpenNote={open} onClose={() => { setPaletteOpen(false); ed.current?.focus(); }} />}
+      {capturaOpen && <CapturaDialog items={items} onClose={() => { setCapturaOpen(false); ed.current?.focus(); }} onGuardada={() => { setCaixaTick((n) => n + 1); setStatus("Anotado na Caixa de entrada"); refresh?.(); }} onErro={(e) => setStatus(`Não deu para anotar: ${e.message ?? e}`)} />}
       {searchOpen && <SearchModal items={items} onPick={pick} onClose={() => { setSearchOpen(false); ed.current?.focus(); }} />}
     </div>
   );

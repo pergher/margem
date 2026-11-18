@@ -260,3 +260,17 @@ export async function criarCicloVazio(items, titulo, pasta = "") {
   await invoke("save_note", { path, text: modeloCiclo() });
   return path;
 }
+
+/** Progresso de um ciclo por turma, lido das notas de semana (✓ = aula dada; aulas descartadas saem do total). Só entram turmas ligadas ao ciclo. */
+export function progressoDoCiclo(c, semanas) {
+  const nome = c.name.toLowerCase(), por = {}, fora = {};
+  for (const sm of semanas ?? []) for (const t of sm.turmas) {
+    if (t.cicloNome?.toLowerCase() === nome) por[t.turma] ??= { dadas: new Set(), total: c.aulas.length };
+    for (const a of t.aulas) if (a.cicloNome?.toLowerCase() === nome && a.cicloN) {
+      const x = (por[t.turma] ??= { dadas: new Set(), total: c.aulas.length });
+      if (a.dada) x.dadas.add(a.cicloN);
+      if (a.situacao === "descartada") (fora[t.turma] ??= new Set()).add(a.cicloN);
+    }
+  }
+  return Object.entries(por).map(([turma, x]) => ({ turma, dadas: x.dadas.size, total: Math.max(x.total, c.aulas.length) - (fora[turma]?.size ?? 0) }));
+}

@@ -4,7 +4,7 @@
 export const NOMES_PASTA = { Questoes: "Questões" };
 
 /** Rótulo da tela quando ela não é uma nota nem uma listagem com pastas. */
-export const NOMES_ABA = { semana: "Semana", plano: "Planejamento", prod: "Produções", diario: "Diário" };
+export const NOMES_ABA = { semana: "Semana", plano: "Planejamento", prod: "Produções", diario: "Diário", fechamento: "Fechamento" };
 export const rotuloDaTela = (page) => ({
   inicio: "Hoje", ano: "Ano", documentos: "Documentos", saude: "Saúde do vault", config: "Configurações",
 })[page] ?? "";

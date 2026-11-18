@@ -3,7 +3,9 @@ import { createPortal } from "react-dom";
 import { html } from "@/lib/aulaHtml";
 import { PainelGramatica } from "@/components/PainelGramatica";
 import { invoke } from "@/lib/api";
-import { parseAula, mermaidDe, secoesBrutas, trocarSecao, dadosDaAula } from "@/lib/aula";
+import { parseAula, mermaidDe, secoesBrutas, trocarSecao, dadosDaAula, acrescentarMemoria } from "@/lib/aula";
+import { DaUltimaVez, NotaDestaVez } from "@/components/MemoriaDaAula";
+import { JogoDialog } from "@/components/JogoDialog";
 import { acionarBotao } from "@/lib/blocoAcoes";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { lerCiclos } from "@/lib/ciclos";
@@ -243,6 +245,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   const [t, setT] = useState(textoInicial ?? null), [erro, setErro] = useState("");
   const [abaPainel, setAbaPainel] = useState("ficha"), [vista, setVista] = useState(null), [prog, setProg] = useState(0), [rev, setRev] = useState(0);
   const [margem, setMargem] = useState(() => { try { return localStorage.getItem("margem.aula.margem") !== "0"; } catch { return true; } });
+  const [jogo, setJogo] = useState(false);
   const [slot, setSlot] = useState(null); // lugar, no cabeçalho do app, onde o sumário se junta aos breadcrumbs
   useEffect(() => { setSlot(document.getElementById("slot-barra-aula")); }, []);
   const rolagem = useRef(null);
@@ -271,6 +274,14 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     const novo = setProp(texto.current, chave, valor);
     texto.current = novo; setT(novo);
     try { await invoke("save_note", { path: caminho.current, text: novo }); } catch (e) { setErro(String(e)); }
+  };
+  const adicionarMemoria = async (nota) => {
+    await gravar();
+    const d = new Date(), data = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const novo = acrescentarMemoria(texto.current, { ...nota, data });
+    if (novo === texto.current) return;
+    await invoke("save_note", { path: caminho.current, text: novo });
+    texto.current = novo; setT(novo);
   };
   const renomear = async (novoNome) => {
     await gravar();
@@ -366,15 +377,19 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
               </label>
               {meta.map((m) => <span key={m}>{m}</span>)}
               <button onClick={verFicha} className="font-medium text-primary hover:underline">Ver ficha</button>
+              <button onClick={() => setJogo(true)} className="font-medium text-primary hover:underline">Gerar jogo</button>
             </div>
+            <DaUltimaVez entradas={a.memoria} />
           </div>
         </div>
         <div className="mx-auto px-8 pb-8 pt-4" style={{ maxWidth: `calc(${largura} + 4rem)` }}>
           {abas.map(secao)}
           {!atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
+          <div className="mt-2"><NotaDestaVez key={item.path} onAdicionar={adicionarMemoria} /></div>
         </div>
       </div>
     </div>
+    {jogo && <JogoDialog items={items} aula={item.name} textoAula={texto.current ?? t} onClose={() => setJogo(false)} />}
     {gram
       ? <PainelGramatica item={gram.item} anchor={gram.anchor} gramaticas={gramaticas} onNavegar={(it, anchor) => setGram({ item: it, anchor })} onAbrir={onLink} onFechar={() => setGram(null)} />
       : painel && <PainelAula aba={abaPainel} setAba={setAbaPainel} texto={texto.current ?? t} onSet={mudarProp} status={info?.status?.length ? info.status : STATUS} dados={dados} ciclos={ciclosDaAula} info={info} onOpen={onOpen} path={item.path} onRestore={restaurar} histTick={histTick} />}

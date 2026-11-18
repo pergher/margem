@@ -1,4 +1,4 @@
-import { IconHome as House, IconCalendarWeek as CalendarRange, IconLibrary as Library, IconHeartbeat as HeartPulse, IconSettings as Settings, IconBook as BookText, IconBookmarks as BookMarked, IconQuote as Quote, IconRepeat as Repeat2, IconCalendarEvent as CalendarEvent, IconTimeline as Timeline, IconClipboardCheck as ClipboardCheck, IconNotebook as Notebook, IconSun as Sun, IconMoon as Moon } from "@tabler/icons-react";
+import { IconListCheck as ListCheck, IconHome as House, IconCalendarWeek as CalendarRange, IconLibrary as Library, IconHeartbeat as HeartPulse, IconSettings as Settings, IconBook as BookText, IconBookmarks as BookMarked, IconQuote as Quote, IconRepeat as Repeat2, IconCalendarEvent as CalendarEvent, IconTimeline as Timeline, IconClipboardCheck as ClipboardCheck, IconNotebook as Notebook, IconSun as Sun, IconMoon as Moon } from "@tabler/icons-react";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ const SUBS = {
     { id: "ano:plano", nome: "Planejamento", Icone: Timeline, dica: "Ano: os ciclos por trimestre", sub: true },
     { id: "ano:prod", nome: "Produções", Icone: ClipboardCheck, dica: "Ano: produções a corrigir e corrigidas", sub: true },
     { id: "ano:diario", nome: "Diário", Icone: Notebook, dica: "Ano: diário de classe", sub: true },
+    { id: "ano:fechamento", nome: "Fechamento", Icone: ListCheck, dica: "Ano: o que falta para fechar o trimestre", sub: true },
   ],
 };
 const MAIS = [

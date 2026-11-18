@@ -1,7 +1,7 @@
 import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconCircleCheck as CircleCheck, IconGripVertical as Grip, IconPlus as Plus, IconTrash as Trash } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { PlanejarCicloDialog } from "@/components/PlanejarCicloDialog";
-import { FASES, anosLetivos, criarProximoAno, lerCiclos, incluirCicloNoAno, tirarCicloDoAno, moverCicloNoAno } from "@/lib/ciclos";
+import { FASES, anosLetivos, criarProximoAno, lerCiclos, incluirCicloNoAno, tirarCicloDoAno, moverCicloNoAno, progressoDoCiclo } from "@/lib/ciclos";
 import { lerSemanas, segundaDe } from "@/lib/semana";
 import { lerTurmas, turmasDeTexto, sugerirTurmasDoProximoAno, AULAS_PADRAO } from "@/lib/turmas";
 import { corTurma } from "@/lib/cores";
@@ -118,18 +118,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
   // Turmas: as do arquivo do ano; sem ele, as que aparecem nas semanas.
   const turmas = dados.turmasCfg?.length ? dados.turmasCfg : [...new Set((dados.semanas ?? []).flatMap((sm) => sm.turmas.map((t) => t.turma)))].sort();
   // Progresso vem das notas de semana (✓ = aula dada); só ciclos ligados a uma turma têm situação.
-  const progresso = (c) => {
-    const nome = c.name.toLowerCase(), por = {}, fora = {}; // fora: aulas descartadas por turma (saem do total)
-    for (const sm of dados.semanas ?? []) for (const t of sm.turmas) {
-      if (t.cicloNome?.toLowerCase() === nome) por[t.turma] ??= { dadas: new Set(), total: c.aulas.length };
-      for (const a of t.aulas) if (a.cicloNome?.toLowerCase() === nome && a.cicloN) {
-        const x = (por[t.turma] ??= { dadas: new Set(), total: c.aulas.length });
-        if (a.dada) x.dadas.add(a.cicloN);
-        if (a.situacao === "descartada") (fora[t.turma] ??= new Set()).add(a.cicloN);
-      }
-    }
-    return Object.entries(por).map(([turma, x]) => ({ turma, dadas: x.dadas.size, total: Math.max(x.total, c.aulas.length) - (fora[turma]?.size ?? 0) }));
-  };
+  const progresso = (c) => progressoDoCiclo(c, dados.semanas);
   const seg = segundaDe(), chave = `${seg.getFullYear()}-${String(seg.getMonth() + 1).padStart(2, "0")}-${String(seg.getDate()).padStart(2, "0")}`;
   const semanaAtual = (dados.semanas ?? []).find((sm) => (sm.name ?? "").includes(chave)) ?? (dados.semanas ?? [])[(dados.semanas ?? []).length - 1];
   const aulasDaSemana = (c) => new Set((semanaAtual?.turmas ?? []).flatMap((t) => t.aulas).filter((a) => a.cicloNome?.toLowerCase() === c.name.toLowerCase() && a.cicloN && a.situacao !== "descartada").map((a) => a.cicloN));

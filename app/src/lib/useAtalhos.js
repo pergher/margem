@@ -7,7 +7,7 @@ import { comboOf, effective, handlers, ACTIONS } from "@/lib/shortcuts";
 
 const passoZoom = (z, d) => clamp(Math.round((z + d) * 10) / 10, 0.7, 2);
 
-export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA }) {
+export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setCapturaOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA }) {
   useEffect(() => {
     if (!foco) return;
     const esc = (e) => { if (e.key === "Escape" && !e.defaultPrevented) setFoco(false); };
@@ -23,6 +23,7 @@ export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearch
     const run = {
       search: () => setSearchOpen(true),
       palette: () => setPaletteOpen(true),
+      captura: () => setCapturaOpen(true),
       save: () => kb.current.save(),
       insertTable: () => { if (cur.current && kb.current.page === "editor") ed.current.insertTable(); },
       toggleSide: () => setShowSide((v) => !v),

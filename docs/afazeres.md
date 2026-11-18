@@ -42,6 +42,14 @@ Objetivo central. Aplicado só em cópias/fixtures (`tests/fixtures/vault`, e o 
 - [ ] **Diário:** a foto ainda é um nome de arquivo digitado no diálogo; falta importar a foto para dentro do vault pelo app. (A transcrição é feita pela skill `transcrever-diario`, com o Claude fora do MCP.)
 - [ ] Ao mover arquivos: avisar quando o destino contraria o tipo; Ctrl+Z global do movimento; pastas renomeadas por fora não geram aviso (só os `.md`).
 
+## P4b — Ideias aprovadas em 2026-11-18
+
+- [x] **Captura rápida** (Ctrl+Shift+N, paleta e botão "+ Anotar" no Hoje): grava `- [ ] texto` em `_sistema/Caixa de entrada.md`; o Hoje mostra a caixa com caixinhas e "Limpar feitas". Só no navegador. **Falta o atalho global do sistema** (fora do app): funciona no Windows com o plugin global-shortcut do Tauri; no Linux/Wayland não.
+- [x] **Memória da aula**: seção opcional `## Memória` no fim da aula (`- AAAA-MM-DD · turma · funcionou|ajustar|cortar — texto`); não vira aba; "Da última vez" recolhida no topo só se houver nota; link discreto "+ nota desta vez" no fim. Nunca pergunta nem conta. Falta o toque opcional ao lado do ✓ da Semana (decidir com cuidado, ver Semana simples).
+- [x] **Gerador de jogos a partir da aula** (`lib/jogos.js`, `JogoDialog.jsx`; botão "Gerar jogo" na Aula): caça-palavras (3 níveis), cruzadinha e cartas (jogo da memória); palavras sugeridas da aula, dicas escritas por você (ou pedidas ao Claude por texto copiado); prévia, "Embaralhar", PDF/imprimir, gabarito e "Guardar a lista" como oficina em `Acervo/Oficinas` (`jogo:`, `aula:`). Só no navegador; o diálogo de impressão nunca foi visto no Tauri. Falta: reabrir um jogo guardado para gerar de novo (hoje se copia a lista de volta).
+- [x] **Fechamento do trimestre** (`lib/fechamento.js`, `FechamentoPage.jsx`): aba "Fechamento" no Ano (e no menu/paleta) com 1º/2º/3º e filtro de turma. Automático: produções não finalizadas, ciclos do trimestre com aulas por dar, diários por transcrever/revisar, reuniões em aberto, alunos em alerta. "Meus itens": lista própria em `Anos/AAAA/Fechamento AAAA.md` (`## 1º trimestre`, `- [ ] item`). No Hoje, uma linha discreta só aparece se houver algo em aberto. Só no navegador. Limites: produções não têm trimestre (aparecem todas as abertas); o filtro de turma não se aplica aos ciclos sem turma ligada; `progressoDoCiclo` foi extraído para `lib/ciclos.js` (usado também pelo Planejamento).
+- Adiado: prova objetiva (foto ou lançamento rápido de `ABCDDA`).
+
 ## P5 — Correção, Prova, Aula
 
 - [ ] Conferir se a skill de correção (fora do repositório) lê a seção `## Enunciado`; os lotes antigos não têm enunciado.

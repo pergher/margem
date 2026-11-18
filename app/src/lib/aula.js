@@ -12,6 +12,42 @@ export const SECOES = [
   { id: "atividades", nome: "Atividades", casa: /^atividades?$/ },
 ];
 
+export const SINAIS = ["funcionou", "ajustar", "cortar"];
+const ehMemoria = (titulo) => sem(titulo.replace(/^[^\p{L}\p{N}(]+/u, "")) === "memoria";
+
+/** Notas da seção `## Memória` (opcional): `- AAAA-MM-DD · turma · sinal — texto`, em ordem de arquivo (a mais recente por último).
+ * Tolerante: turma e sinal são opcionais, e uma linha sem data vira só texto. */
+export function lerMemoria(corpo) {
+  const linhas = corpo.split("\n"), out = [];
+  let dentro = false, fence = false;
+  for (const l of linhas) {
+    if (/^\s*```/.test(l)) fence = !fence;
+    const h = !fence && /^##\s+(.*)$/.exec(l);
+    if (h) { dentro = ehMemoria(h[1].trim()); continue; }
+    const m = dentro && !fence && /^[-*]\s+(.*\S)\s*$/.exec(l);
+    if (!m) continue;
+    const d = /^(\d{4}-\d{2}-\d{2})(.*)$/.exec(m[1]);
+    const resto = (d ? d[2] : m[1]).replace(/^\s*·\s*/, ""), [meta, ...txt] = d ? resto.split(" — ") : ["", resto];
+    const partes = meta.split(" · ").map((x) => x.trim()).filter(Boolean);
+    const sinal = partes.find((x) => SINAIS.includes(x)) ?? "", turma = partes.find((x) => !SINAIS.includes(x)) ?? "";
+    out.push({ data: d?.[1] ?? "", turma, sinal, texto: txt.join(" — ").trim() });
+  }
+  return out;
+}
+
+/** Acrescenta uma nota à seção `## Memória` (criando-a no fim da aula se não existir). Nota sem texto e sem sinal não muda nada. */
+export function acrescentarMemoria(text, { data, turma = "", sinal = "", texto = "" }) {
+  const t = texto.replace(/\s*\n\s*/g, " ").trim();
+  if (!t && !sinal) return text;
+  const linha = `- ${[data, turma.trim(), sinal].filter(Boolean).join(" · ")}${t ? ` — ${t}` : ""}`;
+  const linhas = text.split("\n"), sec = secoesBrutas(text).find((x) => ehMemoria(linhas[x.ini].replace(/^##\s+/, "")) && x.id !== "intro");
+  if (!sec) return `${text.replace(/\s+$/, "")}\n\n## Memória\n\n${linha}\n`;
+  let fim = sec.fim;
+  while (fim > sec.ini + 1 && !linhas[fim - 1].trim()) fim--;
+  const depois = linhas.slice(sec.fim);
+  return [...linhas.slice(0, fim), linha, ...(depois.length ? ["", ...depois] : [""])].join("\n");
+}
+
 /** Tira os callouts `[!margem]` do texto e devolve o que sobrou mais as anotações (uma por callout). */
 export function separarMargem(texto) {
   const linhas = texto.split("\n"), resto = [], notas = [];
@@ -49,12 +85,13 @@ export function parseAula(text) {
   const limpas = partes.map((p) => separarMargem(p.linhas.join("\n")));
   // Toda seção `##` vira uma aba, na ordem do arquivo; o id é a posição (estável ao renomear o título). `tipo` só serve para os dados da margem.
   const tipoDe = (t) => SECOES.find((x) => x.casa.test(sem(t.replace(/^[^\p{L}\p{N}(]+/u, ""))))?.id ?? null;
-  const secoes = partes.slice(1).map((p, k) => ({ id: "s" + k, tipo: tipoDe(p.titulo), nome: p.titulo || "(sem título)", md: limpas[k + 1].texto.trim(), notas: limpas[k + 1].notas }));
+  // A seção "Memória" não vira aba (aparece discreta no fim da aula); o id continua sendo a posição no arquivo.
+  const secoes = partes.slice(1).map((p, k) => ({ id: "s" + k, tipo: tipoDe(p.titulo), nome: p.titulo || "(sem título)", md: limpas[k + 1].texto.trim(), notas: limpas[k + 1].notas, memoria: ehMemoria(p.titulo) })).filter((x) => !x.memoria);
   const intro = limpas[0].texto.split("\n").filter((l) => !/^#\s/.test(l)).join("\n").trim();
   const introNotas = limpas[0].notas;
   return {
     meta: { status: val("status"), ano: val("ano"), assuntos: val("assuntos"), tags: val("tags") },
-    secoes, intro, introNotas, notas, corpo: corpo.trim(),
+    secoes, intro, introNotas, notas, corpo: corpo.trim(), memoria: lerMemoria(corpoBruto),
     codigos: [...new Set((secoes.find((s) => s.tipo === "habilidades")?.md ?? "").match(/EF\d\dLP\d\d/g) ?? [])],
   };
 }

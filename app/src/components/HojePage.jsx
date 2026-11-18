@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { IconArrowRight as ArrowRight, IconAlertTriangle as Alerta, IconInfoCircle as Info, IconHeartbeat as Saude, IconNotebook as Caderno, IconCalendarEvent as Reuniao, IconFileText as FileText } from "@tabler/icons-react";
-import { lerCiclos } from "@/lib/ciclos";
+import { anosLetivos, lerCiclos } from "@/lib/ciclos";
 import { lerSemanas, segundaDe, rotuloDe, situacaoAula } from "@/lib/semana";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
 import { lerRecentes, haQuanto, tipoDeRel } from "@/lib/recentes";
@@ -17,12 +17,14 @@ import { Estado, Carregando, Vazio, Erro, useToast } from "@/components/ui/estad
 import { cn } from "@/lib/utils";
 import { CATEGORIAS, abreviar, alunosEmAlerta, atualizarAcao, dataIso, diariosParaRever, reunioesEmAberto } from "@/lib/diario";
 import { AvancarReuniao } from "@/components/AvancarReuniao";
+import { pendenciasDoFechamento, triSugerido } from "@/lib/fechamento";
+import { alternar, caminhoCaixa, gravarCaixa, lerCaixa, lerTarefas, limparFeitas } from "@/lib/caixa";
 
 const tint = (cor, p = 14) => `color-mix(in srgb, ${cor} ${p}%, transparent)`;
 const nomes = (r) => [...String(r ?? "").matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
 
 /** Hoje, sem horário: a próxima aula de cada turma na semana atual, a correção em curso e os arquivos abertos há pouco. */
-export function HojePage({ items, onOpen, onCorrecao, onSemana, onDiario, onSaude, onRefresh }) {
+export function HojePage({ items, caixaTick, onCapturar, onFechamento, onOpen, onCorrecao, onSemana, onDiario, onSaude, onRefresh }) {
   const toast = useToast();
   const [wAside, setWAside] = useWidth("hoje.lateral", 340);
   const criar = async (aula, turma) => {
@@ -120,6 +122,8 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onDiario, onSaud
 
         <ResizeHandle width={wAside} setWidth={setWAside} min={240} max={640} side="right" />
         <aside style={{ width: wAside, maxWidth: "45%" }} className="flex shrink-0 flex-col gap-4 self-start">
+          <Caixa items={items} tick={caixaTick} onCapturar={onCapturar} onOpen={onOpen} />
+          <LinhaFechamento items={items} onClick={onFechamento} />
           <section className="flex flex-col gap-3 rounded-xl border p-4">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Para corrigir</h2>
             {lote === undefined ? <span className="text-sm text-muted-foreground">Lendo…</span>
@@ -136,6 +140,57 @@ export function HojePage({ items, onOpen, onCorrecao, onSemana, onDiario, onSaud
         </aside>
       </div>
     </div></div>
+  );
+}
+
+/** Uma linha discreta que só aparece quando há algo em aberto no trimestre; leva à aba Fechamento do Ano. */
+function LinhaFechamento({ items, onClick }) {
+  const [r, setR] = useState(null);
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const { ciclos } = await lerCiclos(items), tri = triSugerido(ciclos, await lerSemanas(items).catch(() => []));
+      const d = await pendenciasDoFechamento(items, tri, { ano: String(anosLetivos(items).pop() ?? new Date().getFullYear()) });
+      if (vivo) setR({ tri, total: d.total });
+    })().catch(() => {});
+    return () => { vivo = false; };
+  }, [items]);
+  if (!r || r.total === 0) return null;
+  return <button onClick={onClick} className="flex items-center justify-between rounded-xl border px-4 py-2.5 text-left text-sm text-muted-foreground hover:bg-accent hover:text-foreground">
+    <span>Fechamento do {r.tri}º trimestre: {r.total} {r.total === 1 ? "coisa em aberto" : "coisas em aberto"}</span><ArrowRight aria-hidden className="h-4 w-4" /></button>;
+}
+
+/** Caixa de entrada (arquivo .md com tarefas anotadas pela captura rápida). Some quando está vazia e nunca cobra nada. */
+function Caixa({ items, tick, onCapturar, onOpen }) {
+  const toast = useToast();
+  const [texto, setTexto] = useState("");
+  const [recarga, setRecarga] = useState(0);
+  useEffect(() => { let vivo = true; lerCaixa(items).then((t) => vivo && setTexto(t)); return () => { vivo = false; }; }, [items, tick, recarga]);
+  const tarefas = lerTarefas(texto);
+  const mudar = async (fn) => { try { await gravarCaixa(items, fn); setRecarga((x) => x + 1); } catch (e) { toast(`Não deu para atualizar a caixa: ${e.message ?? e}`, { tipo: "err" }); } };
+  const pendentes = tarefas.filter((t) => !t.feito), feitas = tarefas.length - pendentes.length;
+  return (
+    <section aria-label="Caixa de entrada" className="flex flex-col gap-2 rounded-xl border p-4">
+      <h2 className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">Caixa de entrada
+        <button onClick={onCapturar} className="rounded-md border bg-background px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-foreground hover:bg-accent">+ Anotar</button>
+      </h2>
+      {tarefas.length === 0 ? <p className="text-sm text-muted-foreground">Nada anotado. Ctrl+Shift+N guarda uma ideia ou tarefa em qualquer tela.</p>
+        : <ul className="flex flex-col gap-1">
+          {tarefas.map((t) => (
+            <li key={t.linha}>
+              <label className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1 text-sm hover:bg-accent">
+                <input type="checkbox" checked={t.feito} onChange={() => mudar((x) => alternar(x, t.linha, t.texto))} className="mt-1" />
+                <span className={cn("min-w-0 flex-1 break-words", t.feito && "text-muted-foreground line-through")}>{t.texto}</span>
+              </label>
+            </li>
+          ))}
+        </ul>}
+      {(feitas > 0 || tarefas.length > 0) && (
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <button onClick={() => onOpen(caminhoCaixa(items))} className="hover:text-foreground">Abrir arquivo</button>
+          {feitas > 0 && <button onClick={() => mudar(limparFeitas)} className="hover:text-foreground">Limpar {feitas} {feitas === 1 ? "feita" : "feitas"}</button>}
+        </div>)}
+    </section>
   );
 }
 

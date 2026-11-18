@@ -4,6 +4,7 @@ import { AnoPage } from "@/components/AnoPage";
 import { CorrecoesPage } from "@/components/CorrecoesPage";
 import { CorrecaoPage } from "@/components/CorrecaoPage";
 import { DiarioPage } from "@/components/DiarioPage";
+import { FechamentoPage } from "@/components/FechamentoPage";
 import { lerTurmas } from "@/lib/turmas";
 import { lerSemanas } from "@/lib/semana";
 import { corTurma } from "@/lib/cores";
@@ -15,10 +16,11 @@ export const ABAS_ANO = [
   { id: "plano", nome: "Planejamento", dica: "Os ciclos do ano, por trimestre" },
   { id: "prod", nome: "Produções", dica: "Produções dos alunos: a corrigir e já corrigidas" },
   { id: "diario", nome: "Diário", dica: "Diário de classe e notas de alunos" },
+  { id: "fechamento", nome: "Fechamento", dica: "O que falta para fechar o trimestre" },
 ];
 
 /**
- * Ano: tudo o que tem data ou turma, numa página só, em quatro abas (Semana, Planejamento, Produções e Diário).
+ * Ano: tudo o que tem data ou turma, numa página só, em abas (Semana, Planejamento, Produções, Diário e Fechamento).
  * Cada aba mostra a tela que antes era separada. Na correção de um lote (tela cheia) as abas somem até voltar.
  */
 /** Turmas do ano corrente: as do arquivo "Turmas AAAA"; sem ele, as que aparecem nas notas de semana. */
@@ -68,6 +70,7 @@ export function AnoAbas({ aba, setAba, items, onOpen, onRefresh, onCiclo, onMark
         {aba === "semana" && <SemanaPage items={items} onOpen={onOpen} onRefresh={onRefresh} turmaGlobal={turmaGlobal} />}
         {aba === "plano" && <AnoPage items={items} onOpen={onOpen} onRefresh={onRefresh} onCiclo={onCiclo} turmaGlobal={turmaGlobal} />}
         {aba === "prod" && <CorrecoesPage items={items} turmasAno={turmas} onRefresh={onRefresh} onCorrigir={corrigir} onTurma={turma} onOpen={onOpen} onRename={onRename} onDelete={onDelete} turmaGlobal={turmaGlobal} />}
+        {aba === "fechamento" && <FechamentoPage items={items} onOpen={onOpen} onCorrigir={(p) => { corrigir(p); setAba("prod"); }} onDiario={() => setAba("diario")} onRefresh={onRefresh} turmaGlobal={turmaGlobal} />}
         {aba === "diario" && <DiarioPage items={items} onOpen={onOpen} onMarkdown={onMarkdown} onRefresh={onRefresh} turmaGlobal={turmaGlobal} />}
       </div>
     </div>
