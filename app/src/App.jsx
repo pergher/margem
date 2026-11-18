@@ -35,6 +35,7 @@ import { useObservador } from "@/lib/useObservador";
 import { AvisoMudouFora } from "@/components/AvisoMudouFora";
 import { usePropostas } from "@/lib/usePropostas";
 import { PropostaDialog } from "@/components/PropostaDialog";
+import { BarraRevisao } from "@/components/BarraRevisao";
 import { useIA } from "@/lib/useIA";
 import { PainelIA } from "@/components/PainelIA";
 import { usePreferencias } from "@/lib/usePreferencias";
@@ -218,6 +219,35 @@ export default function App() {
   const [prefVisao, setPrefVisao] = useState(() => store.get("visaoPorTipo", {}));
   const [verTick, setVerTick] = useState(0);
   const personalizada = !!visao && page === "editor" && prefVisao[visao.id] !== "markdown";
+  // Revisão de uma proposta da IA dentro da própria nota (lib/revisao.js). Nota nova não tem texto antigo: segue no diálogo.
+  const [revisao, setRevisao] = useState(null);
+  const revisaoId = useRef(null);
+  useEffect(() => { revisaoId.current = null; setRevisao(null); }, [current]);
+  const descartarRevisada = (id) => invoke("descartar_proposta", { id }).then(() => props.recarregar()).catch((e) => setStatus("Erro: " + (e?.message ?? e)));
+  const aoRevisar = (r) => {
+    setRevisao(r.ativa ? { ...r, id: revisaoId.current } : null);
+    if (!r.ativa && r.motivo === "concluida" && revisaoId.current != null) {
+      const id = revisaoId.current; revisaoId.current = null;
+      descartarRevisada(id);
+      setStatus(r.aceitos ? `Revisão concluída: ${r.aceitos} de ${r.total} alteração(ões) aceita(s)` : "Proposta recusada");
+    }
+  };
+  const revisarProposta = async (id) => {
+    let p;
+    try { p = (await invoke("listar_propostas")).find((x) => x.id === id); } catch (e) { setStatus("Erro: " + (e?.message ?? e)); return; }
+    if (!p) return;
+    if (p.nova || !p.nota) { setPropostaVista(id); return; }
+    const v = visaoDe(items.find((i) => i.path === p.nota)?.rel);
+    const estavaPersonalizada = v && prefVisao[v.id] !== "markdown";
+    if (estavaPersonalizada) { const novo = { ...prefVisao, [v.id]: "markdown" }; setPrefVisao(novo); store.set("visaoPorTipo", novo); }
+    setPage("editor");
+    if (cur.current !== p.nota) await open(p.nota); else if (estavaPersonalizada) await load(p.nota); // a tela da visão pode ter gravado no disco
+    setTimeout(() => { // espera a troca de nota/visão assentar (o efeito de `current` zera a revisão)
+      revisaoId.current = id;
+      const n = ed.current?.revisar(p.texto_novo);
+      if (!n) { revisaoId.current = null; descartarRevisada(id); setStatus("Esta proposta já está aplicada ou não muda nada nesta nota."); }
+    }, 80);
+  };
   const escolherVisao = (modo) => {
     const novo = { ...prefVisao, [visao.id]: modo }; setPrefVisao(novo); store.set("visaoPorTipo", novo);
     if (modo === "markdown" && cur.current) load(cur.current); // a tela pode ter gravado no disco: recarrega o editor
@@ -308,8 +338,11 @@ export default function App() {
         <ErrosComuns items={items} />
         {page === "editor" && current && <AvisoMudouFora aviso={obs.aviso} onCarregar={obs.carregarDoDisco} onManter={obs.manter} onDispensar={obs.dispensar} onDiferencas={verDiferencas} />}
         {page === "editor" && !personalizada && current && <div role="progressbar" aria-label="Progresso de leitura" aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div ref={progRef} className="h-full origin-left bg-primary" style={{ transform: "scaleX(0)" }} /></div>}
+        {page === "editor" && !personalizada && revisao?.ativa && <BarraRevisao r={revisao} resumo={props.lista.find((p) => p.id === revisao.id)?.resumo}
+          onIr={(d) => ed.current?.revisaoIr(d)} onModo={(m) => ed.current?.revisaoModo(m)} onAceitarTudo={() => ed.current?.revisaoAceitarTudo()}
+          onRecusarTudo={() => ed.current?.revisaoRecusarTudo()} onSair={() => { revisaoId.current = null; ed.current?.revisaoEncerrar(); }} />}
         <main onScrollCapture={aoRolarTexto} className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>
-          <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} onRename={(n) => current && renomearNota(current, n).catch((e) => setStatus("Erro: " + (e?.message ?? e)))} numeros={numeros} />
+          <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} onRename={(n) => current && renomearNota(current, n).catch((e) => setStatus("Erro: " + (e?.message ?? e)))} onRevisao={aoRevisar} numeros={numeros} />
         </main>
 
         {props.desfazer && <div role="status" className="fixed bottom-10 right-6 z-40 flex items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-lg">
@@ -321,7 +354,7 @@ export default function App() {
           {current && info?.issues.length > 0 && <button onClick={() => { setShowOutline(true); setPanelTab("links"); }} className="text-warn hover:underline">{info.issues.length} aviso{info.issues.length > 1 ? "s" : ""}</button>}
           {import.meta.env.DEV && current && <button onClick={() => invoke("propor_teste", { path: current }).then(() => props.recarregar()).catch((e) => setStatus("Erro: " + e))} className="hover:text-foreground">Propor (teste)</button>}
           {isTauri && <button onClick={() => { setShowOutline(true); setPanelTab("ia"); }} title={`Painel de IA (${pretty(keys.ia)})`} className="hover:text-foreground">IA</button>}
-          {props.lista.length > 0 && <button onClick={() => setPropostaVista(props.lista[0].id)} className="font-medium text-primary hover:underline">{props.lista.length} proposta{props.lista.length > 1 ? "s" : ""}</button>}
+          {props.lista.length > 0 && <button onClick={() => revisarProposta(props.lista[0].id)} className="font-medium text-primary hover:underline">{props.lista.length} proposta{props.lista.length > 1 ? "s" : ""}</button>}
           {current && <span>{words} palavras</span>}
           {zoom !== 1 && <button onClick={() => setZoom(1)} title={`Restaurar (${pretty(keys.zoomReset)})`} className="hover:text-foreground">{Math.round(zoom * 100)}%</button>}
           <span>Salva sozinho</span>
@@ -344,7 +377,7 @@ export default function App() {
           <ResizeHandle width={outlineW} setWidth={setOutlineW} min={160} max={480} side="right" />
           <div style={{ width: outlineW }} className="shrink-0">
             <RightPanel tab={panelTab} setTab={setPanelTab} info={info} text={propsText} onSet={setProperty} onOpen={open} onGoLine={goLine} path={current} histTick={histTick} onRestore={restoreText}
-              painelIA={<PainelIA ia={ia} texto={propsText} getContexto={getContextoIA} onAbrirConfig={() => setPage("config")} onVerProposta={async (id) => { await props.recarregar(); setPropostaVista(id); }} />}>
+              painelIA={<PainelIA ia={ia} texto={propsText} getContexto={getContextoIA} onAbrirConfig={() => setPage("config")} onVerProposta={async (id) => { await props.recarregar(); await revisarProposta(id); }} />}>
               <Outline headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />
             </RightPanel>
           </div>

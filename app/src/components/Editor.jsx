@@ -5,15 +5,16 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import { menuBarra } from "@/lib/menuBarra";
+import { revisaoCampo, resumoRevisao, iniciarRevisao, aceitarTudo, recusarTudo, irPara, definirModo, encerrarRevisao } from "@/lib/revisao";
 import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate, navegacaoBlocos, navegacaoEntreEditores, tituloExt, subirAoTitulo } from "@/lib/livePreview";
 
 // `numeros`: mostra a numeração das linhas; `linhaInicial`: número da linha em que o texto começa no arquivo (seções de uma aula).
 const gutter = (numeros, linhaInicial) => (numeros ? [lineNumbers({ formatNumber: (n) => String(n + linhaInicial) }), gutterAlinhado] : []);
 
-export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onRename, numeros = false, linhaInicial = 0, titulo = "" }, ref) {
+export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onRename, onRevisao, numeros = false, linhaInicial = 0, titulo = "" }, ref) {
   const host = useRef(null), view = useRef(null), comp = useRef(new Compartment());
   const cb = useRef({});
-  cb.current = { onChange, onSave, onLink, onRename };
+  cb.current = { onChange, onSave, onLink, onRename, onRevisao };
   const silent = useRef(false);
 
   const tit = useRef(new Compartment()), tituloAtual = useRef(titulo);
@@ -25,10 +26,11 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onR
   const novoEstado = (doc, anchor = 0) => EditorState.create({
     doc, selection: { anchor },
     extensions: [
-      history(), markdown({ extensions: [GFM] }), livePreview, menuBarra, EditorView.lineWrapping, comp.current.of(gutter(gutterAtual.current.numeros, gutterAtual.current.linhaInicial)),
+      history(), markdown({ extensions: [GFM] }), livePreview, menuBarra, revisaoCampo, EditorView.lineWrapping, comp.current.of(gutter(gutterAtual.current.numeros, gutterAtual.current.linhaInicial)),
       Prec.high(navegacaoBlocos), Prec.high(subirAoTitulo), Prec.high(navegacaoEntreEditores), tit.current.of(tituloExt(tituloAtual.current)),
       keymap.of([...defaultKeymap, ...historyKeymap]),
       EditorView.updateListener.of((u) => { if (u.docChanged && !silent.current) cb.current.onChange(u.state.doc); }),
+      EditorView.updateListener.of((u) => { const a = u.startState.field(revisaoCampo), b = u.state.field(revisaoCampo); if (a !== b) cb.current.onRevisao?.(resumoRevisao(b)); }),
       EditorView.domEventHandlers({
         mousedown(e) {
           const rendered = e.target.closest?.(".cm-wikilink");
@@ -88,6 +90,13 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onR
     focus: () => view.current.focus(),
     goTo: (pos) => { view.current.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: "start", yMargin: 24 }) }); view.current.focus(); },
     remeasure: () => view.current.requestMeasure(),
+    /** Revisão de uma proposta da IA na própria nota (ver lib/revisao.js). `revisar` devolve quantos trechos há. */
+    revisar: (novo) => iniciarRevisao(view.current, novo),
+    revisaoIr: (delta) => irPara(view.current, delta),
+    revisaoModo: (modo) => definirModo(view.current, modo),
+    revisaoAceitarTudo: () => aceitarTudo(view.current),
+    revisaoRecusarTudo: () => recusarTudo(view.current),
+    revisaoEncerrar: () => encerrarRevisao(view.current),
   }));
 
   return <div ref={host} className="h-full" />;

@@ -256,3 +256,20 @@
 /* introdução da aula (antes do primeiro ##): sem altura mínima nem respiro extra, para não afastar o Conteúdo */
 [data-sec="intro"] .aula-ed .cm-editor .cm-content { min-height: 0; }
 [data-sec="intro"] .aula-ed .cm-editor .cm-scroller { padding-bottom: 0; }
+
+/* Revisão de proposta da IA dentro da nota (lib/revisao.js): vermelho = sai, verde = entra. */
+.cm-rev { margin: .6rem 0; border: 1px solid hsl(var(--border)); border-radius: 10px; overflow: hidden; font-size: .92em; }
+.cm-rev-atual { border-color: hsl(var(--primary) / .6); box-shadow: 0 0 0 1px hsl(var(--primary) / .25); }
+.cm-rev-cab { display: flex; align-items: center; gap: .5rem; padding: .3rem .6rem; background: hsl(var(--muted) / .6); font-family: var(--f-ui, sans-serif); font-size: .78rem; color: hsl(var(--muted-foreground)); }
+.cm-rev-esp { flex: 1; }
+.cm-rev-bt { height: 1.6rem; padding: 0 .65rem; border-radius: 6px; border: 1px solid hsl(var(--border)); background: hsl(var(--background)); color: hsl(var(--foreground)); cursor: pointer; font-size: .78rem; }
+.cm-rev-bt:hover { background: hsl(var(--accent)); }
+.cm-rev-ok { border-color: hsl(var(--ok) / .5); color: hsl(var(--ok)); font-weight: 600; }
+.cm-rev-no { color: hsl(var(--muted-foreground)); }
+.cm-rev-del, .cm-rev-add { padding: .35rem .75rem; border-left: 3px solid transparent; }
+.cm-rev-del { background: hsl(var(--err) / .08); border-left-color: hsl(var(--err) / .7); }
+.cm-rev-add { background: hsl(var(--ok) / .1); border-left-color: hsl(var(--ok) / .8); }
+.cm-rev-lin { font-family: var(--f-mono, monospace); font-size: .85em; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+.cm-rev-del .cm-rev-lin { text-decoration: line-through; text-decoration-color: hsl(var(--err) / .45); color: hsl(var(--foreground) / .75); }
+.cm-rev-sinal { display: inline-block; width: 1.1rem; user-select: none; color: hsl(var(--muted-foreground)); text-decoration: none; }
+.cm-rev-del .ia-md { opacity: .75; }
