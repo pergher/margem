@@ -112,6 +112,8 @@ fn vault(nome: &str) -> (App, std::path::PathBuf) {
     let root = canon(&d).unwrap();
     let w = |rel: &str, t: &str| { let p = root.join(rel); std::fs::create_dir_all(p.parent().unwrap()).unwrap(); std::fs::write(p, t).unwrap(); };
     w("Acervo/Aulas/Aula de Crase.md", "---\ntipo: aula\ntitulo: Crase\n---\n\n# Aula de Crase\n\nUso da crase.\n");
+    w("Recursos/_codigos.md", "---\ntipo: taxonomia\n---\n\n- `fig-anafora`: anáfora\n");
+    w("Recursos/BNCC 6.md", "---\ntipo: habilidades-bncc\nano: 6\n---\n\n- EF06LP04 Analisar acentuação ^ef06lp04\n");
     w("Anos/2026/Correcoes/Lote 1/Redações da 72.md", "---\ntipo: correcao\n---\n\n# Redações\n\nMaria Silva escreveu isto.\n");
     w("Anos/2026/Relatorios/Relatório Ana.md", "---\ntipo: aula\n---\n\n# Relatório Ana\n\nDados da aluna Ana.\n");
     (App::new(root.clone()), root)
@@ -147,6 +149,18 @@ fn nota_comum_e_enviada_com_o_texto_do_editor_e_a_selecao() {
     let t = m.texto.unwrap();
     assert!(t.contains("Aula de Crase") && t.contains("tipo: aula") && t.contains("texto ainda não salvo") && t.contains("Trecho selecionado"), "{t}");
     assert!(m.aberta.is_some());
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn aula_recebe_o_mapa_de_codigos_e_habilidades() {
+    let (app, root) = vault("ia-mapa");
+    let c = ctx(&root, "Acervo/Aulas/Aula de Crase.md", "---\ntipo: aula\nano: 6\n---\n\n# Aula\n");
+    let t = montar_contexto(&app, Some(&c)).texto.unwrap();
+    assert!(t.contains("fig-anafora") && t.contains("EF06LP04"), "{t}");
+    let c = ctx(&root, "Acervo/Aulas/Aula de Crase.md", "---\ntipo: aula\nano: 8\n---\n\n# Aula\n");
+    let t = montar_contexto(&app, Some(&c)).texto.unwrap();
+    assert!(t.contains("fig-anafora") && !t.contains("Analisar acentuação") && t.contains("get_habilidade"), "{t}");
     let _ = std::fs::remove_dir_all(&root);
 }
 

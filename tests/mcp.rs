@@ -26,6 +26,8 @@ fn protocolo_basico() {
 #[test]
 fn correcoes_ficam_ocultas_por_padrao() {
     let s = server(false);
+    let (e, msg) = call(&s, "search_notes", json!({"query": "*"}));
+    assert!(e && msg.contains("busca vazia"), "{msg}");
     let (_, busca) = call(&s, "search_notes", json!({"query": "Aluno"}));
     assert!(!busca.contains("Narrativa-Marco"), "{busca}");
     let (err, txt) = call(&s, "read_note", json!({"nome": "72-Narrativa-Marco"}));

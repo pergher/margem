@@ -159,6 +159,11 @@ impl Server {
     }
 
     fn search(&self, v: &Vault, q: &str, tipo: Option<&str>, campo: Option<&str>, valor: Option<&str>) -> Result<String, String> {
+        let q = q.trim();
+        let q = if q == "*" { "" } else { q };
+        if q.is_empty() && tipo.is_none() && campo.is_none() {
+            return Err("busca vazia: informe `query` (palavra a procurar) ou filtre por `tipo` (ex.: tipo=taxonomia, tipo=habilidades-bncc, tipo=aula). Não use \"*\".".into());
+        }
         let ql = q.to_lowercase();
         let mut hits: Vec<(usize, String)> = vec![];
         for n in v.notes.iter().filter(|n| !self.hidden(n)) {
