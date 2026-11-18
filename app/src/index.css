@@ -28,7 +28,7 @@
   }
   * { @apply border-border; }
   /* Tokens (rodada 2026-11-13): raios 8/12/pílula; espaçamento 4·8·12·16·24·32; controles 40px; texto 15px;
-     estados: --ok/--warn/--err (sempre com ícone ou texto). Ver docs/melhorias-de-interface.md. */
+     estados: --ok/--warn/--err (sempre com ícone ou texto). Ver docs/afazeres.md. */
   /* Foco visível em tudo que se clica ou foca por teclado (o editor e as células da tabela têm o seu próprio) */
   :where(button, a[href], select, summary, [role="button"], [role="menuitem"], [role="option"], [tabindex]:not([tabindex="-1"])):focus-visible:not(.cm-content, .cm-content *) {
     outline: 2px solid hsl(var(--ring)); outline-offset: 2px; border-radius: .5rem;

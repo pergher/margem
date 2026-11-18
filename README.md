@@ -1,6 +1,6 @@
 # Margem · núcleo do vault
 
-Biblioteca e ferramentas em Rust para um vault de Markdown (compatível com o Obsidian) usado no ensino de Português e, separadamente, na pesquisa. Tudo é arquivo `.md`; nada é guardado em formato próprio. Documentação em [docs/](docs/): decisões e próximas etapas em [docs/proximas-etapas.md](docs/proximas-etapas.md). Formato do vault: [docs/formato-do-vault.md](docs/formato-do-vault.md).
+Biblioteca e ferramentas em Rust para um vault de Markdown (compatível com o Obsidian) usado no ensino de Português e, separadamente, na pesquisa. Tudo é arquivo `.md`; nada é guardado em formato próprio. Documentação em [docs/](docs/): afazeres em [docs/afazeres.md](docs/afazeres.md). Formato do vault: [docs/formato-do-vault.md](docs/formato-do-vault.md).
 
 Hoje existem o núcleo, o CLI `vault` e o servidor MCP `vault-mcp`. Há também um **protótipo do editor** em `app/` (Tauri 2 + React + shadcn/ui + CodeMirror 6), descrito em [Editor](#editor-protótipo).
 
