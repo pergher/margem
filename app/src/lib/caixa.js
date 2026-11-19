@@ -4,7 +4,7 @@ import { invoke } from "@/lib/api";
 import { raizDe } from "@/lib/raiz";
 
 export const NOME_CAIXA = "Caixa de entrada";
-const CABECALHO = `---\ntipo: configuracao\n---\n# ${NOME_CAIXA}\n\nIdeias e tarefas anotadas depressa (Ctrl+Shift+N). Marque como feito ou apague à vontade.\n\n`;
+const CABECALHO = `---\ntipo: configuracao\n---\n# ${NOME_CAIXA}\n\nIdeias e tarefas anotadas depressa (Ctrl+Alt+M). Marque como feito ou apague à vontade.\n\n`;
 const LINHA = /^(\s*[-*]\s+\[)([ xX])(\]\s+)(.*)$/;
 
 export const caminhoCaixa = (items) => `${raizDe(items)}/_sistema/${NOME_CAIXA}.md`;

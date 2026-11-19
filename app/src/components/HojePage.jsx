@@ -205,7 +205,7 @@ function Caixa({ items, tick, onCapturar, onOpen }) {
       <h2 className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">Caixa de entrada
         <button onClick={onCapturar} className="rounded-md border bg-background px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-foreground hover:bg-accent">+ Anotar</button>
       </h2>
-      {tarefas.length === 0 ? <p className="text-sm text-muted-foreground">{compacto ? "Nada anotado. O botão + guarda uma ideia ou tarefa em qualquer tela." : "Nada anotado. Ctrl+Shift+N guarda uma ideia ou tarefa em qualquer tela."}</p>
+      {tarefas.length === 0 ? <p className="text-sm text-muted-foreground">{compacto ? "Nada anotado. O botão + guarda uma ideia ou tarefa em qualquer tela." : "Nada anotado. Ctrl+Alt+M guarda uma ideia ou tarefa em qualquer tela."}</p>
         : <ul className="flex flex-col gap-1">
           {tarefas.map((t) => (
             <li key={t.linha}>

@@ -7,7 +7,7 @@ export const ACTIONS = [
   { id: "save", label: "Salvar agora", def: "Ctrl+S" },
   { id: "toggleSide", label: "Reduzir/ampliar o menu lateral", def: "Ctrl+B" },
   { id: "focus", label: "Modo foco (esconde menus e barras)", def: "Ctrl+Shift+F" },
-  { id: "captura", label: "Captura rápida (Caixa de entrada)", def: "Ctrl+Shift+N" },
+  { id: "captura", label: "Captura rápida (Caixa de entrada)", def: "Ctrl+Alt+M" },
   { id: "ia", label: "Abrir o painel de IA", def: "Ctrl+Shift+I" },
   { id: "back", label: "Voltar na navegação", def: "Alt+ArrowLeft" },
   { id: "forward", label: "Avançar na navegação", def: "Alt+ArrowRight" },
