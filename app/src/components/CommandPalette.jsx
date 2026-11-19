@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { IconCommand as Command, IconFileText as FileText } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
 /** Paleta de comandos: `commands` = [{ id, label, hint?, keys?, run }]; notas aparecem quando há texto. */
 export function CommandPalette({ commands, items, onOpenNote, onClose }) {
+  const compacto = useEhCompacto();
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
   const list = useRef(null);
@@ -53,7 +55,7 @@ export function CommandPalette({ commands, items, onOpenNote, onClose }) {
               {r.type === "cmd" ? <Command className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}
               <span className="min-w-0 flex-1 truncate text-sm">{r.type === "cmd" ? r.c.label : r.it.name}</span>
               <span className="ml-auto max-w-[40%] truncate pl-3 text-xs text-muted-foreground">
-                {r.type === "cmd" ? r.c.keys : r.it.rel.split("/").slice(0, -1).join(" / ")}
+                {r.type === "cmd" ? (compacto ? "" : r.c.keys) : r.it.rel.split("/").slice(0, -1).join(" / ")}
               </span>
             </button>
           ))}
