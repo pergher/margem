@@ -42,6 +42,27 @@ pub fn vault_ausente(app: State<App>) -> Option<String> {
     if r.as_os_str().is_empty() || r.is_dir() { None } else { Some(slash(&r)) }
 }
 
+/// Android: o app só lê a pasta compartilhada (Syncthing) com "acesso a todos os arquivos"; sem isso a listagem
+/// mostra as pastas mas esconde os arquivos, e o app pareceria ter um vault vazio.
+#[cfg(target_os = "android")]
+fn acesso_a_todos_os_arquivos() -> bool {
+    let ctx = ndk_context::android_context();
+    let Ok(vm) = (unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }) else { return true };
+    let Ok(mut env) = vm.attach_current_thread() else { return true };
+    env.call_static_method("android/os/Environment", "isExternalStorageManager", "()Z", &[]).and_then(|v| v.z()).unwrap_or(true)
+}
+
+#[tauri::command]
+pub fn vault_sem_acesso(app: State<App>) -> bool {
+    #[cfg(target_os = "android")]
+    {
+        let s = slash(&app.root());
+        return (s.starts_with("/storage/") || s.starts_with("/sdcard")) && !acesso_a_todos_os_arquivos();
+    }
+    #[cfg(not(target_os = "android"))]
+    { let _ = app; false }
+}
+
 /// Pasta escolhida vazia (ignorando o que começa com `.`): monta a estrutura padrão. Só cria o que falta; nunca mexe no que existe.
 pub(crate) fn criar_estrutura(root: &Path) -> std::io::Result<()> {
     let vazia = std::fs::read_dir(root)?.flatten().all(|e| e.file_name().to_string_lossy().starts_with('.'));

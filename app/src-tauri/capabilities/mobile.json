@@ -1,0 +1,1 @@
+{ "identifier": "mobile", "windows": ["main"], "platforms": ["android"], "permissions": ["core:default", "dialog:default"] }

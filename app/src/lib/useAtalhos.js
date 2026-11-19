@@ -7,7 +7,7 @@ import { comboOf, effective, handlers, ACTIONS } from "@/lib/shortcuts";
 
 const passoZoom = (z, d) => clamp(Math.round((z + d) * 10) / 10, 0.7, 2);
 
-export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setCapturaOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA }) {
+export function useAtalhos({ compacto = false, overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setCapturaOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA }) {
   useEffect(() => {
     if (!foco) return;
     const esc = (e) => { if (e.key === "Escape" && !e.defaultPrevented) setFoco(false); };
@@ -17,7 +17,7 @@ export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearch
 
   // Os ouvintes são registrados uma vez; o que muda a cada render (go, save, tela, mapa) é lido por esta ref.
   const kb = useRef({});
-  kb.current = { go, save, page, abrirIA, map: effective(overrides) };
+  kb.current = { go, save, page, abrirIA, compacto, map: effective(overrides) };
   useEffect(() => {
     const zoomBy = (d) => setZoom((z) => passoZoom(z, d));
     const run = {
@@ -37,7 +37,7 @@ export function useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearch
       zoomReset: () => setZoom(1),
     };
     const onKey = (e) => {
-      if (capturing) return;
+      if (capturing || kb.current.compacto) return; // celular: sem atalhos de teclado
       const c = comboOf(e);
       if (!c) return;
       const id = Object.keys(kb.current.map).find((k) => kb.current.map[k] === c);

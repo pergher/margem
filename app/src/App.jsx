@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
-import { IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconListNumbers as ListOrdered, IconListTree as ListTree, IconLayoutSidebar as PanelLeft, IconSearch as Search, IconMaximize as Maximize2 } from "@tabler/icons-react";
+import { IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconListNumbers as ListOrdered, IconListTree as ListTree, IconLayoutSidebar as PanelLeft, IconSearch as Search, IconMaximize as Maximize2, IconPlus as Plus, IconSettings as Engrenagem } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { definirRaiz, raizDe } from "@/lib/raiz";
 import { Carregando } from "@/components/ui/estado";
 import { Menu } from "@/components/Menu";
+import { BarraInferior } from "@/components/BarraInferior";
+import { useCompacto, CompactoContext } from "@/lib/useCompacto";
+import { definirTabelasEditaveis } from "@/lib/livePreview";
 import { Editor } from "@/components/Editor";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { Outline } from "@/components/Outline";
@@ -29,7 +32,7 @@ import { SaudePage } from "@/components/SaudePage";
 import { DiarioPage } from "@/components/DiarioPage";
 import { CicloPage } from "@/components/CicloPage";
 import { SettingsPage } from "@/components/SettingsPage";
-import { EscolherVault, VaultAusente } from "@/components/VaultGate";
+import { EscolherVault, VaultAusente, VaultSemAcesso } from "@/components/VaultGate";
 import { store } from "@/lib/store";
 import { useNotaAberta } from "@/lib/useNotaAberta";
 import { useObservador } from "@/lib/useObservador";
@@ -79,6 +82,8 @@ export default function App() {
   const [foco, setFoco] = useState(false);
   const ed = useRef(null);
   const P = usePreferencias(() => ed.current?.remeasure());
+  const { compacto, modo: modoTela, setModo: setModoTela } = useCompacto();
+  definirTabelasEditaveis(!compacto); // antes dos editores montarem // celular: sem menu lateral nem painel direito, com barra inferior
   const { dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, destaques, setDestaques, numeros, setNumeros, forma, setForma, zoom, setZoom, outlineW, setOutlineW, showSide, setShowSide, showOutline, setShowOutline, panelTab, setPanelTab } = P;
   const { page, setPage, ciclo, setCiclo, anoAba, setAnoAba, documentosPasta, setDocumentosPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, documentosAba, setDocumentosAba, textoAtiv, setTextoAtiv, documentosTipo, irAno, irMontarProva, irDocumentos, irSecao } = useNavegacao();
   const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo, aplicarDoDisco, manterMinha } = useNotaAberta({ ed, setStatus, setPage, setItems });
@@ -90,7 +95,8 @@ export default function App() {
   useEffect(() => { if (isTauri) invoke("get_vault_root").then(setVaultRoot).catch(() => setVaultRoot(null)); }, []);
   // Pasta movida/apagada/desconectada: confere ao abrir e sempre que a janela volta ao foco.
   const [vaultAusente, setVaultAusente] = useState(null);
-  const conferirVault = useCallback(() => { if (isTauri) invoke("vault_ausente").then(setVaultAusente).catch(() => {}); }, []);
+  const [semAcesso, setSemAcesso] = useState(false);
+  const conferirVault = useCallback(() => { if (isTauri) { invoke("vault_ausente").then(setVaultAusente).catch(() => {}); invoke("vault_sem_acesso").then(setSemAcesso).catch(() => {}); } }, []);
   useEffect(() => { conferirVault(); window.addEventListener("focus", conferirVault); return () => window.removeEventListener("focus", conferirVault); }, [conferirVault, vaultRoot]);
   // Procura atualização pouco depois de abrir, a cada 2 horas e quando a janela volta ao foco (no máx. a cada 30 min).
   // O aviso fica numa faixa no topo; "Depois" a esconde até a próxima verificação.
@@ -193,7 +199,7 @@ export default function App() {
     setStatus(`Renomeada; ${r.links} link(s) atualizado(s)`);
     return r.path;
   };
-  useAtalhos({ overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setCapturaOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA: () => { setShowOutline(true); setPanelTab("ia"); } });
+  useAtalhos({ compacto, overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setCapturaOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA: () => { setShowOutline(true); setPanelTab("ia"); } });
 
   const keys = effective(overrides);
   const commands = [
@@ -292,26 +298,29 @@ export default function App() {
   };
   const goLine = (line) => { ed.current.goTo(lineStart(ed.current.getText(), line)); };
   const temPainel = page === "editor" && !!current; // o painel lateral só existe com uma nota aberta no editor
-  const outlineVisible = showOutline && temPainel && !foco;
+  const outlineVisible = showOutline && temPainel && !foco && !compacto;
+  const ativoMenu = secao === "documentos" && documentosTipo.tipo ? "documentos:" + documentosTipo.tipo : secao === "ano" && page === "ano" ? "ano:" + anoAba : secao;
 
   if (vaultRoot === undefined) return <div className="flex h-full items-center justify-center text-sm text-muted-foreground">Abrindo…</div>;
   if (vaultRoot === null) return <EscolherVault onDone={setVaultRoot} />;
+  if (semAcesso && !vaultAusente) return <VaultSemAcesso onTentar={conferirVault} />;
   if (vaultAusente) return <VaultAusente caminho={vaultAusente} onTentar={conferirVault} onDone={(r) => { setVaultAusente(null); setVaultRoot(r); refresh(); }} />;
 
   return (
-    <div className="flex h-full">
-      {!foco && <Menu ativo={secao === "documentos" && documentosTipo.tipo ? "documentos:" + documentosTipo.tipo : secao === "ano" && page === "ano" ? "ano:" + anoAba : secao} onGo={irSecao} dark={dark} setDark={setDark} compacto={!showSide} />}
+    <CompactoContext.Provider value={compacto}>
+    <div className={cn("flex h-full", compacto && "flex-col")}>
+      {!foco && !compacto && <Menu ativo={ativoMenu} onGo={irSecao} dark={dark} setDark={setDark} compacto={!showSide} />}
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {foco && <button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
-        {!foco && <header className="flex min-h-[3.5rem] shrink-0 items-center gap-2 border-b px-4 py-2">
-          <RailButton size="sm" label={`Reduzir/ampliar o menu (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {foco &&<button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
+        {!foco && <header className={cn("flex shrink-0 items-center gap-2 border-b py-2", compacto ? "min-h-12 px-2" : "min-h-[3.5rem] px-4")}>
+          {!compacto && <RailButton size="sm" label={`Reduzir/ampliar o menu (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>}
           <RailButton size="sm" label={`Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={`Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
-          <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground">
+          <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground max-md:text-sm">
             {crumbs.length === 0 && <span>Selecione um arquivo</span>}
-            {crumbs.map((c, i) => {
-              const last = i === crumbs.length - 1;
+            {(compacto ? crumbs.slice(-1) : crumbs).map((c, i, lista) => {
+              const last = i === lista.length - 1;
               return (
                 <span key={i} className="flex items-center gap-1">
                   {i > 0 && <span aria-hidden>/</span>}
@@ -321,20 +330,21 @@ export default function App() {
             })}
           </nav>
           <div id="slot-barra-aula" className="flex min-w-0 flex-1 items-center gap-2 pl-3">{page === "editor" && !personalizada && current && <TocBarra headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />}</div>
-          {visao && page === "editor" && (
+          {visao && page === "editor" && !compacto && (
             <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-xs">
               <button onClick={() => escolherVisao("markdown")} className={cn("px-3 py-1", !personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Editar</button>
               <button onClick={() => escolherVisao("personalizado")} className={cn("border-l px-3 py-1", personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Ver</button>
             </div>
           )}
           <RailButton size="sm" label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-4 w-4" /></RailButton>
-          <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>
-          {temPainel && <RailButton size="sm" label={`${numeros ? "Ocultar" : "Mostrar"} a numeração das linhas (${pretty(keys.toggleNumeros)})`} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
-          {temPainel && <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>}
+          {compacto && <RailButton size="sm" label="Configurações" active={page === "config"} onClick={() => setPage("config")}><Engrenagem className="h-4 w-4" /></RailButton>}
+          {!compacto && <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>}
+          {temPainel && !compacto && <RailButton size="sm" label={`${numeros ? "Ocultar" : "Mostrar"} a numeração das linhas (${pretty(keys.toggleNumeros)})`} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
+          {temPainel && !compacto && <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>}
         </header>}
-        <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />
+        {!compacto && <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />}
 
-        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} />}
+        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} modoCompacto={{ modo: modoTela, setModo: setModoTela }} />}
         {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
         {(carregado || page === "config" || (page === "editor" && !personalizada)) && <>
         {page === "documentos" && <DocumentosPage filtroNav={documentosTipo} items={items} dirs={dirs} onOpen={open} onRefresh={refresh} onNovo={(id) => (id === "ciclo" ? novoCiclo(subDaPasta(documentosPasta, "Ciclos")) : id === "aula" ? novaAula(subDaPasta(documentosPasta, "Aulas")) : id === "gramatica" ? novaGramatica(subDaPasta(documentosPasta, "Gramática")) : novoRecurso(id))} onAtividade={(p) => { setTextoAtiv(p); irMontarProva(); }} aba={documentosAba} setAba={setDocumentosAba} pasta={documentosPasta} setPasta={setDocumentosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
@@ -361,10 +371,11 @@ export default function App() {
           <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} onRename={(n) => current && renomearNota(current, n).catch((e) => setStatus("Erro: " + (e?.message ?? e)))} onRevisao={aoRevisar} numeros={numeros} />
         </main>
 
-        {props.desfazer && <div role="status" className="fixed bottom-10 right-6 z-40 flex items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-lg">
+        {props.desfazer && <div role="status" className="fixed bottom-10 right-6 z-40 max-md:bottom-20 max-md:right-3 flex items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-lg">
           {props.desfazer.texto}<button onClick={props.desfazerAgora} className="font-medium text-primary hover:underline">Desfazer</button>
           <button aria-label="Fechar aviso" onClick={props.dispensarDesfazer} className="text-muted-foreground hover:text-foreground">×</button></div>}
-        {!foco && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
+        {!foco && compacto && status && <div role="status" className={cn("shrink-0 border-t px-3 py-1.5 text-xs", /^Erro/.test(status) ? "font-medium text-err" : "text-muted-foreground")}>{status}</div>}
+        {!foco && !compacto && <footer className="flex h-[1.875rem] shrink-0 items-center gap-5 border-t px-6 text-xs text-muted-foreground">
           <span className={/^Erro/.test(status) ? "font-medium text-err" : undefined}>{status}</span>
           <span className="flex-1" />
           {current && info?.issues.length > 0 && <button onClick={() => { setShowOutline(true); setPanelTab("links"); }} className="text-warn hover:underline">{info.issues.length} aviso{info.issues.length > 1 ? "s" : ""}</button>}
@@ -388,6 +399,12 @@ export default function App() {
         })()}
       </div>
 
+      {compacto && !foco && !(personalizada && visao?.id === "aula") && !capturaOpen && (
+        <button type="button" aria-label="Anotar" title="Anotar na Caixa de entrada" onClick={() => setCapturaOpen(true)}
+          className="fixed bottom-24 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90"><Plus aria-hidden className="h-6 w-6" strokeWidth={2} /></button>
+      )}
+      {compacto && !foco && <BarraInferior ativo={ativoMenu} onGo={irSecao} />}
+
       {outlineVisible && (!(personalizada && (visao.id === "aula" || visao.id === "banco")) || panelTab === "ia") && (
         <>
           <ResizeHandle width={outlineW} setWidth={setOutlineW} min={160} max={480} side="right" />
@@ -405,5 +422,6 @@ export default function App() {
       {capturaOpen && <CapturaDialog items={items} onClose={() => { setCapturaOpen(false); ed.current?.focus(); }} onGuardada={() => { setCaixaTick((n) => n + 1); setStatus("Anotado na Caixa de entrada"); refresh?.(); }} onErro={(e) => setStatus(`Não deu para anotar: ${e.message ?? e}`)} />}
       {searchOpen && <SearchModal items={items} onPick={pick} onClose={() => { setSearchOpen(false); ed.current?.focus(); }} />}
     </div>
+    </CompactoContext.Provider>
   );
 }

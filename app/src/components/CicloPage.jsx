@@ -6,6 +6,7 @@ import { FASES, inserirAula, removerAula, moverAula, salvarAulas, editarCelula, 
 import { salvarCicloEAjustarSemanas } from "@/lib/semana";
 import { interpretarHabilidades } from "@/lib/bncc";
 import { Estado } from "@/components/ui/estado";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 const fase = Object.fromEntries(FASES.map((f) => [f.id, f]));
 const norm = (s) => s.toLowerCase();
@@ -42,6 +43,7 @@ function Editavel({ valor, onSave, placeholder = "—", multi, className = "", i
 const resumo = (t) => t.replace(/\*\*/g, "").replace(/\[\[([^\]|]+)[^\]]*\]\]/g, "$1");
 
 export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }) {
+  const compacto = useEhCompacto(); // celular: só leitura (sem + Aula, inserir, remover, arrastar nem editar células)
   const [wDados, setWDados] = useWidth("ciclo.dados", 340);
   const [novo, setNovo] = useState(null); // { pos, texto }
   const [erro, setErro] = useState("");
@@ -70,6 +72,35 @@ export function CicloPage({ ciclo: c, items, onOpen, onAno, onChange, onRename }
   const sobre = (e, n) => { if (!arrasto) return; e.preventDefault(); const r = e.currentTarget.getBoundingClientRect(); const alvo = e.clientY < r.top + r.height / 2 ? n : n + 1; if (alvo !== arrasto.alvo) setArrasto({ ...arrasto, alvo }); };
   const linhaDrop = <div aria-hidden className="h-0.5 bg-primary" />;
   const contagem = FASES.map((f) => ({ f, n: c.aulas.filter((a) => a.fase === f.id).length })).filter((x) => x.n);
+  if (compacto) return (
+    <div className="min-h-0 flex-1 overflow-auto p-4">
+      <button onClick={onAno} className="mb-2 flex min-h-11 items-center text-sm text-muted-foreground">← Ciclos</button>
+      <h1 className="font-serif text-2xl font-semibold leading-tight">{c.titulo}</h1>
+      <div className="mb-4 mt-1 text-xs leading-relaxed text-muted-foreground">
+        {c.incluido ? `${c.ano}º ano · ${c.tri}º trimestre · ciclo ${c.ciclo}` : "Fora de um ano (não está no Planejamento)"}{c.sufixo ? ` · ${c.sufixo}` : ""} · {c.aulas.length} aulas
+      </div>
+      <div className="mb-4 flex flex-wrap gap-1.5 text-xs">
+        {contagem.map(({ f, n }) => <span key={f.id} className="rounded-full border px-2 py-0.5"><span aria-hidden className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: f.cor }} />{f.nome} · {n}</span>)}
+      </div>
+      {c.conteudos.length > 0 && <section className="mb-4"><h2 className="mb-1 text-xs font-semibold text-muted-foreground">Conteúdos</h2><ul className="list-disc pl-5 text-sm">{c.conteudos.map((x, i) => <li key={i}>{x}</li>)}</ul></section>}
+      {c.habTexto.length > 0 && <section className="mb-4"><h2 className="mb-1 text-xs font-semibold text-muted-foreground">Habilidades</h2>
+        <div className="flex flex-wrap gap-1.5">{c.habTexto.map((h) => <span key={h.codigo} className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-semibold text-primary">{h.codigo}</span>)}</div></section>}
+      <h2 className="mb-1 text-xs font-semibold text-muted-foreground">Sequência do ciclo</h2>
+      <ol className="flex flex-col divide-y rounded-xl border">
+        {c.aulas.map((a) => (
+          <li key={a.n} className="flex gap-3 px-3 py-2.5 text-sm">
+            <span className="w-6 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{a.n}</span>
+            <div className="min-w-0 flex-1">
+              <span className="rounded-md px-2 py-0.5 text-xs text-white" style={{ background: fase[a.fase].cor }}>{fase[a.fase].nome}</span>
+              <div className="mt-1">{resumo(a.texto)}</div>
+              {a.recurso && <div className="mt-0.5 text-xs"><Recurso texto={a.recurso} items={items} onOpen={onOpen} /></div>}
+            </div>
+          </li>
+        ))}
+        {!c.aulas.length && <li className="p-4 text-sm text-muted-foreground">Este plano ainda não tem a tabela “## Aulas”.</li>}
+      </ol>
+    </div>
+  );
   return (
     <div className="flex min-h-0 flex-1">
       <aside aria-label="Dados do ciclo" style={{ width: wDados }} className="shrink-0 overflow-auto p-6">

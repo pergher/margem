@@ -8,6 +8,7 @@ import { CATEGORIAS, abreviar, aulasDoDiario, criarAluno, criarDiario, dataDaSem
 import { Chip, norm } from "@/components/Explorador";
 import { Carregando, Estado, Vazio } from "@/components/ui/estado";
 import { DiarioAlunos } from "@/components/DiarioAlunos";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 const ler = (k, p) => { try { return JSON.parse(localStorage.getItem(k)) ?? p; } catch { return p; } };
 const gravar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* sem armazenamento: segue sem lembrar */ } };
@@ -18,11 +19,12 @@ const rotuloSemana = (r) => (r.data ? minusculaMes(rotuloDe(r.data)) : r.semana 
 const alterna = (set, v) => (set.includes(v) ? set.filter((x) => x !== v) : [...set, v]);
 
 const Grupo = ({ nome, children }) => (
-  <div className="flex flex-wrap items-center gap-2"><span className="w-24 shrink-0 text-xs font-medium text-muted-foreground">{nome}</span>{children}</div>
+  <div className="flex flex-wrap items-center gap-2"><span className="w-24 shrink-0 text-xs font-medium text-muted-foreground max-md:w-full">{nome}</span>{children}</div>
 );
 
 export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, turmaGlobal }) { // turmaGlobal: filtro vindo da página Ano ("" = todas)
   // focoPath: abre já filtrado pela nota de diário ou de aluno escolhida (visão personalizada da nota).
+  const compacto = useEhCompacto(); // celular: consultar e registrar ocorrência (sem novo aluno, novo diário nem edição em Markdown)
   const foco = focoPath ? items.find((i) => i.path === focoPath) : null;
   const diarios = useMemo(() => listarDiarios(items), [items]);
   const alunos = useMemo(() => listarAlunos(items), [items]);
@@ -100,18 +102,18 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
   };
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto"><div className="flex min-h-full w-full flex-col gap-4 px-8 py-8">
+    <div className="min-h-0 flex-1 overflow-auto"><div className={cn("flex min-h-full w-full flex-col gap-4", compacto ? "px-4 py-4" : "px-8 py-8")}>
       <header className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[16rem] flex-1">
-          <h1 className="font-serif text-3xl font-semibold leading-tight">Diário</h1>
+        <div className={compacto ? "min-w-0 flex-1 basis-full" : "min-w-[16rem] flex-1"}>
+          <h1 className="font-serif text-2xl font-semibold leading-tight md:text-3xl">Diário</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {regs ? <>{regs.filter((r) => r.tipo === "aula").length} aulas · {regs.filter((r) => r.tipo === "ocorrencia").length} ocorrências de alunos</> : "Lendo os diários…"}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">Dados sensíveis: o Claude só vê o que você enviar na conversa.</p>
         </div>
-        <button onClick={() => setDialogo("aluno")} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"><UserPlus className="h-4 w-4" />Novo aluno</button>
-        <button onClick={() => setDialogo("diario")} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"><Plus className="h-4 w-4" />Novo diário</button>
-        <button onClick={() => setDialogo("registrar")} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"><Plus className="h-4 w-4" />Registrar ocorrência</button>
+        {!compacto && <button onClick={() => setDialogo("aluno")} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"><UserPlus className="h-4 w-4" />Novo aluno</button>}
+        {!compacto && <button onClick={() => setDialogo("diario")} className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"><Plus className="h-4 w-4" />Novo diário</button>}
+        <button onClick={() => setDialogo("registrar")} className={cn("inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90", compacto && "min-h-11 w-full justify-center")}><Plus className="h-4 w-4" />{compacto ? "Nova ocorrência" : "Registrar ocorrência"}</button>
       </header>
 
       {erro && <Estado tipo="err" className="text-sm">Erro: {erro} <button className="underline" onClick={() => setErro("")}>ok</button></Estado>}
@@ -119,13 +121,13 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
       <div className="flex flex-wrap items-center gap-3">
         <div role="tablist" aria-label="Visão do diário" className="inline-flex gap-0.5 rounded-lg border bg-card p-0.5">
           {[["aulas", "Aulas", BookOpen], ["alunos", "Alunos", User]].map(([id, nome, I]) => (
-            <button key={id} role="tab" aria-selected={vista === id} onClick={() => setVista(id)} className={cn("inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors", vista === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><I aria-hidden className="h-4 w-4" />{nome}</button>
+            <button key={id} role="tab" aria-selected={vista === id} onClick={() => setVista(id)} className={cn("inline-flex items-center gap-1.5 rounded-md px-4 py-1.5 text-sm font-medium transition-colors", compacto && "min-h-11", vista === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}><I aria-hidden className="h-4 w-4" />{nome}</button>
           ))}
         </div>
       </div>
 
       {regs === null ? <Carregando>Lendo os diários…</Carregando>
-        : !diarios.length && !alunos.length ? <Vazio titulo="Nenhum diário ainda" acao={{ rotulo: "Criar o primeiro diário", onClick: () => setDialogo("diario") }}>Cada semana tem um diário por turma, com uma seção por aula e as ocorrências dos alunos.</Vazio>
+        : !diarios.length && !alunos.length ? <Vazio titulo="Nenhum diário ainda" acao={compacto ? undefined : { rotulo: "Criar o primeiro diário", onClick: () => setDialogo("diario") }}>Cada semana tem um diário por turma, com uma seção por aula e as ocorrências dos alunos.</Vazio>
         : vista === "alunos" ? <DiarioAlunos regs={regs} alunos={alunos} items={items} ano={ano} turmas={turmaGlobal ? [turmaGlobal] : todasTurmas} turmaInicial={turmas[0]} alunoInicial={alunoFoco} onOpen={onOpen} onRefresh={onRefresh} />
         : <>
           <label className="flex h-10 min-w-[14rem] items-center gap-2 rounded-full border bg-background px-4 text-sm text-muted-foreground focus-within:border-primary">
@@ -179,6 +181,7 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
 
 /** Uma linha da lista: uma aula (o que foi trabalhado). As ocorrências de alunos ficam na aba Alunos. */
 function Linha({ r, onEditar }) {
+  const compacto = useEhCompacto();
   return (
     <div className="group flex min-h-11 items-start gap-3 border-b px-3 py-2.5 text-sm last:border-b-0 hover:bg-accent/60">
       <BookOpen aria-label="Aula" className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.6} />
@@ -190,7 +193,7 @@ function Linha({ r, onEditar }) {
         <span>{r.aula}</span>
         <span className="inline-flex items-center gap-1.5"><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: corTurma(r.turma) }} />{r.turma}</span>
       </span>
-      <button onClick={onEditar} aria-label="Editar o diário em Markdown" title="Editar o diário (Markdown)" className="shrink-0 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"><Pencil className="h-4 w-4" /></button>
+      {!compacto && <button onClick={onEditar} aria-label="Editar o diário em Markdown" title="Editar o diário (Markdown)" className="shrink-0 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"><Pencil className="h-4 w-4" /></button>}
     </div>
   );
 }

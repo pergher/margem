@@ -3,6 +3,10 @@ name = "margem-app"
 version = "0.1.17"
 edition = "2021"
 
+[lib]
+name = "margem_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -13,8 +17,6 @@ serde_json = "1"
 vault_core = { path = "../.." }
 dunce = "1"
 tauri-plugin-dialog = "2"
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
 # IA (Etapa M): rede só pelo Rust. rustls evita OpenSSL no Windows.
 reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
 futures-util = "0.3"
@@ -23,6 +25,15 @@ tokio = { version = "1", features = ["time"] }
 # Observador de arquivos (todas as plataformas).
 notify = "8"
 notify-debouncer-full = "0.6"
+
+# Só no computador: atualizador e reinício (no Android, Obtainium).
+[target.'cfg(target_os = "android")'.dependencies]
+jni = "0.21"
+ndk-context = "0.1"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 # Chave de API no cofre do sistema (Credential Manager no Windows).
 [target.'cfg(windows)'.dependencies]

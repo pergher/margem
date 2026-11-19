@@ -277,3 +277,13 @@
 .cm-rev-del .cm-rev-lin { text-decoration: line-through; text-decoration-color: hsl(var(--err) / .45); color: hsl(var(--foreground) / .75); }
 .cm-rev-sinal { display: inline-block; width: 1.1rem; user-select: none; color: hsl(var(--muted-foreground)); text-decoration: none; }
 .cm-rev-del .ia-md { opacity: .75; }
+
+/* Modo compacto no celular: respeita a barra de status e a de gestos (precisa de viewport-fit=cover no index.html). */
+:root[data-compacto="sim"] #root { padding-top: env(safe-area-inset-top); }
+
+/* Teclado virtual aberto: a raiz acompanha a área visível; a barra inferior e o botão flutuante saem do caminho. */
+:root[data-compacto="sim"][data-teclado="sim"] #root { height: var(--vv-altura, 100%); }
+:root[data-compacto="sim"][data-teclado="sim"] nav[aria-label="Navegação"],
+:root[data-compacto="sim"][data-teclado="sim"] button[aria-label="Anotar"] { display: none; }
+/* Respiro no fim das telas rolantes, para o botão flutuante não cobrir o último item. */
+:root[data-compacto="sim"] .min-h-0.flex-1.overflow-auto { padding-bottom: 5.5rem; }

@@ -10,6 +10,7 @@ import { lerSemanas } from "@/lib/semana";
 import { corTurma } from "@/lib/cores";
 import { store } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 export const ABAS_ANO = [
   { id: "semana", nome: "Semana", dica: "As aulas da semana, turma por turma" },
@@ -40,6 +41,7 @@ function useTurmas(items) {
 
 export function AnoAbas({ aba, setAba, items, onOpen, onRefresh, onCiclo, onMarkdown, onRename, onDelete, correcao }) {
   const { foco, vista, corrigir, turma, voltar } = correcao;
+  const compacto = useEhCompacto();
   const turmas = useTurmas(items);
   const [filtro, setFiltroState] = useState(() => store.get("anoTurma", "")); // "" = todas as turmas
   const setFiltro = (t) => { setFiltroState(t); store.set("anoTurma", t); };
@@ -47,15 +49,16 @@ export function AnoAbas({ aba, setAba, items, onOpen, onRefresh, onCiclo, onMark
   if (aba === "prod" && foco) return <div className="flex min-h-0 flex-1 flex-col"><CorrecaoPage items={items} onOpen={onOpen} focoPath={foco} vistaInicial={vista} onVoltar={voltar} /></div>;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 flex-wrap items-stretch gap-x-6 gap-y-2 border-b px-8">
-        <div role="tablist" aria-label="Seções do ano" className="flex gap-1 overflow-x-auto">
+      <div className={cn("flex shrink-0 items-stretch border-b", compacto ? "flex-col gap-0 px-0" : "flex-wrap gap-x-6 gap-y-2 px-8")}>
+        <div role="tablist" aria-label="Seções do ano" className={cn("flex gap-1 overflow-x-auto", compacto && "px-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden")}>
           {ABAS_ANO.map((a) => (
             <button key={a.id} type="button" role="tab" aria-selected={aba === a.id} title={a.dica} onClick={() => setAba(a.id)}
-              className={cn("whitespace-nowrap border-b-[3px] px-5 py-3 text-base transition-colors hover:text-foreground", aba === a.id ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground")}>{a.nome}</button>
+              className={cn("shrink-0 whitespace-nowrap border-b-[3px] py-3 text-base", compacto ? "min-h-11 px-4" : "px-5",
+              " transition-colors hover:text-foreground", aba === a.id ? "border-primary font-semibold text-foreground" : "border-transparent text-muted-foreground")}>{a.nome}</button>
           ))}
         </div>
         {turmas.length > 1 && (
-          <div role="group" aria-label="Turma" className="ml-auto flex flex-wrap items-center justify-end gap-2 self-center py-2">
+          <div role="group" aria-label="Turma" className={cn("flex items-center gap-2 py-2", compacto ? "flex-nowrap overflow-x-auto px-4 [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "ml-auto flex-wrap justify-end self-center")}>
             <span className="text-sm text-muted-foreground">Turma</span>
             {[{ t: "", nome: "Todas" }, ...turmas.map((t) => ({ t, nome: t }))].map((o) => (
               <button key={o.t} type="button" aria-pressed={turmaGlobal === o.t} title={o.t ? `Só a turma ${o.t}` : "Todas as turmas"} onClick={() => setFiltro(o.t)}

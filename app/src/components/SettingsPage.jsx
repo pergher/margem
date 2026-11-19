@@ -2,11 +2,12 @@ import { useState } from "react";
 import { useEffect } from "react";
 import { IconKeyboard as Keyboard, IconUsers as Users, IconFileText as FileText, IconFolderOpen as FolderOpen, IconDownload as Download, IconPalette as Palette, IconSun as Sun, IconMoon as Moon, IconHome as House, IconBook as BookText, IconHelpCircle as CircleHelp, IconClipboardCheck as ClipboardCheck, IconSearch as Search, IconSettings as Settings, IconFileCheck as FileCheck, IconCalendarEvent as CalendarDays, IconSchool as GraduationCap, IconInfoCircle as Info, IconSparkles as Sparkles } from "@tabler/icons-react";
 import { invoke, isTauri } from "@/lib/api";
-import { escolherPastaDoVault } from "@/components/VaultGate";
+import { escolherPastaDoVault, noAndroid, CaminhoDigitado } from "@/components/VaultGate";
 import { Logo } from "@/components/Logo";
 import { FONTES, TAMANHOS_TEXTO } from "@/lib/fontes";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
+import { useEhCompacto } from "@/lib/useCompacto";
 import { FORMAS } from "@/lib/forma";
 import { procurarAtualizacao, instalarAtualizacao, versaoDoApp } from "@/lib/atualizar";
 import { lerLogo } from "@/lib/configProva";
@@ -30,9 +31,11 @@ const SECOES = [
   { id: "sobre", label: "Sobre o Margem", icon: Info, soApp: true },
 ];
 
-export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh }) {
+export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh, modoCompacto }) {
+  const compacto = useEhCompacto();
   const [secao, setSecao] = useState("aparencia");
   const [wNav, setWNav] = useWidth("config.menu", 208);
+  if (compacto) return <ConfiguracoesCompactas tema={tema} modoCompacto={modoCompacto} />;
   return (
     <div className="flex min-h-0 flex-1">
       <nav aria-label="Seções das configurações" style={{ width: wNav }} className="flex shrink-0 flex-col gap-1 overflow-auto p-3">
@@ -44,13 +47,52 @@ export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefr
           </button>
         ))}
       </nav>
-      <ResizeHandle width={wNav} setWidth={setWNav} min={160} max={320} side="left" />
-      {secao === "aparencia" && <Aparencia tema={tema} />}
+      {!compacto && <ResizeHandle width={wNav} setWidth={setWNav} min={160} max={320} side="left" />}
+      {secao === "aparencia" && <Aparencia tema={tema} modoCompacto={modoCompacto} />}
       {secao === "escola" && <EscolaEProfessor items={items} onRefresh={onRefresh} />}
       {secao === "notas" && <PastaDoVault />}
       {secao === "ia" && <ConfigIA />}
       {secao === "atalhos" && <ShortcutsPage overrides={overrides} setOverrides={setOverrides} />}
       {secao === "sobre" && <Atualizacoes />}
+    </div>
+  );
+}
+
+const MODOS_COMPACTO = [{ id: "auto", nome: "Automático" }, { id: "sim", nome: "Sempre compacto" }, { id: "nao", nome: "Nunca (tela completa)" }];
+function OpcoesModoCompacto({ modo, setModo }) {
+  return <Opcoes rotulo="Tela compacta" valor={modo} onPick={setModo} opcoes={MODOS_COMPACTO} />;
+}
+
+/** Pasta do vault no celular: caminho digitado (o Android não tem seletor de pastas para o app); no computador forçado a compacto, o seletor de sempre. */
+function PastaCompacta() {
+  const [raiz, setRaiz] = useState(""), [erro, setErro] = useState("");
+  useEffect(() => { invoke("get_vault_root").then((r) => setRaiz(r || "")).catch(() => {}); }, []);
+  const trocar = async () => { try { const r = await escolherPastaDoVault(); if (r) window.location.reload(); } catch (e) { setErro(String(e)); } };
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="rounded-md border bg-muted px-3 py-2 font-mono text-xs break-all">{raiz || "nenhuma"}</div>
+      {noAndroid ? <CaminhoDigitado onDone={() => window.location.reload()} setErro={setErro} />
+        : <button onClick={trocar} className="min-h-11 rounded-md border px-3 text-sm hover:bg-accent">Trocar pasta…</button>}
+      {erro && <Estado tipo="err" className="text-sm">{erro}</Estado>}
+    </div>
+  );
+}
+
+/** Configurações no celular: só tema, tamanho do texto, pasta do vault e o modo compacto. O resto fica para o computador. */
+function ConfiguracoesCompactas({ tema: { dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, tamanhoTexto, setTamanhoTexto }, modoCompacto }) {
+  const tamanhos = Object.entries(TAMANHOS_TEXTO).map(([px, nome]) => ({ id: Number(px), nome }));
+  return (
+    <div className="min-h-0 flex-1 overflow-auto">
+      <div className="flex w-full flex-col gap-6 px-4 py-5">
+        <h1 className="font-serif text-2xl font-semibold">Configurações</h1>
+        <Grupo titulo="Modo"><Opcoes rotulo="Modo" valor={dark} onPick={setDark} opcoes={[{ id: false, nome: "Claro", icone: Sun }, { id: true, nome: "Escuro", icone: Moon }]} /></Grupo>
+        {dark
+          ? <Grupo titulo="Tema escuro"><Temas titulo="Tema escuro" lista={ESCUROS} atual={temaEscuro} onPick={setTemaEscuro} /></Grupo>
+          : <Grupo titulo="Tema claro"><Temas titulo="Tema claro" lista={CLAROS} atual={temaClaro} onPick={setTemaClaro} /></Grupo>}
+        <Grupo titulo="Tamanho do texto"><Opcoes rotulo="Tamanho do texto" valor={tamanhoTexto} onPick={setTamanhoTexto} opcoes={tamanhos} /></Grupo>
+        <Grupo titulo="Pasta do vault" nota="O app lê e grava só dentro dela."><PastaCompacta /></Grupo>
+        {modoCompacto && <Grupo titulo="Tela compacta" nota="Automático liga abaixo de 768 px de largura."><OpcoesModoCompacto {...modoCompacto} /></Grupo>}
+      </div>
     </div>
   );
 }
@@ -87,11 +129,12 @@ function Grupo({ titulo, nota, children }) {
 
 /** Grupo de opções excludentes (radiogroup) em botões compactos. */
 function Opcoes({ rotulo, valor, onPick, opcoes, className }) {
+  const compacto = useEhCompacto();
   return (
     <div role="radiogroup" aria-label={rotulo} className={cn("flex flex-wrap gap-2", className)}>
       {opcoes.map(({ id, nome, icone: Ic, estilo }) => (
         <button key={String(id)} role="radio" aria-checked={valor === id} onClick={() => onPick(id)} style={estilo}
-          className={cn("flex min-h-9 items-center gap-1.5 rounded-lg border px-3 text-sm", valor === id ? "border-foreground bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60")}>
+          className={cn("flex items-center gap-1.5 rounded-lg border px-3 text-sm", compacto ? "min-h-11" : "min-h-9", valor === id ? "border-foreground bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60")}>
           {Ic && <Ic className="h-4 w-4" strokeWidth={1.6} />}{nome}
         </button>
       ))}
@@ -222,7 +265,7 @@ function Atualizacoes() {
 }
 
 
-function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques } }) {
+function Aparencia({ modoCompacto, tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques } }) {
   const f = FONTES[fonte] ?? Object.values(FONTES)[0];
   const tamanhos = Object.entries(TAMANHOS_TEXTO).map(([px, nome]) => ({ id: Number(px), nome }));
   // Prévia única: mostra, juntas, as escolhas de tema, fonte, tamanho, ícones, forma, cores e callouts.
@@ -254,6 +297,7 @@ function Aparencia({ tema: { temaClaro, setTemaClaro, temaEscuro, setTemaEscuro,
   );
   return (
     <Pagina titulo="Aparência" previa={previa}>
+      {modoCompacto && <Grupo titulo="Tela compacta (celular)" nota="Em uma coluna e com barra inferior. Automático liga abaixo de 768 px de largura."><OpcoesModoCompacto {...modoCompacto} /></Grupo>}
       <Grupo titulo="Modo" nota="O botão de sol/lua no menu lateral também alterna.">
         <Opcoes rotulo="Modo" valor={dark} onPick={setDark} opcoes={[{ id: false, nome: "Claro", icone: Sun }, { id: true, nome: "Escuro", icone: Moon }]} />
       </Grupo>
@@ -312,7 +356,7 @@ function Temas({ titulo, lista, atual, onPick }) {
     <div role="radiogroup" aria-label={titulo} className="flex flex-wrap gap-2">
       {Object.entries(lista).map(([classe, nome]) => (
         <button key={classe} role="radio" aria-checked={atual === classe} onClick={() => onPick(classe)}
-          className={cn("flex min-h-9 items-center gap-2 rounded-lg border px-2.5 text-sm", atual === classe ? "border-foreground bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60")}>
+          className={cn("flex min-h-11 items-center gap-2 rounded-lg border px-2.5 text-sm md:min-h-9", atual === classe ? "border-foreground bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60")}>
           <span className={cn(classe, "flex gap-0.5 rounded-md border bg-background p-1")} aria-hidden>
             <span className="h-3 w-3 rounded-full bg-primary" /><span className="h-3 w-3 rounded-full bg-accent" /><span className="h-3 w-3 rounded-full bg-muted-foreground" />
           </span>{nome}

@@ -15,6 +15,8 @@ import { SituacaoAula } from "@/components/ui/SituacaoAula";
 import { Inline } from "@/components/ui/Inline";
 import { Estado, Carregando, Vazio, Erro, useToast } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
+import { useEhCompacto } from "@/lib/useCompacto";
+import { Recolhivel } from "@/components/ui/Recolhivel";
 import { CATEGORIAS, abreviar, alunosEmAlerta, atualizarAcao, dataIso, diariosParaRever, reunioesEmAberto } from "@/lib/diario";
 import { AvancarReuniao } from "@/components/AvancarReuniao";
 import { pendenciasDoFechamento, triSugerido } from "@/lib/fechamento";
@@ -26,6 +28,7 @@ const nomes = (r) => [...String(r ?? "").matchAll(/\[\[([^\]|#]+)/g)].map((m) =>
 /** Hoje, sem horário: a próxima aula de cada turma na semana atual, a correção em curso e os arquivos abertos há pouco. */
 export function HojePage({ items, caixaTick, onCapturar, onFechamento, onOpen, onCorrecao, onSemana, onDiario, onSaude, onRefresh }) {
   const toast = useToast();
+  const compacto = useEhCompacto();
   const [wAside, setWAside] = useWidth("hoje.lateral", 340);
   const criar = async (aula, turma) => {
     try { const p = await criarAula(items, { titulo: aula.texto, turma }); await onRefresh?.(); toast("Aula criada com o modelo.", { tipo: "ok" }); onOpen(p); }
@@ -70,18 +73,9 @@ export function HojePage({ items, caixaTick, onCapturar, onFechamento, onOpen, o
   const recentes = lerRecentes().map((r) => ({ ...r, it: items.find((i) => i.path === r.path) })).filter((r) => r.it).slice(0, 6);
   const pct = todas.length ? (dadas / todas.length) * 100 : 0;
 
-  return (
-    <div className="min-h-0 flex-1 overflow-auto"><div className="flex w-full flex-col gap-8 px-8 py-8">
-      <header>
-        <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
-        <h1 className="mt-1 font-serif text-3xl font-semibold leading-tight">{semana ? `Semana de ${semana.rotulo || rotuloDe(seg)}` : "Hoje"}</h1>
-        {semana && <p className="mt-1 text-sm text-muted-foreground">{dadas} {dadas === 1 ? "aula dada" : "aulas dadas"} · {porDar} por dar{adiadas > 0 && ` · ${adiadas} ${adiadas === 1 ? "adiada" : "adiadas"}`}</p>}
-      </header>
-
-      <div className="flex items-stretch gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-8">
+  const proximas = (
           <section>
-            <h2 className="mb-3 text-lg font-semibold">Próximas aulas</h2>
+    <h2 className="mb-3 text-lg font-semibold">Próximas aulas</h2>
             {!semana
               ? <Vazio titulo="Ainda não há semana" acao={{ rotulo: "Ir para a Semana", onClick: onSemana }}>Crie a semana atual para ver aqui a próxima aula de cada turma.</Vazio>
               : <div className="flex flex-col gap-2.5">
@@ -100,15 +94,61 @@ export function HojePage({ items, caixaTick, onCapturar, onFechamento, onOpen, o
                       </div>
                       {aula && <SituacaoAula discreto situacao={aula.situacao} onChange={(sit) => situar(semana.path, t.turma, aula.n, sit)} />}
                       {aula && !resolvida && <Estado tipo={pronto ? "ok" : "warn"} inline className="text-xs font-semibold">{pronto ? "Aula pronta" : "Sem aula"}</Estado>}
-                      {resolvida && pendente && <button onClick={() => setFoco((f) => { const { [t.turma]: _, ...resto } = f; return resto; })} className="inline-flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent">Próxima aula<ArrowRight aria-hidden className="h-4 w-4" /></button>}
+                      {resolvida && pendente && <button onClick={() => setFoco((f) => { const { [t.turma]: _, ...resto } = f; return resto; })} className={cn("inline-flex items-center gap-1.5 rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent", compacto && "min-h-11")}>Próxima aula<ArrowRight aria-hidden className="h-4 w-4" /></button>}
                       {aula && !resolvida && (pronto
-                        ? <button onClick={() => onOpen(prontos[0].path)} className="rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent">Abrir plano</button>
-                        : <button onClick={() => criar(aula, t.turma)} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Criar aula</button>)}
+                        ? <button onClick={() => onOpen(prontos[0].path)} className={cn("rounded-md border bg-background px-3 py-1.5 text-sm hover:bg-accent", compacto && "min-h-11")}>Abrir plano</button>
+                        : (!compacto && <button onClick={() => criar(aula, t.turma)} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Criar aula</button>))}
                     </div>
                   );
                 })}
               </div>}
           </section>
+  );
+  const corrigir = (
+          <section className="flex flex-col gap-3 rounded-xl border p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Para corrigir</h2>
+            {lote === undefined ? <span className="text-sm text-muted-foreground">Lendo…</span>
+              : lote === null ? <p className="text-sm text-muted-foreground">Nenhuma correção em curso.</p>
+              : <>
+                <div className="font-semibold">{lote.nome}{lote.turma && <span className="ml-2 inline-flex items-center gap-1.5 text-xs font-normal text-muted-foreground"><span aria-hidden className="h-2 w-2 rounded-full" style={{ background: corTurma(lote.turma) }} />{lote.turma}</span>}</div>
+                <div role="img" aria-label={`${lote.feitas} de ${lote.total} corrigidas`} className="h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{ width: `${lote.total ? (lote.feitas / lote.total) * 100 : 0}%` }} /></div>
+                <div className="flex justify-between text-xs text-muted-foreground"><span>{lote.feitas} de {lote.total} corrigidas</span><span>faltam {lote.total - lote.feitas}</span></div>
+                {!compacto && <button onClick={() => onCorrecao(lote.path)} className={cn("rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90", compacto && "min-h-11")}>Continuar correção</button>}
+              </>}
+          </section>
+  );
+
+  if (compacto) {
+    // Celular: uma coluna. Alertas, reuniões e pendências ficam recolhidos; sem "Documentos recentes".
+    return (
+      <div className="min-h-0 flex-1 overflow-auto"><div className="flex w-full flex-col gap-5 px-4 py-5">
+        <header>
+          <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
+          <h1 className="mt-1 font-serif text-2xl font-semibold leading-tight">{semana ? `Semana de ${semana.rotulo || rotuloDe(seg)}` : "Hoje"}</h1>
+          {semana && <p className="mt-1 text-sm text-muted-foreground">{dadas} {dadas === 1 ? "aula dada" : "aulas dadas"} · {porDar} por dar{adiadas > 0 && ` · ${adiadas} ${adiadas === 1 ? "adiada" : "adiadas"}`}</p>}
+        </header>
+        {proximas}
+        <Caixa items={items} tick={caixaTick} onCapturar={onCapturar} onOpen={onOpen} />
+        {corrigir}
+        <LinhaFechamento items={items} onClick={onFechamento} />
+        <Recolhivel titulo="Alunos em alerta"><EmAlerta items={items} onOpen={onOpen} onDiario={onDiario} /></Recolhivel>
+        <Recolhivel titulo="Reuniões com responsáveis"><Reunioes items={items} onRefresh={onRefresh} /></Recolhivel>
+        <Recolhivel titulo="Pendências"><Pendencias items={items} onDiario={onDiario} onSaude={onSaude} /></Recolhivel>
+      </div></div>
+    );
+  }
+
+  return (
+    <div className="min-h-0 flex-1 overflow-auto"><div className="flex w-full flex-col gap-8 px-8 py-8">
+      <header>
+        <div className="text-xs text-muted-foreground">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}</div>
+        <h1 className="mt-1 font-serif text-3xl font-semibold leading-tight">{semana ? `Semana de ${semana.rotulo || rotuloDe(seg)}` : "Hoje"}</h1>
+        {semana && <p className="mt-1 text-sm text-muted-foreground">{dadas} {dadas === 1 ? "aula dada" : "aulas dadas"} · {porDar} por dar{adiadas > 0 && ` · ${adiadas} ${adiadas === 1 ? "adiada" : "adiadas"}`}</p>}
+      </header>
+
+      <div className="flex items-stretch gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+          {proximas}
 
           <EmAlerta items={items} onOpen={onOpen} onDiario={onDiario} />
 
@@ -124,17 +164,7 @@ export function HojePage({ items, caixaTick, onCapturar, onFechamento, onOpen, o
         <aside style={{ width: wAside, maxWidth: "45%" }} className="flex shrink-0 flex-col gap-4 self-start">
           <Caixa items={items} tick={caixaTick} onCapturar={onCapturar} onOpen={onOpen} />
           <LinhaFechamento items={items} onClick={onFechamento} />
-          <section className="flex flex-col gap-3 rounded-xl border p-4">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Para corrigir</h2>
-            {lote === undefined ? <span className="text-sm text-muted-foreground">Lendo…</span>
-              : lote === null ? <p className="text-sm text-muted-foreground">Nenhuma correção em curso.</p>
-              : <>
-                <div className="font-semibold">{lote.nome}{lote.turma && <span className="ml-2 inline-flex items-center gap-1.5 text-xs font-normal text-muted-foreground"><span aria-hidden className="h-2 w-2 rounded-full" style={{ background: corTurma(lote.turma) }} />{lote.turma}</span>}</div>
-                <div role="img" aria-label={`${lote.feitas} de ${lote.total} corrigidas`} className="h-2 rounded-full bg-muted"><div className="h-2 rounded-full bg-primary" style={{ width: `${lote.total ? (lote.feitas / lote.total) * 100 : 0}%` }} /></div>
-                <div className="flex justify-between text-xs text-muted-foreground"><span>{lote.feitas} de {lote.total} corrigidas</span><span>faltam {lote.total - lote.feitas}</span></div>
-                <button onClick={() => onCorrecao(lote.path)} className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:opacity-90">Continuar correção</button>
-              </>}
-          </section>
+          {corrigir}
           <Reunioes items={items} onRefresh={onRefresh} />
           <Pendencias items={items} onDiario={onDiario} onSaude={onSaude} />
         </aside>
@@ -259,6 +289,7 @@ function EmAlerta({ items, onOpen, onDiario }) {
 
 /** Duas linhas compactas: diários por transcrever/revisar e avisos da Saúde do vault (sem os de nível "info"). */
 function Pendencias({ items, onDiario, onSaude }) {
+  const compacto = useEhCompacto();
   const [d, setD] = useState(undefined), [avisos, setAvisos] = useState(undefined); // undefined = lendo; null = indisponível
   useEffect(() => {
     let vivo = true;
@@ -281,7 +312,7 @@ function Pendencias({ items, onDiario, onSaude }) {
       <h2 className="mb-3 text-lg font-semibold">Pendências</h2>
       <div className="overflow-hidden rounded-xl border">
         {linha(Caderno, "Diário", diarios, d && !d.pendente && !d.revisao, onDiario)}
-        {linha(Saude, "Saúde do vault", saude, avisos === 0, onSaude)}
+        {!compacto && linha(Saude, "Saúde do vault", saude, avisos === 0, onSaude)}
       </div>
     </section>
   );

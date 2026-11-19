@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { IconCheck as Check, IconCornerDownRight as CornerDownRight, IconBan as Ban, IconDots as MoreHorizontal } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 /** As três situações de uma aula (a mesma lista em Hoje e na Semana). `id` é o que fica gravado na nota. */
 export const OPCOES = [
@@ -13,15 +14,18 @@ export const OPCOES = [
  * Escolha da situação da aula. A opção escolhida fica marcada (cor, nome e aria-pressed); clicar nela de novo desfaz.
  * `discreto`: sem escolha, só aparece quando `.group` pai recebe o mouse/foco; com escolha, a marcada fica sempre visível.
  */
-export function SituacaoAula({ situacao, onChange, discreto = false, compacto = false, className }) {
+export function SituacaoAula({ situacao, onChange, discreto: discretoPedido = false, compacto = false, className }) {
   const [menu, setMenu] = useState(false);
+  const toque = useEhCompacto(); // celular: sem mouse, nada fica escondido até o hover; alvos de 44 px
+  const discreto = discretoPedido && !toque;
+  const alto = toque ? "h-11 min-w-11 justify-center" : "h-8";
   if (compacto) { // só "Dada" à vista; Adiada e Descartada num menu (a escolhida aparece no lugar do menu)
     const [dada, ...outras] = OPCOES, extra = outras.find((o) => o.id === situacao);
     return (
       <div role="group" aria-label="Situação da aula" className={cn("relative flex items-center gap-1.5", className)} onKeyDown={(e) => e.key === "Escape" && setMenu(false)}>
         {[dada, ...(extra ? [extra] : [])].map(({ id, Icone, nome, dica, cor }) => (
           <button key={id} type="button" aria-pressed={situacao === id} title={situacao === id ? `${nome} — clique para desfazer` : dica} onClick={() => onChange(situacao === id ? null : id)}
-            className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", situacao === id ? cn("font-semibold", cor) : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground")}>
+            className={cn(alto, "inline-flex items-center gap-1.5 rounded-full border px-2.5 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", situacao === id ? cn("font-semibold", cor) : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground")}>
             <Icone aria-hidden className="h-4 w-4 shrink-0" strokeWidth={1.9} />{nome}
           </button>
         ))}
@@ -40,7 +44,7 @@ export function SituacaoAula({ situacao, onChange, discreto = false, compacto = 
         const marcada = situacao === id;
         return (
           <button key={id} type="button" aria-pressed={marcada} title={marcada ? `${nome} — clique para desfazer` : dica} onClick={() => onChange(marcada ? null : id)}
-            className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
+            className={cn(alto, "inline-flex items-center gap-1.5 rounded-full border px-2.5 text-xs transition-opacity focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring",
               marcada ? cn("font-semibold", cor) : "border-transparent text-muted-foreground hover:bg-accent hover:text-foreground",
               !marcada && discreto && "opacity-0 focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100",
               !marcada && situacao && discreto && "group-hover:opacity-100")}>

@@ -6,6 +6,7 @@ import { corTurma } from "@/lib/cores";
 import { lerTurmas, gravarTurmas, turmasDeTexto } from "@/lib/turmas";
 import { invoke } from "@/lib/api";
 import { Estado, Carregando } from "@/components/ui/estado";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 const fase = Object.fromEntries(FASES.map((f) => [f.id, f]));
 import { SituacaoAula } from "@/components/ui/SituacaoAula";
@@ -17,6 +18,7 @@ const nomes = (r) => [...r.matchAll(/\[\[([^\]|#]+)/g)].map((m) => m[1].trim());
 // Última leitura: ao voltar para a tela ela aparece na hora (sem "Lendo…") e é atualizada por baixo.
 let ultima = null;
 export function SemanaPage({ items, onOpen, onRefresh, focoPath, turmaGlobal }) { // turmaGlobal: filtro vindo da página Ano ("" = todas); sem ele, a tela tem o seu
+  const compacto = useEhCompacto();
   const [dados, setDados] = useState(focoPath ? undefined : ultima?.dados); // { semanas, legado, ciclos, ano, cfg }
   const [idx, setIdx] = useState(focoPath ? -1 : ultima?.idx ?? -1);
   const [erro, setErro] = useState("");
@@ -77,15 +79,15 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath, turmaGlobal }) 
   const faltaAtual = ehUltima && !focoPath && !items.some((i) => i.name === nomeSemana(segAtual)) && proximaSegunda(semanas).getTime() === segAtual.getTime();
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-8">
+    <div className={compacto ? "min-h-0 flex-1 overflow-auto p-4" : "min-h-0 flex-1 overflow-auto p-8"}>
       <div className="mb-4 flex flex-wrap items-end gap-x-3 gap-y-2">
         <header>
           <div className="text-xs text-muted-foreground">{rotuloTempo}</div>
           <div className="mt-1 flex items-center gap-2">
-            <h1 className="font-serif text-3xl font-semibold leading-tight">Semana de {s.rotulo || s.name}</h1>
+            <h1 className={compacto ? "font-serif text-2xl font-semibold leading-tight" : "font-serif text-3xl font-semibold leading-tight"}>Semana de {s.rotulo || s.name}</h1>
             <div className="flex items-center">
-              <button disabled={idx <= 0} onClick={() => setIdx(idx - 1)} className="rounded p-1 hover:bg-accent disabled:opacity-30" aria-label="Semana anterior"><ChevronLeft className="h-5 w-5" /></button>
-              <button disabled={ehUltima} onClick={() => setIdx(idx + 1)} className="rounded p-1 hover:bg-accent disabled:opacity-30" aria-label="Próxima semana"><ChevronRight className="h-5 w-5" /></button>
+              <button disabled={idx <= 0} onClick={() => setIdx(idx - 1)} className="flex h-11 w-11 items-center justify-center rounded hover:bg-accent disabled:opacity-30 md:h-auto md:w-auto md:p-1" aria-label="Semana anterior"><ChevronLeft className="h-5 w-5" /></button>
+              <button disabled={ehUltima} onClick={() => setIdx(idx + 1)} className="flex h-11 w-11 items-center justify-center rounded hover:bg-accent disabled:opacity-30 md:h-auto md:w-auto md:p-1" aria-label="Próxima semana"><ChevronRight className="h-5 w-5" /></button>
             </div>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{dadas} {dadas === 1 ? "aula dada" : "aulas dadas"} · {porDar} por dar{adiadas > 0 && ` · ${adiadas} ${adiadas === 1 ? "adiada" : "adiadas"}`}</p>
@@ -128,7 +130,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath, turmaGlobal }) 
             <div className="flex flex-col divide-y">
               {t.aulas.map((a) => (
                 <div key={a.n} className={"flex flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 " + (a.situacao === "dada" ? "opacity-70" : a.situacao === "pulada" ? "opacity-75" : a.situacao === "descartada" ? "opacity-60" : "")}>
-                  <div className="min-w-[16rem] flex-1">
+                  <div className={compacto ? "min-w-0 flex-1 basis-40" : "min-w-[16rem] flex-1"}>
                     <span className="block truncate text-xs text-muted-foreground" title={a.cicloNome ? undefined : "aula escrita por você"}>{a.cicloNome ? `${a.cicloNome.replace(/^\d{3}\s*-\s*/, "").replace(/\s*-\s*(PR|PT|TG)$/, "")} · aula ${a.cicloN ?? "?"}` : "aula escrita por você"}</span>
                     <div className={"text-sm font-medium leading-snug " + (a.situacao === "descartada" ? "line-through" : "")}>{a.cicloNome && <><span style={{ color: fase[a.fase].cor }}>{fase[a.fase].nome}</span> · </>}<Inline texto={a.texto} /></div>
                     {a.recurso && <div className="mt-0.5 text-xs">{nomes(a.recurso).length ? nomes(a.recurso).map((n) => existe(n)

@@ -6,6 +6,45 @@ Regras: vault real só com **simular → cópia → aplicar**; push ao GitHub s�
 
 ---
 
+## P0 — Próximo: Margem no Android (modo compacto)
+
+Mesma base de código, com um modo compacto para telas estreitas. Desenho e protótipo clicável: artefato "Margem no celular" (`https://claude.ai/artifact/6p8px1wan1A96FHo4NTXXj`). O usuário aprovou o desenho e as cinco decisões em 2026-11-18.
+
+**Decisões fechadas**
+- **Edição em pedaços:** marcar aula dada, editar uma seção, registrar ocorrência, anotar. Sem o editor completo no celular.
+- **Navegação:** barra inferior com Hoje, Documentos e Ano. No tablet (768 a 1024 px) entra o menu só de ícones que já existe (Ctrl+B).
+- **Anotar:** botão flutuante nas telas. Na Aula ele vira o botão "Anotar" da barra inferior e grava nas Anotações do professor da própria aula.
+- **Modo compacto automático** abaixo de 768 px, com opção em Configurações para forçar ou desligar.
+- **Dados no aparelho:** vault sincronizado, funciona sem internet.
+
+**Por ora (provisório)**
+- **Sincronização: Syncthing** entre o computador e o celular, para o vault ficar numa pasta que o app lê. O Google Drive não aparece como pasta comum no Android (armazenamento restrito, SAF).
+- **Atualização do app: Obtainium**, instalando o APK dos releases do GitHub (`pergher/margem`). O atualizador do Tauri não existe no Android, então esconder o `AvisoAtualizacao` no celular.
+- **Dropbox como alternativa à sincronização:** a conversar antes de decidir (ver "Em aberto").
+
+**Etapas**
+- [x] **1. Prova de conceito (feita no emulador em 2026-11-19; falta só um celular de verdade):** pasta real `/storage/emulated/0/Syncthing/Escola` lida no emulador com `MANAGE_EXTERNAL_STORAGE` (manifesto aplicado por `scripts/android-manifesto.sh`, chamado também no CI); `vault_sem_acesso` (JNI `Environment.isExternalStorageManager`) mostra a tela `VaultSemAcesso` com as instruções quando falta a permissão e reconfere ao tocar em "Tentar de novo" ou ao voltar ao app. Antes: feito: ferramentas, `tauri android init`, APK x86_64 e aarch64, emulador `margem` mostrando Hoje com vault fictício. Falta: ler a pasta real do Syncthing (permissão de acesso a todos os arquivos), seletor de pastas e testar num celular. Texto original: verificar Java, Android SDK e NDK nesta máquina; `tauri android init`; abrir o vault na pasta do Syncthing e mostrar a tela Hoje no aparelho. Se o acesso ao vault se mostrar inviável, plano B: servidor local no PC acessado pelo navegador do celular via Tailscale.
+- [x] **2. Casca (feita em 2026-11-19; a opção em Configurações veio na etapa 5):** `lib/useCompacto.js` (modo `auto`/`sim`/`nao` em `localStorage`, < 768 px) e `BarraInferior.jsx`; `App.jsx` troca `Menu` pela barra, esconde painel direito, foco, rodapé e `AvisoAtualizacao`. **Falta:** opção em Configurações (etapa 5) e o Explorador no compacto (etapa 3, Documentos).
+- **Etapa 1 (2026-11-19, parcial):** ferramentas instaladas em `~/Android` (JDK 17, SDK 34, NDK 26.1, alvos Rust); `tauri android init` feito; `main.rs` virou `lib.rs` + `main.rs`; atualizador e `keyring` só fora do Android; `tauri android build --debug --apk --target aarch64` gera `src-tauri/gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk`. **Feito em seguida:** emulador `margem` (Pixel 6, API 34, x86_64, em `~/Android`) mostra a tela Hoje com o vault fictício; `VaultGate` tem campo de caminho digitado no Android; áreas seguras ajustadas (`viewport-fit=cover`, `BarraInferior`). **Falta:** ler a pasta real do Syncthing (`/storage/emulated/0/…`, exige permissão de acesso a todos os arquivos) e o seletor de pastas de verdade. **Cuidado com memória:** compilar e emulador juntos travaram o PC em 2026-11-19; compilar com `CARGO_BUILD_JOBS=4` e `GRADLE_OPTS="-Dorg.gradle.workers.max=2 -Dorg.gradle.jvmargs=-Xmx1536m"`, parar o Gradle (`./gradlew --stop`) e só então subir o emulador com `-memory 2048 -cores 2`. Antes: esta máquina não tem Java, Android SDK/NDK nem alvos Rust de Android, e `sudo` está bloqueado. Instalar exige baixar JDK 17, command-line tools do SDK, NDK, e `rustup target add aarch64-linux-android` (cerca de 2 a 3 GB) sem root, em `~/Android`.
+- [x] **3. Telas (feitas em 2026-11-19, testadas só no navegador; falta rodar no emulador)** — contexto `CompactoContext`/`useEhCompacto()` (`lib/useCompacto.js`); Hoje em uma coluna com blocos recolhíveis (`ui/Recolhivel.jsx`); Documentos em lista plana, um toque abre, filtro por tipo rolante; Ano com abas e turmas rolantes e Semana em uma coluna; Aula com seções recolhíveis, lápis por seção, gaveta de sumário (ícone + arrastar), barra Anotar / Dar aula ✓ (Anotar grava em `## Memória` pela "nota desta vez"; "Dar aula" marca a próxima aula da Semana que cita a nota). `SituacaoAula` não esconde mais nada até o hover no toque. Também feitos: Planejamento e Fechamento só leitura (sem incluir, tirar, arrastar, criar nem marcar itens); Produções só com o andamento (sem Corrigir); Diário só com "Nova ocorrência" (sem novo aluno, novo diário nem editar em Markdown); botão "Anotar" flutuante (+) em todas as telas menos na Aula (que tem o próprio). **Pendências de toque (etapa 7):** o botão flutuante cobre o fim de algumas telas (falta respiro inferior) e o teclado virtual ainda não foi tratado. Texto original: (as mesmas, em uma coluna, alvos de toque de 44 px):
+  - **Hoje:** cartões empilhados; Alunos em alerta, Pendências e Reuniões recolhidos; sem Documentos recentes; sem botão "Criar aula" (pede o editor completo): o cartão só avisa que a aula não existe.
+  - **Documentos:** lista filtrada por tipo em abas rolantes, sem árvore de pastas; busca pela lupa (mesma paleta do Ctrl+P).
+  - **Ano:** abas rolantes fixas no topo; Semana com quadrado de 44 px (dada, pulei, vazio); Planejamento e Fechamento só leitura; Produções só com o andamento; Diário com "Nova ocorrência".
+  - **Aula:** leitura com seções recolhíveis; **sumário abre arrastando a tela para a esquerda** (e pelo ícone de lista no topo; sem aba na borda; arrastar para a direita fecha); lápis edita uma seção por vez; barra inferior com "Anotar" e "Dar aula ✓".
+- [x] **4. Esconder no compacto (feito em 2026-11-19, testado só no navegador):** atalhos de teclado desligados (`useAtalhos({ compacto })`); menu de toque longo do Explorador desligado; Hoje sem "Continuar correção" nem Saúde; Ciclo só leitura (lista de aulas, sem + Aula, inserir, remover nem arrastar); Prova sem DOCX/PDF/Gabarito nem coluna de dados; tabelas em Markdown puro (`definirTabelasEditaveis`); sem `ResizeHandle` em Ciclo, Prova e Configurações; painel direito, IA e Histórico já fora. **Sobras:** a busca (lupa) ainda abre qualquer nota, inclusive telas de desktop (Correção, Banco); o `BancoDaNota` não tem versão compacta; a paleta de comandos lista telas escondidas (mas sem atalho para abri-la); a Prova sem banco manda "usar Markdown", botão que não existe no celular. Texto original: atalhos de teclado, Ciclo (+Aula e deslocar), Correção (fotos ao lado dos critérios, lupa, pesos), montar prova e exportar, Atividade de um texto, jogos, painel de IA, tabelas editáveis, painel direito, Histórico/restaurar, colunas redimensionáveis, Saúde do vault.
+- [x] **5. Configurações reduzidas (feito em 2026-11-19, testado só no navegador):** no compacto, `SettingsPage` vira `ConfiguracoesCompactas` (modo claro/escuro, tema do modo atual, tamanho do texto, pasta do vault e modo compacto); o acesso é a engrenagem no cabeçalho (o Menu não existe no celular). A opção Automático / Sempre compacto / Nunca fica em Aparência no computador e na tela reduzida (`useCompacto` guarda `modoCompacto`). No Android a pasta é digitada (`CaminhoDigitado`, exportado de `VaultGate`). Sem Sobre/atualização (Obtainium), IA, atalhos nem Escola e professor no celular. Texto original: tema, tamanho do texto, pasta do vault, modo compacto.
+- [~] **6. Empacotar (job escrito em 2026-11-19, nunca rodou no GitHub):** job `android` em `release.yml` (init, build aarch64, zipalign + apksigner com secrets, `gh release upload`); instruções em `docs/publicar.md`. **Falta:** o usuário criar keystore e secrets, e acompanhar o primeiro release; testar o Obtainium.
+- [~] **7. Cuidados do toque (feito em 2026-11-19, só no navegador):** `useTeclado` em `lib/useCompacto.js` (altura da raiz = `visualViewport`, esconde barra e botão com teclado, rola o campo focado para o centro); respiro de 5,5 rem no fim das telas rolantes (`index.css`). Teclado conferido no emulador (campo do Anotar visível, barra some). **Sobras:** textos que citam atalhos ("Ctrl+Shift+N" na Caixa de entrada) aparecem no celular; seletor de pastas ainda é caminho digitado; botão para abrir a tela de permissão do Android (hoje só instruções).
+
+**Em aberto**
+- **Dropbox × Syncthing × Drive:** conversar sobre o Dropbox (ver P8). Pontos a decidir: onde o app Android do Dropbox deixa a pasta (precisa ser um caminho que o app lê), cópias de conflito, o que sincronizar.
+- **Nota da aula:** hoje vai para as Anotações do professor da própria aula. Alternativa: ir para a Caixa de entrada marcada com a aula de origem.
+- **Privacidade no celular:** o MCP já bloqueia `Diarios/` e `Alunos/`; decidir se essas pastas sincronizam para o aparelho (risco de perda ou roubo).
+- Conflitos de sincronização: a Saúde do vault precisa reconhecer cópias de conflito (Syncthing cria `*.sync-conflict-*`).
+- `.historico/` e `.lixeira/`: sincronizar ou deixar de fora (o Syncthing aceita `.stignore`).
+
+---
+
 ## P1 — Lançar e testar o que nunca rodou no Windows
 
 As etapas K–N (observador de arquivos, propostas, painel de IA, provedores) e tudo até a 0.1.15 estão só em commits: **não há tag depois de v0.1.11**, então nada disso foi instalado no Windows. Testado até aqui: `cargo test`, vitest, navegador.
@@ -81,9 +120,9 @@ Objetivo central. Aplicado só em cópias/fixtures (`tests/fixtures/vault`, e o 
 
 ## P8 — Ideias futuras (sem compromisso)
 
-- **Sincronização via Drive/Dropbox:** sem API (OAuth, LGPD); vault como pasta sincronizada. Falta reconhecer cópias de conflito na Saúde, decidir o destino de `.historico/` e `.lixeira/` e poder excluir alunos/diários da sincronização. Drive for Desktop não existe oficialmente no Linux.
+- **Sincronização via Drive/Dropbox** (para o P0 usa-se Syncthing por ora; o Dropbox será conversado): sem API (OAuth, LGPD); vault como pasta sincronizada. Falta reconhecer cópias de conflito na Saúde, decidir o destino de `.historico/` e `.lixeira/` e poder excluir alunos/diários da sincronização. Drive for Desktop não existe oficialmente no Linux.
 - **Modos do Markdown** (público futuro: professores amigos): Simples, Padrão, Fonte; sem WYSIWYG completo.
-- **Android** (só depois da sincronização; iOS descartado): Tauri 2 compila, mas o vault no Drive esbarra no armazenamento restrito (SAF). Escopo: Hoje, Semana (✓), ler a Aula, ocorrência no Diário, foto de redação.
+- **Android:** saiu desta lista, virou o **P0** (modo compacto, mesma base de código, Syncthing por ora e Obtainium). iOS descartado.
 - **Telas que não existem:** Aluno, Relatório de desempenho, Cobertura da BNCC, Catálogo de textos, Mapa de conteúdos (Relatório e Aluno dependem de decidir onde ficam ocorrências e critérios).
 - **Descartado:** gráfico de evolução do aluno, gráfico de relações, backup do vault inteiro (já há Google Drive), versão do aluno em DOCX dos blocos didáticos, "Preparar aula" (removido em 2026-11-15), visão personalizada de Textos (removida em 2026-11-16).
 
@@ -116,4 +155,4 @@ Blocos didáticos (`app/src/lib/blocos.js`; aula de teste em `docs/modelos/Aula 
 - Menu `/` (`lib/menuBarra.js`), "Copiar como imagem", "Pedir ao Claude" (só sintaxe), `/erros-comuns` (conta `{errado|certo}` por aluno, só frases, sem nomes, texto editável antes de inserir).
 - Gramática do acervo: `Acervo/Gramática/`, referência (regra e exemplos) × aula (sequência didática que a referencia); ver `formato-do-vault.md`.
 
-Artefatos de desenho (claude.ai): Esboço de telas `…/artifact/TVTpVtk1j65bfnxmbsihyq`; Margem — telas revisadas `…/artifact/MRfMSj3duiUWHv8NvcNJk7`; Margem — telas (19 telas) `…/artifact/JiVvTTMBdb1tnEK5VfHRDU`.
+Artefatos de desenho (claude.ai): Margem no celular `…/artifact/6p8px1wan1A96FHo4NTXXj` (modo compacto, aprovado em 2026-11-18); Esboço de telas `…/artifact/TVTpVtk1j65bfnxmbsihyq`; Margem — telas revisadas `…/artifact/MRfMSj3duiUWHv8NvcNJk7`; Margem — telas (19 telas) `…/artifact/JiVvTTMBdb1tnEK5VfHRDU`.

@@ -178,6 +178,9 @@ function serializeTable(m) {
 }
 
 const cleanCell = (t) => t.replace(/\n/g, " ").replace(/(?<!\\)\|/g, "\\|").trim();
+/** Celular: a tabela aparece como texto Markdown, sem a grade editável (ligado/desligado pelo App). */
+let tabelasEditaveis = true;
+export const definirTabelasEditaveis = (v) => { tabelasEditaveis = v; };
 export const focusTableCellOnCreate = (r, c) => { pendingFocus = { r, c }; };
 let selectAll = false;     // foco vindo do teclado: marca o texto da célula inteira
 let pendingFocus = null; // { r, c } a focar quando o widget novo for criado
@@ -398,7 +401,7 @@ function blockDecos(state) {
   }
   syntaxTree(state).iterate({
     enter(n) {
-      if (n.name === "Table" && n.from >= fmEnd && !touches(state, n.from, n.to)) {
+      if (tabelasEditaveis && n.name === "Table" && n.from >= fmEnd && !touches(state, n.from, n.to)) {
         out.push(Decoration.replace({ widget: new TableWidget(state.doc.sliceString(n.from, n.to)), block: true }).range(n.from, n.to));
         return false;
       }

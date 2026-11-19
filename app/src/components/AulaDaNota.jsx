@@ -9,10 +9,12 @@ import { JogoDialog } from "@/components/JogoDialog";
 import { acionarBotao } from "@/lib/blocoAcoes";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { lerCiclos } from "@/lib/ciclos";
-import { IconChevronDown as ChevronDown, IconPlus as Plus, IconNote as StickyNote } from "@tabler/icons-react";
+import { IconChevronDown as ChevronDown, IconPlus as Plus, IconNote as StickyNote, IconPencil as Pencil, IconCheck as Check, IconList as List, IconX as X } from "@tabler/icons-react";
+import { lerSemanas, situacaoAula } from "@/lib/semana";
+import { useEhCompacto } from "@/lib/useCompacto";
 import { Chips, Text, Historico } from "@/components/RightPanel";
 import { Editor } from "@/components/Editor";
-import { Carregando, Erro } from "@/components/ui/estado";
+import { Carregando, Erro, useToast } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 
 /** Cores do Mermaid tiradas das variáveis CSS do tema ativo (`--primary`, `--chart-*`…), para o mapa combinar com a interface. */
@@ -105,15 +107,15 @@ export function TituloEditavel({ nome, onRename, rotulo = "aula" }) {
     if (!grava || !novo || novo === nome) { setV(nome); return; }
     try { setErro(""); await onRename(novo); } catch (e) { setV(nome); setErro(String(e?.message ?? e)); }
   };
-  if (!onRename) return <h1 className="mt-1 font-serif text-3xl font-semibold leading-tight">{nome}</h1>;
+  if (!onRename) return <h1 className="mt-1 font-serif text-2xl font-semibold leading-tight md:text-3xl">{nome}</h1>;
   return (
     <>
       {edit
         ? <input autoFocus value={v} onChange={(e) => setV(e.target.value)} onBlur={() => fim(true)} aria-label={`Título d${rotulo === "aula" ? "a" : "o"} ${rotulo}`}
             onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { e.preventDefault(); fim(false); } }}
-            className="mt-1 w-full rounded-md border bg-background px-1.5 py-0.5 font-serif text-3xl font-semibold leading-tight" />
+            className="mt-1 w-full rounded-md border bg-background px-1.5 py-0.5 font-serif text-2xl font-semibold leading-tight md:text-3xl" />
         : <h1 role="button" tabIndex={0} title={`Clique para renomear ${rotulo === "aula" ? "a" : "o"} ${rotulo}`} onClick={() => setEdit(true)} onKeyDown={(e) => e.key === "Enter" && setEdit(true)}
-            className="mt-1 cursor-text rounded-sm font-serif text-3xl font-semibold leading-tight hover:bg-accent/60">{nome}</h1>}
+            className="mt-1 cursor-text rounded-sm font-serif text-2xl font-semibold leading-tight md:text-3xl hover:bg-accent/60">{nome}</h1>}
       {erro && <div className="mt-1 text-xs text-err">{erro}</div>}
     </>
   );
@@ -246,6 +248,10 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   const [abaPainel, setAbaPainel] = useState("ficha"), [vista, setVista] = useState(null), [prog, setProg] = useState(0), [rev, setRev] = useState(0);
   const [margem, setMargem] = useState(() => { try { return localStorage.getItem("margem.aula.margem") !== "0"; } catch { return true; } });
   const [jogo, setJogo] = useState(false);
+  const compacto = useEhCompacto(), toast = useToast();
+  const [recolhidas, setRecolhidas] = useState(() => new Set()), [editando, setEditando] = useState(null); // celular: seções recolhidas; só uma seção em edição
+  const [gaveta, setGaveta] = useState(false), [anotando, setAnotando] = useState(false);
+  const toque = useRef(null);
   const [slot, setSlot] = useState(null); // lugar, no cabeçalho do app, onde o sumário se junta aos breadcrumbs
   useEffect(() => { setSlot(document.getElementById("slot-barra-aula")); }, []);
   const rolagem = useRef(null);
@@ -293,7 +299,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   };
   const editar = (id, md) => { pend.current = { path: caminho.current, md: { ...(pend.current?.path === caminho.current ? pend.current.md : {}), [id]: md } }; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
   const a = useMemo(() => (t == null ? null : parseAula(t)), [t]);
-  useEffect(() => { setVista(null); }, [item.path]);
+  useEffect(() => { setVista(null); setEditando(null); setRecolhidas(new Set()); setGaveta(false); setAnotando(false); }, [item.path]);
   // Destaque da seção atual ao rolar: a última cujo topo já passou da barra fixa.
   const aoRolar = () => {
     const r = rolagem.current; if (!r) return;
@@ -310,6 +316,26 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     await gravar();
     setVista(x.id); rolagem.current?.querySelector(`[data-sec="${x.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+  // "Dar aula ✓": marca como dada, na Semana, a próxima aula ainda sem situação que cita esta nota.
+  const darAula = async () => {
+    try {
+      const alvo = `[[${item.name.toLowerCase()}`;
+      for (const sem of [...await lerSemanas(items)].reverse()) {
+        for (const t of sem.turmas) {
+          const aula = t.aulas.find((x) => !x.situacao && `${x.texto} ${x.recurso}`.toLowerCase().includes(alvo));
+          if (!aula) continue;
+          await invoke("save_note", { path: sem.path, text: situacaoAula(await invoke("read_note", { path: sem.path }), t.turma, aula.n, "dada") });
+          toast(`Aula dada: turma ${t.turma}.`, { tipo: "ok" });
+          return;
+        }
+      }
+      toast("Esta aula não está na Semana, ou já foi dada.", { tipo: "warn" });
+    } catch (e) { toast(`Não deu para marcar: ${e.message ?? e}`, { tipo: "err" }); }
+  };
+  // Arrastar para a esquerda abre o sumário; para a direita fecha.
+  const aoTocar = { onTouchStart: (e) => { toque.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; },
+    onTouchEnd: (e) => { const t0 = toque.current; toque.current = null; if (!t0) return; const dx = e.changedTouches[0].clientX - t0.x, dy = e.changedTouches[0].clientY - t0.y;
+      if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy)) setGaveta(dx < 0); } };
   if (erro) return <Erro>{erro}</Erro>;
   if (!a) return <Carregando>Lendo a aula…</Carregando>;
 
@@ -318,9 +344,38 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   const atual = abas.find((x) => x.id === vista) ?? abas[0];
   const dados = dadosDaAula(a, t);
   const notasDe = (x) => (x.id === "intro" ? a.introNotas : x.notas) ?? [];
-  const aoLado = margem && !gram && a.notas.length > 0; // sem anotações, o texto fica sozinho e centralizado
-  const largura = aoLado ? "60.5rem" : "44rem"; // texto (44rem) + vão (2.5rem) + margem (14rem)
+  const aoLado = !compacto && margem && !gram && a.notas.length > 0; // sem anotações, o texto fica sozinho e centralizado
+  const largura = compacto ? "100%" : aoLado ? "60.5rem" : "44rem"; // texto (44rem) + vão (2.5rem) + margem (14rem)
+  const secaoCompacta = (x) => {
+    const bruta = brutas.find((b) => b.id === x.id), notas = margem ? notasDe(x) : [];
+    const aberta = !recolhidas.has(x.id), emEdicao = editando === x.id && !!bruta, codigo = mermaidDe(x.md);
+    const alternar = () => setRecolhidas((r) => { const n = new Set(r); if (n.has(x.id)) n.delete(x.id); else n.add(x.id); return n; });
+    return (
+      <section key={x.id} data-sec={x.id} aria-label={x.nome} className="scroll-mt-4 border-b py-1 last:border-b-0">
+        <div className="flex items-center">
+          <button type="button" aria-expanded={aberta} onClick={alternar} className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left font-serif text-lg font-semibold">
+            <ChevronDown aria-hidden className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform", !aberta && "-rotate-90")} />{x.nome}
+          </button>
+          {aberta && bruta && <button type="button" aria-pressed={emEdicao} aria-label={emEdicao ? `Concluir a edição de ${x.nome}` : `Editar ${x.nome}`} onClick={async () => { await gravar(); setEditando(emEdicao ? null : x.id); }}
+            className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-md hover:bg-accent", emEdicao ? "bg-primary/10 text-primary" : "text-muted-foreground")}>{emEdicao ? <Check className="h-5 w-5" /> : <Pencil className="h-5 w-5" strokeWidth={1.7} />}</button>}
+        </div>
+        {aberta && (
+          <div className="min-w-0 pb-4">
+            {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
+            {codigo && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={codigo} /></QuandoVisivel></div>}
+            {emEdicao
+              ? <EditorSecao key={`${item.path}:${x.id}:${brutas.length}:${rev}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
+              : <Markdown md={x.md.replace(/```mermaid[\s\S]*?```/g, "")} />}
+            {notas.length > 0 && <aside aria-label={`Na margem: ${x.nome}`} className="mt-3 flex flex-col gap-3">
+              {notas.map((n, i) => <div key={i} className="border-l-2 border-err pl-3 text-sm text-muted-foreground"><Markdown md={n} /></div>)}
+            </aside>}
+          </div>
+        )}
+      </section>
+    );
+  };
   const secao = (x) => {
+    if (compacto) return secaoCompacta(x);
     const bruta = brutas.find((b) => b.id === x.id), notas = margem ? notasDe(x) : [];
     return (
       <section key={x.id} data-sec={x.id} aria-label={x.nome} className={cn("scroll-mt-4 pb-10 first:pt-8 last:pb-4", x.id === "intro" && "pb-2", aoLado && "grid items-start gap-x-10")} style={aoLado ? { gridTemplateColumns: "minmax(0, 44rem) 14rem" } : undefined}>
@@ -347,7 +402,8 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     <div className="flex min-h-0 flex-1">
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* Sumário e botão Margem entram no cabeçalho do app, ao lado dos breadcrumbs; a linha fina abaixo mostra quanto da aula já foi lido */}
-      {slot && createPortal(
+      {slot && compacto && createPortal(<><div className="flex-1" /><button type="button" aria-label="Sumário da aula" onClick={() => setGaveta(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"><List className="h-5 w-5" strokeWidth={1.7} /></button></>, slot)}
+      {slot && !compacto && createPortal(
         <>
           <nav aria-label="Sumário da aula" className="flex min-w-0 items-center gap-0.5 overflow-x-auto border-l pl-3">
             <div role="tablist" aria-label="Partes da aula" className="flex gap-0.5">
@@ -361,8 +417,8 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
           <button onClick={alternarMargem} aria-pressed={margem} title={margem ? "Esconder as anotações da margem" : "Mostrar as anotações da margem (callout > [!margem])"} className={cn("flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs", margem ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><StickyNote className="h-3.5 w-3.5" />Margem</button>
         </>, slot)}
       <div role="progressbar" aria-label="Progresso de leitura" aria-valuenow={Math.round(prog * 100)} aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div className="h-full bg-primary transition-[width] duration-100" style={{ width: `${prog * 100}%` }} /></div>
-      <div ref={rolagem} onScroll={aoRolar} className="min-h-0 min-w-0 flex-1 overflow-auto">
-        <div className="px-8 pt-8">
+      <div ref={rolagem} onScroll={aoRolar} {...(compacto ? aoTocar : {})} className="min-h-0 min-w-0 flex-1 overflow-auto">
+        <div className={compacto ? "px-4 pt-4" : "px-8 pt-8"}>
           <div className="mx-auto" style={{ maxWidth: largura }}>
             <div className="text-xs text-muted-foreground">Aula do acervo</div>
             <TituloEditavel nome={item.name} onRename={onRename ? renomear : null} />
@@ -376,18 +432,45 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
                 </select>
               </label>
               {meta.map((m) => <span key={m}>{m}</span>)}
-              <button onClick={verFicha} className="font-medium text-primary hover:underline">Ver ficha</button>
-              <button onClick={() => setJogo(true)} className="font-medium text-primary hover:underline">Gerar jogo</button>
+              {!compacto && <button onClick={verFicha} className="font-medium text-primary hover:underline">Ver ficha</button>}
+              {!compacto && <button onClick={() => setJogo(true)} className="font-medium text-primary hover:underline">Gerar jogo</button>}
             </div>
             <DaUltimaVez entradas={a.memoria} />
           </div>
         </div>
-        <div className="mx-auto px-8 pb-8 pt-4" style={{ maxWidth: `calc(${largura} + 4rem)` }}>
+        <div className={cn("mx-auto pt-4", compacto ? "px-4 pb-6" : "px-8 pb-8")} style={{ maxWidth: compacto ? "100%" : `calc(${largura} + 4rem)` }}>
           {abas.map(secao)}
           {!atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
-          <div className="mt-2"><NotaDestaVez key={item.path} onAdicionar={adicionarMemoria} /></div>
+          {!compacto && <div className="mt-2"><NotaDestaVez key={item.path} onAdicionar={adicionarMemoria} /></div>}
         </div>
       </div>
+      {compacto && (
+        <div className="flex shrink-0 gap-2 border-t bg-background px-3 py-2">
+          <button type="button" onClick={() => setAnotando(true)} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg border text-sm font-medium hover:bg-accent"><StickyNote aria-hidden className="h-5 w-5" strokeWidth={1.6} />Anotar</button>
+          <button type="button" onClick={darAula} className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:opacity-90"><Check aria-hidden className="h-5 w-5" />Dar aula</button>
+        </div>
+      )}
+      {compacto && anotando && (
+        <div className="fixed inset-0 z-40 flex items-end bg-black/40" onClick={() => setAnotando(false)}>
+          <div className="w-full rounded-t-2xl bg-background p-3 pb-6" onClick={(e) => e.stopPropagation()}>
+            <NotaDestaVez key={item.path} aberto onFechar={() => setAnotando(false)} onAdicionar={adicionarMemoria} />
+          </div>
+        </div>
+      )}
+      {compacto && gaveta && (
+        <div className="fixed inset-0 z-40 flex justify-end bg-black/40" onClick={() => setGaveta(false)} {...aoTocar}>
+          <nav aria-label="Sumário da aula" className="flex h-full w-72 max-w-[85%] flex-col bg-background shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex min-h-12 items-center justify-between border-b px-4"><span className="font-semibold">Nesta aula</span>
+              <button type="button" aria-label="Fechar o sumário" onClick={() => setGaveta(false)} className="flex h-11 w-11 items-center justify-center rounded-md hover:bg-accent"><X className="h-5 w-5" /></button></div>
+            <ul className="min-h-0 flex-1 overflow-auto p-2">
+              {abas.map((x) => (
+                <li key={x.id}><button type="button" onClick={() => { setRecolhidas((r) => { const n = new Set(r); n.delete(x.id); return n; }); setGaveta(false); setTimeout(() => ir(x), 60); }}
+                  className={cn("flex min-h-11 w-full items-center rounded-md px-3 text-left text-sm hover:bg-accent", atual === x && "bg-primary/10 font-medium text-primary")}>{x.nome}</button></li>
+              ))}
+            </ul>
+          </nav>
+        </div>
+      )}
     </div>
     {jogo && <JogoDialog items={items} aula={item.name} textoAula={texto.current ?? t} onClose={() => setJogo(false)} />}
     {gram

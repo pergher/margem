@@ -6,6 +6,7 @@ import { listaCorrecoes, lerCorrecao, estatisticas, num } from "@/lib/correcao";
 import { Carregando } from "@/components/ui/estado";
 import { NovaCorrecaoDialog } from "@/components/NovaCorrecaoDialog";
 import { IconPlus as Plus } from "@tabler/icons-react";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 const finalizado = (s) => /^(finalizado|arquivado)$/i.test(s ?? "");
 const MESES = ["janeiro", "fevereiro", "março", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
@@ -22,6 +23,7 @@ function BotaoAcao({ x, onClick, className = "" }) {
 
 /** Correção: os lotes (uma pasta por atividade e turma), no explorador comum; daqui abre-se a tela de correção ou o arquivo. */
 export function CorrecoesPage({ items, turmasAno = [], onRefresh, onCorrigir, onTurma, onOpen, onRename, onDelete, turmaGlobal }) { // turmaGlobal: filtro vindo da página Ano ("" = todas)
+  const compacto = useEhCompacto(); // celular: só o andamento de cada lote (a correção pede o computador)
   const [listaTodas, setLista] = useState(undefined);
   const [nova, setNova] = useState(false);
   useEffect(() => {
@@ -81,7 +83,8 @@ export function CorrecoesPage({ items, turmasAno = [], onRefresh, onCorrigir, on
         {x.turma && <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: corTurma(x.turma) }} />Turma {x.turma}</span>}
         {x.mes && <span className="text-xs text-muted-foreground">{x.mes}</span>}
         {x.media != null && <span className="text-xs text-muted-foreground" title="Média da atividade">Média <b className="text-foreground">{fmt(x.media)}</b></span>}
-        <span className="inline-flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} /></span>
+        {!compacto && <span className="inline-flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} /></span>}
+        {compacto && <span className="flex w-full items-center gap-2 text-xs text-muted-foreground"><span role="img" aria-label={`${x.feitas} de ${x.total} corrigidas`} className="h-1.5 flex-1 rounded-full bg-muted"><span className="block h-1.5 rounded-full bg-primary" style={{ width: `${pct(x)}%` }} /></span>{x.feitas} de {x.total}</span>}
       </>}
       colunas={[
         { id: "turma", nome: "Turma", w: "w-24", ordem: "turma", render: (x) => (x.turma ? <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: corTurma(x.turma) }} />{x.turma}</span> : "—") },
@@ -92,8 +95,8 @@ export function CorrecoesPage({ items, turmasAno = [], onRefresh, onCorrigir, on
         { id: "acao", nome: "", w: "w-40", render: (x) => <span className="flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} className="py-1" /></span> },
       ]}
       menuExtra={(x) => [{ nome: rotuloAcao(x), Icone: ClipboardCheck, fazer: () => onCorrigir(x.path) }, { nome: "Visão da turma", Icone: ChartColumn, fazer: () => onTurma(x.path) }, { nome: "Abrir arquivo", Icone: ClipboardCheck, fazer: () => onOpen(x.path) }]}
-      onOpen={(x) => onTurma(x.path)} onRename={onRename} onDelete={onDelete}
-      vazio={{ titulo: "Nenhuma correção ainda", texto: "Use “Nova correção” para começar: os lotes ficam em Anos/AAAA/Correcoes.", acao: { rotulo: "Nova correção", onClick: () => setNova(true) } }}
+      onOpen={(x) => { if (!compacto) onTurma(x.path); }} onRename={onRename} onDelete={onDelete}
+      vazio={{ titulo: "Nenhuma correção ainda", texto: "Use “Nova correção” para começar: os lotes ficam em Anos/AAAA/Correcoes.", acao: compacto ? undefined : { rotulo: "Nova correção", onClick: () => setNova(true) } }}
     />
   </>);
 }

@@ -6,10 +6,13 @@ import { lerBanco, verificar, paragrafos, gabarito, docxBlob, imprimir, fonteDoT
 import { useConfigProva } from "@/lib/useConfigProva";
 import { useWidth } from "@/lib/useWidth";
 import { ResizeHandle } from "@/components/ResizeHandle";
+import { useEhCompacto } from "@/lib/useCompacto";
+import { cn } from "@/lib/utils";
 import { Estado, Carregando, Erro } from "@/components/ui/estado";
 
 /** Visão de uma nota `tipo: prova` (Acervo/Provas): a prova montada a partir do banco citado, com exportação e edição de turma/data/valor. */
 export function ProvaDaNota({ item, items, onOpen, tick }) {
+  const compacto = useEhCompacto(); // celular: só a prévia (sem exportar nem editar dados)
   const [wDados, setWDados] = useWidth("provanota.dados", 300);
   const [texto, setTexto] = useState(null);
   const [b, setB] = useState(null);
@@ -62,17 +65,19 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b px-4 text-xs">
+      <div className="flex min-h-11 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-1 text-xs">
         <span className="font-medium">Prova {dados.turma} · {dados.data}</span>
         <span className="text-muted-foreground">banco: <button onClick={() => onOpen(bancoItem.path)} className="text-primary hover:underline">{bancoItem.name}</button></span>
         <div className="flex-1" />
+        {!compacto && <>
         <button onClick={async () => baixar(arq("Prova"), await docxBlob(ps, opc))} className="rounded-md border px-3 py-1 hover:bg-accent">DOCX</button>
         <button onClick={() => imprimir(ps, "Prova", opc)} className="rounded-md border px-3 py-1 hover:bg-accent">PDF / imprimir</button>
         <button onClick={async () => baixar(arq("Gabarito"), await docxBlob(gabarito(b, sel)))} className="rounded-md border px-3 py-1 hover:bg-accent">Gabarito</button>
+        </>}
       </div>
       <div className="flex min-h-0 flex-1">
-        <section aria-label="Prévia da prova" className="flex min-w-0 flex-1 justify-center overflow-auto bg-muted p-6">
-          <div className="w-[560px] shrink-0 self-start bg-white p-9 font-serif text-xs leading-snug text-[#1F1D1A] shadow" style={{ minHeight: 792 }}>
+        <section aria-label="Prévia da prova" className={compacto ? "flex min-w-0 flex-1 justify-center overflow-auto bg-muted p-3" : "flex min-w-0 flex-1 justify-center overflow-auto bg-muted p-6"}>
+          <div className={cn(compacto ? "w-full max-w-[560px] self-start bg-white p-5" : "w-[560px] shrink-0 self-start bg-white p-9", "font-serif text-xs leading-snug text-[#1F1D1A] shadow")} style={{ minHeight: compacto ? 0 : 792 }}>
             {cfg?.logo && <img src={cfg.logo} alt="" className="mx-auto mb-1 h-12" />}
             {cfg?.escola && <div className="text-center font-semibold">{cfg.escola}</div>}
             {cfg?.linha2 && <div className="mb-2 text-center">{cfg.linha2}</div>}
@@ -82,8 +87,8 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
             </div>
           </div>
         </section>
-        <ResizeHandle width={wDados} setWidth={setWDados} min={220} max={520} side="right" />
-        <aside aria-label="Dados e verificação" style={{ width: wDados }} className="flex shrink-0 flex-col overflow-auto border-l">
+        {!compacto && <ResizeHandle width={wDados} setWidth={setWDados} min={220} max={520} side="right" />}
+        {!compacto && <aside aria-label="Dados e verificação" style={{ width: wDados }} className="flex shrink-0 flex-col overflow-auto border-l">
           <div className="grid grid-cols-2 gap-2 px-5 py-4 text-xs">
             <label>Turma<input value={dados.turma} onChange={(e) => mudar("turma", e.target.value)} className={campo} /></label>
             <label>Data<input type="date" value={dados.data} onChange={(e) => mudar("data", e.target.value)} className={campo} /></label>
@@ -100,7 +105,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
           <label className="mx-5 mt-3 flex items-center gap-2 text-xs"><input type="checkbox" checked={fonte} onChange={(e) => setFonte(e.target.checked)} />incluir a fonte dos textos</label>
           <p className="mx-5 mt-3 text-xs text-muted-foreground">As questões vêm da lista <code>questoes</code> do frontmatter, lidas no banco citado. Para trocar questões, monte a prova de novo em “Montar prova”.</p>
           <div className="mt-auto border-t px-5 py-3.5 text-xs text-muted-foreground">{sel.size} questões</div>
-        </aside>
+        </aside>}
       </div>
     </div>
   );

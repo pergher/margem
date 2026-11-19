@@ -6,6 +6,7 @@ import { lerSemanas, segundaDe } from "@/lib/semana";
 import { lerTurmas, turmasDeTexto, sugerirTurmasDoProximoAno, AULAS_PADRAO } from "@/lib/turmas";
 import { corTurma } from "@/lib/cores";
 import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 const cor = Object.fromEntries(FASES.map((f) => [f.id, f.cor]));
 
@@ -66,6 +67,7 @@ function LinhaFora({ c, onCiclo, onIncluir, fixo = false }) {
 }
 
 export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { // turmaGlobal: filtro vindo da página Ano ("" = todas)
+  const compacto = useEhCompacto(); // celular: só leitura (sem incluir, tirar, arrastar nem criar)
   const [plan, setPlan] = useState(false);
   const [dados, setDados] = useState(ultimo);
   const [erro, setErro] = useState("");
@@ -114,7 +116,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
     </div>
   );
   const dialogo = <>{dialogoAno}{plan && <PlanejarCicloDialog items={items} anoLetivo={anoLetivo} onClose={() => setPlan(false)} onCriado={(p) => { setPlan(false); setTick((t) => t + 1); onRefresh?.(); onOpen?.(p); }} />}</>;
-  if (!ciclos.length) return <><div className="px-8 pt-8"><h1 className="font-serif text-3xl font-semibold">Ano <span className="text-muted-foreground">{anoLetivo}</span> {navAno}</h1></div><Vazio titulo="Nenhum plano de ciclo ainda" acao={{ rotulo: "Planejar ciclo", onClick: () => setPlan(true) }}>Os planos ficam em Anos/AAAA/Planejamento. Crie o primeiro para ver o ano aqui.</Vazio>{dialogo}</>;
+  if (!ciclos.length) return <><div className="px-8 pt-8"><h1 className="font-serif text-2xl font-semibold md:text-3xl">Ano <span className="text-muted-foreground">{anoLetivo}</span> {navAno}</h1></div><Vazio titulo="Nenhum plano de ciclo ainda" acao={{ rotulo: "Planejar ciclo", onClick: () => setPlan(true) }}>Os planos ficam em Anos/AAAA/Planejamento. Crie o primeiro para ver o ano aqui.</Vazio>{dialogo}</>;
   // Turmas: as do arquivo do ano; sem ele, as que aparecem nas semanas.
   const turmas = dados.turmasCfg?.length ? dados.turmasCfg : [...new Set((dados.semanas ?? []).flatMap((sm) => sm.turmas.map((t) => t.turma)))].sort();
   // Progresso vem das notas de semana (✓ = aula dada); só ciclos ligados a uma turma têm situação.
@@ -157,14 +159,14 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
     </div>
   );
   return (
-    <div className="min-h-0 flex-1 overflow-auto p-8">
+    <div className={compacto ? "min-h-0 flex-1 overflow-auto p-4" : "min-h-0 flex-1 overflow-auto p-8"}>
       {dialogo}{dialogoIncluir}
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <header>
-          <h1 className="font-serif text-3xl font-semibold leading-tight">Ano <span className="text-muted-foreground">{anoLetivo}</span> {navAno}</h1>
+          <h1 className="font-serif text-2xl font-semibold md:text-3xl leading-tight">Ano <span className="text-muted-foreground">{anoLetivo}</span> {navAno}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{ciclos.length - fora.length} ciclos no ano{fora.length > 0 && ` · ${fora.length} fora de um ano`} · posição por trimestre, sem datas; o andamento vem das aulas ✓ nas notas de semana</p>
         </header>
-        <div className="flex-1" />{ehUltimoAno && <button onClick={abrirNovoAno} title="Cria o planejamento do ano seguinte, vazio" className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-accent"><Plus className="h-4 w-4" />Criar {Number(anoLetivo) + 1}</button>}<button onClick={() => setPlan(true)} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"><Plus className="h-4 w-4" />Planejar ciclo</button>
+        <div className="flex-1" />{!compacto && ehUltimoAno && <button onClick={abrirNovoAno} title="Cria o planejamento do ano seguinte, vazio" className="inline-flex items-center gap-1 rounded-md border px-3 py-2 text-sm hover:bg-accent"><Plus className="h-4 w-4" />Criar {Number(anoLetivo) + 1}</button>}{!compacto && <button onClick={() => setPlan(true)} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm text-primary-foreground hover:opacity-90"><Plus className="h-4 w-4" />Planejar ciclo</button>}
       </div>
 
       {turmaGlobal === undefined && turmas.length > 1 && (
@@ -180,7 +182,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
 
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
-          {!filtro && !visiveis.length && fora.length > 0 && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">O planejamento de {anoLetivo} está vazio. Inclua ciclos abaixo, em “Fora de um ano”, ou use “Planejar ciclo”.</div>}
+          {!filtro && !visiveis.length && fora.length > 0 && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">O planejamento de {anoLetivo} está vazio.{compacto ? " Monte-o no computador." : " Inclua ciclos abaixo, em “Fora de um ano”, ou use “Planejar ciclo”."}</div>}
           {!visiveis.length && !fora.length && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Nenhum ciclo para a turma {filtro}.</div>}
           {anos.map((ano) => (
             <section key={ano} className="rounded-xl border bg-background p-4">
@@ -190,36 +192,36 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
                 return (
                   <div key={t} className={"-mx-4 border-t px-4 first:border-t-0 " + (alvo === `fim:${ano}:${t}` ? "bg-accent/40" : "")}
                     onDragOver={(e) => { if (arrasto) { e.preventDefault(); setAlvo(`fim:${ano}:${t}`); } }} onDrop={(e) => { e.preventDefault(); soltar(ano, t, null); }}>
-                    <div className="flex items-center pb-1 pt-3"><span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}º trimestre</span><button onClick={() => setIncl({ ano, tri: t })} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Plus className="h-3.5 w-3.5" />Incluir ciclo</button></div>
+                    <div className="flex items-center pb-1 pt-3"><span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}º trimestre</span>{!compacto && <button onClick={() => setIncl({ ano, tri: t })} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Plus className="h-3.5 w-3.5" />Incluir ciclo</button>}</div>
                     <div className="flex flex-col divide-y">
                       {lista.map((c, idx) => {
                         const prog = progresso(c), sit = situacao(prog);
                         return (
                           <div key={c.path} className={"group -mx-4 flex items-center gap-2 px-4 transition-colors hover:bg-accent/50 " + (arrasto?.path === c.path ? "opacity-40 " : "") + (alvo === c.path ? "shadow-[inset_0_2px_0_0_hsl(var(--primary))]" : "")}
-                            draggable={!c.legado} onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", c.name); setArrasto(c); }} onDragEnd={() => { setArrasto(null); setAlvo(null); }}
+                            draggable={!compacto && !c.legado} onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", c.name); setArrasto(c); }} onDragEnd={() => { setArrasto(null); setAlvo(null); }}
                             onDragOver={(e) => { if (arrasto && arrasto.path !== c.path) { e.preventDefault(); e.stopPropagation(); setAlvo(c.path); } }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); soltar(ano, t, c); }}>
-                          {!c.legado && <Grip aria-hidden title="Arraste para mudar a ordem ou o trimestre" className="-ml-2 h-4 w-4 shrink-0 cursor-grab text-muted-foreground/60" />}
+                          {!compacto && !c.legado && <Grip aria-hidden title="Arraste para mudar a ordem ou o trimestre" className="-ml-2 h-4 w-4 shrink-0 cursor-grab text-muted-foreground/60" />}
                           <button onClick={() => onCiclo(c)} title={c.name} className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1.5 py-2.5 text-left !bg-transparent">
                             <span className="w-4 shrink-0 text-right text-xs tabular-nums text-muted-foreground">{idx + 1}</span>
                             <span className="flex w-5 shrink-0 justify-center">{sit && <Rosca dadas={prog.reduce((t, x) => t + x.dadas, 0)} total={prog.reduce((t, x) => t + x.total, 0)} concluido={sit === "Concluído"} />}</span>
-                            <span className="min-w-[14rem] flex-1">
+                            <span className={compacto ? "min-w-0 flex-1 basis-40" : "min-w-[14rem] flex-1"}>
                               <span className="block text-sm font-medium leading-snug">{c.titulo}</span>
                               <span className="block text-xs text-muted-foreground">{c.aulas.length ? `${c.aulas.length} aulas` : "sem tabela de aulas"}{c.habilidades.length ? ` · ${c.habilidades.join(", ")}` : " · sem habilidade"}</span>
                             </span>
-                            {sit === "Em andamento" && <span className="w-64 shrink-0"><Aulas aulas={c.aulas} semana={aulasDaSemana(c)} /></span>}
+                            {sit === "Em andamento" && <span className={compacto ? "w-full" : "w-64 shrink-0"}><Aulas aulas={c.aulas} semana={aulasDaSemana(c)} /></span>}
                           </button>
-                          {!c.legado && <button onClick={() => tirar(c)} title="Tirar do ano (o ciclo continua no Acervo)" aria-label={`Tirar ${c.titulo} do ano`} className="mr-1 inline-flex shrink-0 items-center rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-err focus-visible:opacity-100 group-hover:opacity-100"><Trash aria-hidden className="h-4 w-4" /></button>}
+                          {!compacto && !c.legado && <button onClick={() => tirar(c)} title="Tirar do ano (o ciclo continua no Acervo)" aria-label={`Tirar ${c.titulo} do ano`} className="mr-1 inline-flex shrink-0 items-center rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-err focus-visible:opacity-100 group-hover:opacity-100"><Trash aria-hidden className="h-4 w-4" /></button>}
                           </div>
                         );
                       })}
-                      {!lista.length && <div className="py-2.5 text-xs text-muted-foreground">A planejar · use “Incluir ciclo”</div>}
+                      {!lista.length && <div className="py-2.5 text-xs text-muted-foreground">A planejar{compacto ? "" : " · use “Incluir ciclo”"}</div>}
                     </div>
                   </div>
                 );
               })}
             </section>
           ))}
-          {fora.length > 0 && (
+          {!compacto && fora.length > 0 && (
             <section className="rounded-xl border border-dashed bg-background p-4">
               <h2 className="font-serif text-xl font-semibold">Fora de um ano</h2>
               <p className="mb-1 text-xs text-muted-foreground">Ciclos do Acervo que o Planejamento {anoLetivo} não usa. Um ciclo é atemporal: inclua-o no ano quando for aplicá-lo.</p>

@@ -45,3 +45,15 @@ Fluxo: você mexe no código aqui → envia ao GitHub → o GitHub compila o ins
 - O vault real **nunca** vai ao GitHub: o repositório só tem o código e fixtures anônimas (`tests/fixtures/vault/` está no `.gitignore` e o CI falha se algo dela for rastreado).
 - O workflow **CI** roda `cargo test` do núcleo no Linux e no Windows a cada push.
 - Se o job Release falhar, abra o log do passo vermelho e me mande o trecho do erro.
+
+## Android (APK pelo Obtainium)
+
+O job `android` de `release.yml` roda depois do Windows e anexa `Margem-vX.Y.Z-android.apk` à mesma release. **Nunca rodou no GitHub**: o primeiro release com ele deve ser acompanhado.
+
+Uma vez só, o usuário cria o keystore e os secrets (não faça isto por ele):
+1. `keytool -genkeypair -v -keystore margem.jks -alias margem -keyalg RSA -keysize 2048 -validity 10000`
+2. Guarde o `margem.jks` e a senha fora do repositório (sem o mesmo keystore, o Android recusa atualizar o app).
+3. Secrets do repositório: `ANDROID_KEYSTORE_BASE64` (`base64 -w0 margem.jks`), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`margem`).
+4. No celular, Obtainium → adicionar `https://github.com/pergher/margem`, filtrando APKs.
+
+Sem os secrets, o job compila, mas não assina nem publica o APK.

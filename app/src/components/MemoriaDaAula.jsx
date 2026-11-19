@@ -30,8 +30,9 @@ export function DaUltimaVez({ entradas }) {
 }
 
 /** Link discreto no fim da aula. Nunca é pedido: abre um campo opcional (turma, sinal e texto) e grava em `## Memória`. */
-export function NotaDestaVez({ onAdicionar }) {
-  const [aberto, setAberto] = useState(false);
+export function NotaDestaVez({ onAdicionar, aberto: abertoFora, onFechar }) { // `aberto`/`onFechar`: controlada de fora (celular)
+  const [abertoI, setAbertoI] = useState(false);
+  const aberto = abertoFora ?? abertoI, setAberto = (v) => { setAbertoI(v); if (!v) onFechar?.(); };
   const [texto, setTexto] = useState(""), [sinal, setSinal] = useState("");
   const [turma, setTurma] = useState(() => { try { return localStorage.getItem(TURMA_KEY) ?? ""; } catch { return ""; } });
   const [erro, setErro] = useState("");
