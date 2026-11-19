@@ -2,10 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { IconFileText as FileText, IconSearch as Search, IconListSearch as TextSearch } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { visaoDe } from "@/lib/visoes";
+import { useEhCompacto } from "@/lib/useCompacto";
 
 const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
+// Telas que o celular não tem (pedem o editor completo): a busca não as oferece no modo compacto.
+const SO_NO_COMPUTADOR = new Set(["correcao", "banco"]);
+
 export function SearchModal({ items, onPick, onClose }) {
+  const compacto = useEhCompacto();
   const [q, setQ] = useState("");
   const [idx, setIdx] = useState(0);
   const list = useRef(null);
@@ -29,7 +35,8 @@ export function SearchModal({ items, onPick, onClose }) {
   }, [q, items]);
   const nameSet = new Set(byName.map((i) => i.path));
   const textHits = hits.filter((h) => !nameSet.has(h.path) || h.count > 0).slice(0, 25);
-  const results = [...byName.map((it) => ({ it })), ...textHits.map((h) => ({ it: h, text: h }))];
+  const results = [...byName.map((it) => ({ it })), ...textHits.map((h) => ({ it: h, text: h }))]
+    .filter(({ it }) => !compacto || !SO_NO_COMPUTADOR.has(visaoDe(it.rel)?.id));
   useEffect(() => setIdx(0), [q]);
   useEffect(() => { list.current?.children[idx]?.scrollIntoView({ block: "nearest" }); }, [idx]);
 

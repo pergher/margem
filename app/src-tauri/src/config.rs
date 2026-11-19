@@ -63,6 +63,51 @@ pub fn vault_sem_acesso(app: State<App>) -> bool {
     { let _ = app; false }
 }
 
+/// Android: abre a tela do sistema onde o usuário libera "acesso a todos os arquivos" para o app.
+#[tauri::command]
+pub fn abrir_permissao_arquivos(h: tauri::AppHandle) -> Result<(), String> {
+    #[cfg(target_os = "android")]
+    {
+        use jni::objects::{JObject, JValue};
+        let pacote = h.config().identifier.clone();
+        let ctx = ndk_context::android_context();
+        let vm = unsafe { jni::JavaVM::from_raw(ctx.vm().cast()) }.map_err(|e| e.to_string())?;
+        let mut env = vm.attach_current_thread().map_err(|e| e.to_string())?;
+        let atividade = unsafe { JObject::from_raw(ctx.context().cast()) };
+        let r = (|| -> jni::errors::Result<()> {
+            let acao = env.new_string("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION")?;
+            let pkg = env.new_string(format!("package:{pacote}"))?;
+            let uri = env.call_static_method("android/net/Uri", "parse", "(Ljava/lang/String;)Landroid/net/Uri;", &[JValue::Object(&pkg)])?.l()?;
+            let intent = env.new_object("android/content/Intent", "(Ljava/lang/String;Landroid/net/Uri;)V", &[JValue::Object(&acao), JValue::Object(&uri)])?;
+            env.call_method(&intent, "addFlags", "(I)Landroid/content/Intent;", &[JValue::Int(0x1000_0000)])?; // FLAG_ACTIVITY_NEW_TASK
+            env.call_method(&atividade, "startActivity", "(Landroid/content/Intent;)V", &[JValue::Object(&intent)])?;
+            Ok(())
+        })();
+        if r.is_err() { let _ = env.exception_clear(); }
+        return r.map_err(|e| e.to_string());
+    }
+    #[cfg(not(target_os = "android"))]
+    { let _ = h; Err("só no Android".into()) }
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PastaListada { caminho: String, pai: Option<String>, pastas: Vec<String>, tem_vault: bool }
+
+/// Android: lista as subpastas de `caminho` (sem as que começam com `.`) para o seletor de pastas do app.
+/// `None` começa em `/storage/emulated/0`. `tem_vault` = a pasta já parece um vault (tem `_sistema` ou `Acervo`).
+#[tauri::command]
+pub fn listar_pastas(caminho: Option<String>) -> Result<PastaListada, String> {
+    if !cfg!(target_os = "android") { return Err("só no Android".into()); }
+    let base = PathBuf::from(caminho.unwrap_or_else(|| "/storage/emulated/0".into()));
+    let p = canon(&base).map_err(|e| format!("{}: {e}", slash(&base)))?;
+    let mut pastas: Vec<String> = std::fs::read_dir(&p).map_err(|e| e.to_string())?.flatten()
+        .filter(|e| e.path().is_dir()).map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| !n.starts_with('.')).collect();
+    pastas.sort_by_key(|n| n.to_lowercase());
+    let pai = p.parent().filter(|q| q.starts_with("/storage")).map(slash);
+    Ok(PastaListada { caminho: slash(&p), pai, pastas, tem_vault: p.join("_sistema").is_dir() || p.join("Acervo").is_dir() })
+}
+
 /// Pasta escolhida vazia (ignorando o que começa com `.`): monta a estrutura padrão. Só cria o que falta; nunca mexe no que existe.
 pub(crate) fn criar_estrutura(root: &Path) -> std::io::Result<()> {
     let vazia = std::fs::read_dir(root)?.flatten().all(|e| e.file_name().to_string_lossy().starts_with('.'));
@@ -91,6 +136,9 @@ pub(crate) fn liberar_imagens(h: &tauri::AppHandle, root: &Path) {
 pub fn set_vault_root(h: tauri::AppHandle, app: State<App>, path: String) -> Result<String, String> {
     let p = canon(Path::new(&path)).map_err(|e| format!("{path}: {e}"))?;
     if !p.is_dir() { return Err("não é uma pasta".into()); }
+    // Android sem "acesso a todos os arquivos": os arquivos ficam invisíveis, a pasta pareceria vazia e o app montaria a estrutura por cima do vault.
+    #[cfg(target_os = "android")]
+    { let s = slash(&p); if (s.starts_with("/storage/") || s.starts_with("/sdcard")) && !acesso_a_todos_os_arquivos() { return Err("Libere o acesso a todos os arquivos para o Margem (botão \"Abrir a tela de permissão\") e escolha a pasta de novo.".into()); } }
     criar_estrutura(&p).map_err(|e| format!("não montou a estrutura: {e}"))?;
     let f = root_file(&h)?;
     if let Some(d) = f.parent() { std::fs::create_dir_all(d).map_err(|e| e.to_string())?; }

@@ -315,8 +315,8 @@ export default function App() {
         {foco &&<button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
         {!foco && <header className={cn("flex shrink-0 items-center gap-2 border-b py-2", compacto ? "min-h-12 px-2" : "min-h-[3.5rem] px-4")}>
           {!compacto && <RailButton size="sm" label={`Reduzir/ampliar o menu (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>}
-          <RailButton size="sm" label={`Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
-          <RailButton size="sm" label={`Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
+          <RailButton size="sm" label={compacto ? "Voltar" : `Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
+          <RailButton size="sm" label={compacto ? "Avançar" : `Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
           <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground max-md:text-sm">
             {crumbs.length === 0 && <span>Selecione um arquivo</span>}
             {(compacto ? crumbs.slice(-1) : crumbs).map((c, i, lista) => {

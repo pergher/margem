@@ -44,7 +44,7 @@ export function ProvaDaNota({ item, items, onOpen, tick }) {
 
   if (erro) return <Erro>{erro}</Erro>;
   if (!texto) return <Carregando>Lendo a prova…</Carregando>;
-  if (!nomeBanco || !bancoItem) return <div className="p-8 text-sm text-muted-foreground">Este arquivo não cita um banco de questões existente (linha <code>Banco: [[nome]]</code>). Use “Markdown” para ver o texto.</div>;
+  if (!nomeBanco || !bancoItem) return <div className="p-8 text-sm text-muted-foreground">Este arquivo não cita um banco de questões existente (linha <code>Banco: [[nome]]</code>). {compacto ? "Abra o arquivo no computador para ver o texto." : "Use “Markdown” para ver o texto."}</div>;
   if (!b) return <Carregando>Lendo o banco…</Carregando>;
 
   const sel = new Set((get("questoes")?.items ?? []).map(Number).filter(Number.isFinite));
