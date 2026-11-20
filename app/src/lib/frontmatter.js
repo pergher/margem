@@ -46,24 +46,25 @@ const needsQuote = (s) => /^[\s\-?:,[\]{}#&*!|>'"%@`]|[:#]\s|:$|\s$/.test(s);
 const fmtItem = (s) => (needsQuote(s) || /[,[\]]/.test(s) || /^[\d.]+$/.test(s) || /^(true|false|null)$/i.test(s) ? JSON.stringify(s) : s);
 const fmtScalar = (s) => (s === "" ? "" : needsQuote(s) ? JSON.stringify(s) : s);
 
-export function formatLine(key, value) {
+/** `aspas`: grava o valor sempre entre aspas (texto como "61", que sem aspas viraria número). */
+export function formatLine(key, value, { aspas = false } = {}) {
   if (Array.isArray(value)) return `${key}: [${value.map(fmtItem).join(", ")}]`;
-  const v = fmtScalar(String(value));
+  const v = aspas && String(value) !== "" ? JSON.stringify(String(value)) : fmtScalar(String(value));
   return v ? `${key}: ${v}` : `${key}:`;
 }
 
 /** Devolve o texto com a propriedade `key` trocada (string ou array), criada, ou removida (`undefined`). */
-export function setProp(text, key, value) {
+export function setProp(text, key, value, opcoes) {
   const fm = parseFm(text), lines = fm.lines;
   const e = fm.entries.find((x) => x.key === key);
   if (!fm.has) {
     if (value === undefined) return text;
-    return ["---", formatLine(key, value), "---", ...lines].join("\n");
+    return ["---", formatLine(key, value, opcoes), "---", ...lines].join("\n");
   }
   if (e) {
-    lines.splice(e.from, e.to - e.from + 1, ...(value === undefined ? [] : [formatLine(key, value)]));
+    lines.splice(e.from, e.to - e.from + 1, ...(value === undefined ? [] : [formatLine(key, value, opcoes)]));
   } else if (value !== undefined) {
-    lines.splice(fm.end, 0, formatLine(key, value));
+    lines.splice(fm.end, 0, formatLine(key, value, opcoes));
   }
   return lines.join("\n");
 }

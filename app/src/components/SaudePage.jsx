@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { setProp } from "@/lib/frontmatter";
+import { planejar, CODIGOS_AUTOMATICOS } from "@/lib/saudeAcoes";
 import { Estado, Erro, Vazio, useToast } from "@/components/ui/estado";
 
 const CODIGOS = {
@@ -12,21 +13,6 @@ const CODIGOS = {
 };
 const COR = { erro: "text-err", aviso: "text-warn", info: "text-muted-foreground" };
 
-function tipoSugerido(rel, name) {
-  if (/^Acervo\/Aulas\//.test(rel)) return "aula";
-  if (/^Acervo\/Textos\//.test(rel)) return "texto";
-  if (/^Acervo\/Questoes\//.test(rel)) return "banco";
-  if (/^Acervo\/Ciclos\//.test(rel)) return "ciclo";
-  if (/^Anos\/\d{4}\/Planejamento \d{4}$/.test(rel.replace(/\.md$/, ""))) return "planejamento";
-  if (/\/Planejamento\//.test(rel)) return /^\d{3}\b/.test(name) ? "ciclo" : "plano";
-  if (/\/Provas\//.test(rel)) return "prova";
-  if (/\/Semanas\//.test(rel)) return "semana";
-  if (/\/Correcoes\//.test(rel)) return "correcao";
-  if (/\/Diarios\//.test(rel)) return "diario";
-  if (/\/Alunos\//.test(rel)) return "aluno";
-  return null;
-}
-
 export function SaudePage({ items, onOpen, onRefresh }) {
   const [lista, setLista] = useState(null);
   const [erro, setErro] = useState("");
@@ -35,7 +21,10 @@ export function SaudePage({ items, onOpen, onRefresh }) {
   const [aberto, setAberto] = useState({});
   const [comInfo, setComInfo] = useState(false); // avisos de nível "info" ficam escondidos até pedir
   const [valores, setValores] = useState({});
-  const carregar = () => invoke("vault_health").then(setLista).catch((e) => setErro(String(e)));
+  const [planos, setPlanos] = useState({}); // k do aviso → { rotulo } (correção automática possível), calculado ao abrir o grupo
+  const [lote, setLote] = useState(null); // { code, itens: [{ x, it, rotulo }] } à espera de confirmação
+  const [aplicando, setAplicando] = useState(false);
+  const carregar = () => invoke("vault_health").then((l) => { setPlanos({}); setLote(null); setLista(l); }).catch((e) => setErro(String(e)));
   useEffect(() => { carregar(); }, []);
 
   const porNome = useMemo(() => { const m = new Map(); for (const i of items) if (!m.has(i.name)) m.set(i.name, i); return m; }, [items]);
@@ -48,6 +37,24 @@ export function SaudePage({ items, onOpen, onRefresh }) {
     }
     return Object.entries(g).sort((a, b) => b[1].length - a[1].length);
   }, [lista, filtro, comInfo]);
+
+  // Ao abrir um grupo com correção automática, vê (sem gravar) o que cada aviso mudaria.
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      const novos = {};
+      for (const [code, xs] of grupos) {
+        if (!aberto[code] || !CODIGOS_AUTOMATICOS.has(code)) continue;
+        for (let i = 0; i < Math.min(xs.length, 200); i++) {
+          const x = xs[i], it = porNome.get(x.note), k = code + i + x.note;
+          if (!it || planos[k] !== undefined) continue;
+          try { const p = planejar(x, it, await invoke("read_note", { path: it.path })); novos[k] = p ? { rotulo: p.rotulo } : null; } catch { novos[k] = null; }
+        }
+      }
+      if (vivo && Object.keys(novos).length) setPlanos((o) => ({ ...o, ...novos }));
+    })();
+    return () => { vivo = false; };
+  }, [grupos, aberto]);
 
   if (erro) return <Erro>Erro: {erro}</Erro>;
   if (!lista) return <div className="p-8 text-sm text-muted-foreground">Verificando o vault…</div>;
@@ -62,11 +69,35 @@ export function SaudePage({ items, onOpen, onRefresh }) {
     catch (e) { setErro(String(e)); }
   };
 
+  // Correção em lote: primeiro mostra o que mudaria (simulação), só grava depois de confirmar. Cada nota ganha uma versão no Histórico.
+  const prever = async (code, xs) => {
+    const itens = [], vistos = new Set();
+    for (const x of xs) {
+      const it = porNome.get(x.note);
+      if (!it || vistos.has(it.path)) continue;
+      try { const p = planejar(x, it, await invoke("read_note", { path: it.path })); if (p) { vistos.add(it.path); itens.push({ x, it, rotulo: p.rotulo }); } } catch { /* nota ilegível: fica de fora */ }
+    }
+    setLote({ code, itens });
+  };
+  const aplicarLote = async () => {
+    setAplicando(true);
+    let feitas = 0, falhas = 0;
+    for (const { x, it } of lote.itens) {
+      try {
+        const t = await invoke("read_note", { path: it.path }), p = planejar(x, it, t); // lê de novo: a nota pode ter mudado desde a simulação
+        if (p) { await invoke("save_note", { path: it.path, text: p.novo }); feitas++; }
+      } catch { falhas++; }
+    }
+    setAplicando(false);
+    await carregar();
+    toast(`${feitas} nota(s) corrigida(s)${falhas ? `, ${falhas} falha(s)` : ""}. Dá para voltar pelo Histórico da nota.`, { tipo: falhas ? "warn" : "ok", ms: 5000 });
+  };
+
   function Acao({ x, it, k }) {
     if (!it) return null;
-    if (x.code === "sem-tipo") {
-      const t = tipoSugerido(it.rel, it.name);
-      return t ? <button onClick={() => editar(it, (tx) => setProp(tx, "tipo", t))} className="text-primary hover:underline">definir tipo: {t}</button> : null;
+    if (CODIGOS_AUTOMATICOS.has(x.code)) {
+      const p = planos[k];
+      return p ? <button onClick={() => editar(it, (tx) => planejar(x, it, tx)?.novo ?? tx)} className="text-primary hover:underline">corrigir: {p.rotulo}</button> : null;
     }
     if (x.code === "campo-vazio") {
       const campo = /`([^`]+)`/.exec(x.msg)?.[1];
@@ -95,18 +126,38 @@ export function SaudePage({ items, onOpen, onRefresh }) {
         {(infos > 0 || comInfo) && <label className="flex items-center gap-1.5 text-xs text-muted-foreground"><input type="checkbox" checked={comInfo} onChange={(e) => setComInfo(e.target.checked)} />Mostrar observações{!comInfo && ` (${infos})`}</label>}
         <button onClick={() => { setLista(null); carregar(); }} className="rounded-md border px-3 py-1 text-xs hover:bg-accent">Verificar de novo</button>
       </div>
-      <div className="mb-5 text-xs text-muted-foreground">Cada grupo é um tipo de problema; clique no nome do arquivo para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias (reversível pela lixeira .lixeira).</div>
+      <div className="mb-5 text-xs text-muted-foreground">Cada grupo é um tipo de problema; clique no nome do arquivo para abrir na linha. As correções rápidas mexem só no frontmatter ou criam notas vazias; "Corrigir todos…" mostra o que mudaria antes de gravar, e cada nota ganha uma versão no Histórico.</div>
 
       {grupos.length === 0 && <Vazio titulo={filtro ? "Nenhum aviso para este filtro" : "Nenhum aviso"}>{filtro ? "Tente outro trecho do nome do arquivo ou do texto." : "O vault não tem problemas a corrigir."}</Vazio>}
       <div className="flex flex-col gap-3">
         {grupos.map(([code, xs]) => (
           <div key={code} className="rounded-xl border">
-            <button onClick={() => setAberto({ ...aberto, [code]: !aberto[code] })} className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
-              <span className="w-5 text-muted-foreground">{aberto[code] ? "▾" : "▸"}</span>
-              <span className="font-medium">{CODIGOS[code] ?? code}</span>
-              <span className={cn("rounded-full bg-muted px-2 text-xs", COR[xs[0].severity])}>{xs.length}</span>
-              <span className="text-xs text-muted-foreground">{{ erro: "erro", aviso: "aviso", info: "observação" }[xs[0].severity] ?? xs[0].severity}</span>
-            </button>
+            <div className="flex items-center gap-3 px-4 py-2.5">
+              <button onClick={() => setAberto({ ...aberto, [code]: !aberto[code] })} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                <span className="w-5 text-muted-foreground">{aberto[code] ? "▾" : "▸"}</span>
+                <span className="font-medium">{CODIGOS[code] ?? code}</span>
+                <span className={cn("rounded-full bg-muted px-2 text-xs", COR[xs[0].severity])}>{xs.length}</span>
+                <span className="text-xs text-muted-foreground">{{ erro: "erro", aviso: "aviso", info: "observação" }[xs[0].severity] ?? xs[0].severity}</span>
+              </button>
+              {CODIGOS_AUTOMATICOS.has(code) && <button onClick={() => prever(code, xs)} disabled={aplicando} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent disabled:opacity-50">Corrigir todos…</button>}
+            </div>
+            {lote?.code === code && (
+              <div className="border-t bg-muted/40 px-4 py-3 text-xs">
+                {lote.itens.length === 0
+                  ? <p className="text-muted-foreground">Nenhum destes avisos tem correção automática segura; corrija à mão (clique no nome do arquivo).</p>
+                  : <>
+                    <p className="mb-1.5 font-medium">{lote.itens.length} nota(s) mudariam (nada foi gravado ainda):</p>
+                    <ul className="mb-2 max-h-40 overflow-auto text-muted-foreground">
+                      {lote.itens.slice(0, 30).map(({ it, rotulo }) => <li key={it.path}><span className="font-medium text-foreground">{it.name}</span> → {rotulo}</li>)}
+                      {lote.itens.length > 30 && <li>… e mais {lote.itens.length - 30}</li>}
+                    </ul>
+                  </>}
+                <div className="flex gap-2">
+                  {lote.itens.length > 0 && <button onClick={aplicarLote} disabled={aplicando} className="rounded-md bg-primary px-3 py-1 text-primary-foreground disabled:opacity-60">{aplicando ? "Corrigindo…" : `Aplicar em ${lote.itens.length} nota(s)`}</button>}
+                  <button onClick={() => setLote(null)} disabled={aplicando} className="rounded-md border px-3 py-1 hover:bg-accent">{lote.itens.length ? "Cancelar" : "Fechar"}</button>
+                </div>
+              </div>
+            )}
             {aberto[code] && (
               <ul className="border-t px-4 py-1 text-xs">
                 {xs.slice(0, 200).map((x, i) => {
