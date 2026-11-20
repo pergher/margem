@@ -8,7 +8,7 @@ export const RECURSOS = {
 };
 
 /** Cria `Acervo/<pasta do tipo>/[subpasta/]<nome>.md` com o modelo e devolve o caminho; se já existir nota com o nome, só devolve o dela. `pasta` é relativa à pasta do tipo. */
-export async function criarRecurso(items, tipo, { nome, pasta = "" }) {
+export async function criarRecurso(items, tipo, { nome, pasta = "", modelo }) {
   const r = RECURSOS[tipo];
   const { invoke } = await import("@/lib/api");
   const n = nome.replace(/\[\[|\]\]/g, "").replace(/[\\/:*?"<>|#^]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
@@ -19,6 +19,7 @@ export async function criarRecurso(items, tipo, { nome, pasta = "" }) {
   const raiz = raizDe(items);
   if (!items.some((i) => i.rel.startsWith(prefixo))) { try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: r.pasta }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir: `${raiz}/${prefixo}${pasta ? pasta + "/" : ""}`.replace(/\/$/, ""), name: n });
-  await invoke("save_note", { path, text: r.modelo(n) });
+  const { textoNovo } = await import("@/lib/modelos");
+  await invoke("save_note", { path, text: await textoNovo(items, tipo, { titulo: n }, modelo) });
   return path;
 }

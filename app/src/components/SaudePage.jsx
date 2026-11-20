@@ -4,10 +4,11 @@ import { cn } from "@/lib/utils";
 import { setProp } from "@/lib/frontmatter";
 import { planejar, CODIGOS_AUTOMATICOS } from "@/lib/saudeAcoes";
 import { Estado, Erro, Vazio, useToast } from "@/components/ui/estado";
+import { ehModelo, lerModelos, secoesFaltando, TIPOS_MODELO } from "@/lib/modelos";
 
 const CODIGOS = {
   "sem-tipo": "Arquivos sem tipo", "tipo-desconhecido": "Tipo desconhecido", "campo-vazio": "Campos vazios ou ausentes", "campo-obsoleto": "Campos obsoletos",
-  "link-quebrado": "Links quebrados", "ancora-quebrada": "Âncoras quebradas", "marca-pendente": "Marcas de transcrição pendentes", "valor-invalido": "Valores inválidos",
+  "modelo-sem-secao": "Modelos sem seção obrigatória", "link-quebrado": "Links quebrados", "ancora-quebrada": "Âncoras quebradas", "marca-pendente": "Marcas de transcrição pendentes", "valor-invalido": "Valores inválidos",
   "conteudo-desconhecido": "Conteúdos fora do vocabulário", "aguardando-revisao": "Transcrições aguardando revisão", "total-diverge": "Total diverge da soma",
   "nota-fora-da-rubrica": "Nota fora da rubrica", "sem-recuperacao": "Ciclo sem recuperação", "data-invalida": "Datas inválidas", "aula-sem-recurso": "Aulas sem recurso", yaml: "Frontmatter inválido", "arquivo-ilegivel": "Arquivos que não são UTF-8 (ignorados)", "nome-repetido": "Notas com nome repetido",
 };
@@ -24,7 +25,16 @@ export function SaudePage({ items, onOpen, onRefresh }) {
   const [planos, setPlanos] = useState({}); // k do aviso → { rotulo } (correção automática possível), calculado ao abrir o grupo
   const [lote, setLote] = useState(null); // { code, itens: [{ x, it, rotulo }] } à espera de confirmação
   const [aplicando, setAplicando] = useState(false);
-  const carregar = () => invoke("vault_health").then((l) => { setPlanos({}); setLote(null); setLista(l); }).catch((e) => setErro(String(e)));
+  // As notas-modelo (_sistema/modelos) têm marcadores e campos vazios de propósito: ficam fora dos avisos comuns,
+  // e ganham um só aviso próprio, o de faltar uma seção que o app espera na nota criada.
+  const carregar = async () => {
+    try {
+      const l = await invoke("vault_health"), nomes = new Set(items.filter((i) => ehModelo(i.rel)).map((i) => i.name));
+      const modelos = await lerModelos(items).catch(() => []);
+      const proprios = modelos.flatMap((m) => secoesFaltando(m.texto, m.tipo).map((sec) => ({ note: m.name, line: 1, code: "modelo-sem-secao", severity: "aviso", msg: `modelo de ${TIPOS_MODELO[m.tipo].rotulo.toLowerCase()}: falta a seção «${sec}»` })));
+      setPlanos({}); setLote(null); setLista([...l.filter((x) => !nomes.has(x.note)), ...proprios]);
+    } catch (e) { setErro(String(e)); }
+  };
   useEffect(() => { carregar(); }, []);
 
   const porNome = useMemo(() => { const m = new Map(); for (const i of items) if (!m.has(i.name)) m.set(i.name, i); return m; }, [items]);

@@ -136,7 +136,7 @@ mindmap
 }
 
 /** Cria `Acervo/Aulas/<titulo>.md` com o modelo e devolve o caminho; se já existir uma nota com o nome, só devolve o dela. */
-export async function criarAula(items, { titulo, turma, pasta = "" }) {
+export async function criarAula(items, { titulo, turma, pasta = "", modelo }) {
   const { invoke } = await import("@/lib/api");
   const nome = titulo.replace(/\[\[|\]\]/g, "").replace(/[\\/:*?"<>|#^]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
   if (!nome) throw new Error("A aula não tem título.");
@@ -146,7 +146,8 @@ export async function criarAula(items, { titulo, turma, pasta = "" }) {
   const dir = `${raiz}/Acervo/Aulas${pasta ? "/" + pasta : ""}`;
   if (!items.some((i) => i.rel.startsWith("Acervo/Aulas/"))) { try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: "Aulas" }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir, name: nome });
-  await invoke("save_note", { path, text: modeloAula({ ano: /^[6-9]/.test(turma ?? "") ? turma[0] : "", titulo: nome }) });
+  const { textoNovo } = await import("@/lib/modelos");
+  await invoke("save_note", { path, text: await textoNovo(items, "aula", { titulo: nome, ano: /^[6-9]/.test(turma ?? "") ? turma[0] : "" }, modelo) });
   return path;
 }
 

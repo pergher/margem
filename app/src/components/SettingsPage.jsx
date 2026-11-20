@@ -17,6 +17,8 @@ import { iaApagarChave, iaConfigGravar, iaConfigLer, iaGuardarChave, iaTemChave,
 import { ShortcutsPage } from "@/components/ShortcutsPage";
 import { CLAROS, ESCUROS, ESTILOS_CALLOUT } from "@/lib/temas";
 import { OPCOES_COR, DESTAQUES_PADRAO } from "@/lib/destaques";
+import { IconTemplate as Template } from "@tabler/icons-react";
+import { TIPOS_MODELO, lerModelos, modelosDoTipo, criarModelo, semearModelos, restaurarModelo, secoesFaltando } from "@/lib/modelos";
 import { cn } from "@/lib/utils";
 import { Estado, Carregando, useToast } from "@/components/ui/estado";
 
@@ -25,13 +27,14 @@ import { Estado, Carregando, useToast } from "@/components/ui/estado";
 const SECOES = [
   { id: "aparencia", label: "Aparência", icon: Palette },
   { id: "escola", label: "Escola e professor", icon: GraduationCap },
+  { id: "modelos", label: "Modelos de nota", icon: Template },
   { id: "notas", label: "Notas e pasta", icon: FolderOpen, soApp: true },
   { id: "ia", label: "IA", icon: Sparkles, soApp: true },
   { id: "atalhos", label: "Atalhos", icon: Keyboard },
   { id: "sobre", label: "Sobre o Margem", icon: Info, soApp: true },
 ];
 
-export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh, modoCompacto, atalhoGlobal }) {
+export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh, onOpen, modoCompacto, atalhoGlobal }) {
   const compacto = useEhCompacto();
   const [secao, setSecao] = useState("aparencia");
   const [wNav, setWNav] = useWidth("config.menu", 208);
@@ -50,6 +53,7 @@ export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefr
       {!compacto && <ResizeHandle width={wNav} setWidth={setWNav} min={160} max={320} side="left" />}
       {secao === "aparencia" && <Aparencia tema={tema} modoCompacto={modoCompacto} />}
       {secao === "escola" && <EscolaEProfessor items={items} onRefresh={onRefresh} />}
+      {secao === "modelos" && <ModelosDeNota items={items} onRefresh={onRefresh} onOpen={onOpen} />}
       {secao === "notas" && <PastaDoVault />}
       {secao === "ia" && <ConfigIA />}
       {secao === "atalhos" && <ShortcutsPage overrides={overrides} setOverrides={setOverrides} atalhoGlobal={atalhoGlobal} />}
@@ -158,6 +162,51 @@ function EscolaEProfessor({ items, onRefresh }) {
       <p className="-mt-3 text-sm text-muted-foreground">Estas informações entram no cabeçalho das provas e na Semana. Você preenche uma vez e muda quando precisar; a prévia ao lado mostra o resultado.</p>
       <CabecalhoProvas prova={prova} />
       <TurmasDoAno items={items} onRefresh={onRefresh} />
+    </Pagina>
+  );
+}
+
+/** Modelos das notas novas (aula, gramática, texto, oficina, banco): notas em `_sistema/modelos` que você edita como qualquer outra. */
+function ModelosDeNota({ items, onRefresh, onOpen }) {
+  const [modelos, setModelos] = useState(null), [erro, setErro] = useState(""), [confirma, setConfirma] = useState(null), toast = useToast();
+  const chave = items.filter((i) => i.rel.startsWith("_sistema/modelos/")).map((i) => i.path).join("|");
+  useEffect(() => { let vivo = true; lerModelos(items).then((m) => vivo && setModelos(m)).catch((e) => vivo && setErro(String(e?.message ?? e))); return () => { vivo = false; }; }, [chave]);
+  const executa = async (fn, ok) => { setErro(""); try { await fn(); await onRefresh?.(); if (ok) toast(ok, { tipo: "ok" }); } catch (e) { setErro(String(e?.message ?? e)); } };
+  const faltam = Object.keys(TIPOS_MODELO).filter((t) => !modelos?.some((m) => m.tipo === t));
+  return (
+    <Pagina titulo="Modelos de nota">
+      <p className="-mt-3 text-sm text-muted-foreground">O que “Nova aula”, “Nova gramática” etc. gravam ao criar. Cada modelo é uma nota em <code>_sistema/modelos</code>: abra, edite e pronto. Marcadores: <code>{"{{titulo}}"}</code>, <code>{"{{data}}"}</code>, <code>{"{{ano}}"}</code>. Com mais de um modelo por tipo, o diálogo de criação deixa escolher (o de nome igual ao tipo é o padrão).</p>
+      {erro && <Estado tipo="err" className="text-sm">{erro}</Estado>}
+      {!modelos ? <Carregando className="p-0">Lendo os modelos…</Carregando> : <>
+        {faltam.length > 0 && <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+          <p>{faltam.length === Object.keys(TIPOS_MODELO).length ? "Ainda não há notas-modelo: o app usa os modelos de fábrica." : `Sem nota-modelo: ${faltam.map((t) => TIPOS_MODELO[t].rotulo).join(", ")} (usam o modelo de fábrica).`}</p>
+          <button onClick={() => executa(() => semearModelos(items), "Notas-modelo criadas.")} className="mt-2 h-8 rounded-md bg-primary px-3 text-sm text-primary-foreground hover:opacity-90">Criar as notas-modelo que faltam</button>
+        </div>}
+        {Object.entries(TIPOS_MODELO).map(([tipo, t]) => {
+          const lista = modelosDoTipo(modelos, tipo);
+          return (
+            <Grupo key={tipo} titulo={t.rotulo} nota={t.obrigatorias.length ? `O app espera as seções: ${t.obrigatorias.join(", ")}.` : "Sem seções obrigatórias."}>
+              {!lista.length && <p className="text-sm text-muted-foreground">Usando o modelo de fábrica.</p>}
+              {lista.map((m, k) => {
+                const f = secoesFaltando(m.texto, tipo);
+                return (
+                  <div key={m.path} className="rounded-lg border p-2.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium">{m.name}{k === 0 && <span className="ml-2 rounded-full bg-accent px-2 py-0.5 text-xs font-normal text-muted-foreground">padrão</span>}</span>
+                      <button onClick={() => onOpen?.(m.path)} className="h-8 rounded-md border px-3 text-sm hover:bg-accent">Abrir</button>
+                      <button onClick={() => executa(() => criarModelo(items, tipo, { nome: `${m.name} (cópia)`, texto: m.texto }), "Modelo duplicado.")} className="h-8 rounded-md border px-3 text-sm hover:bg-accent">Duplicar</button>
+                      {confirma === m.path
+                        ? <button onClick={() => { setConfirma(null); executa(() => restaurarModelo(m.path, tipo), "Modelo restaurado."); }} onBlur={() => setConfirma(null)} autoFocus className="h-8 rounded-md bg-err px-3 text-sm text-background">Apagar minhas mudanças?</button>
+                        : <button onClick={() => setConfirma(m.path)} className="h-8 rounded-md border px-3 text-sm hover:bg-accent">Restaurar o original</button>}
+                    </div>
+                    {f.length > 0 && <p className="mt-1.5 text-xs text-warn">Falta a seção: {f.join(", ")}. Sem ela, partes da visão do app podem ficar vazias.</p>}
+                  </div>
+                );
+              })}
+            </Grupo>
+          );
+        })}
+      </>}
     </Pagina>
   );
 }

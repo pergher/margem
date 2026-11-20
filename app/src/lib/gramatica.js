@@ -78,7 +78,7 @@ export function parseGramatica(texto) {
 }
 
 /** Cria `Acervo/Gramática/<topico>.md` com o modelo e devolve o caminho; se já existir uma nota com o nome, só devolve o dela. */
-export async function criarGramatica(items, { topico, ano = [], pasta = "" }) {
+export async function criarGramatica(items, { topico, ano = [], pasta = "", modelo }) {
   const { invoke } = await import("@/lib/api");
   const nome = topico.replace(/\[\[|\]\]/g, "").replace(/[\\/:*?"<>|#^]/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
   if (!nome) throw new Error("A gramática não tem título.");
@@ -88,6 +88,7 @@ export async function criarGramatica(items, { topico, ano = [], pasta = "" }) {
   const dir = `${raiz}/Acervo/Gramática${pasta ? "/" + pasta : ""}`;
   if (!items.some((i) => i.rel.startsWith("Acervo/Gramática/"))) { try { await invoke("create_folder", { dir: `${raiz}/Acervo`, name: "Gramática" }); } catch { /* já existe */ } }
   const path = await invoke("create_note", { dir, name: nome });
-  await invoke("save_note", { path, text: modeloGramatica({ topico: nome, ano }) });
+  const { textoNovo } = await import("@/lib/modelos");
+  await invoke("save_note", { path, text: await textoNovo(items, "gramatica", { titulo: nome, ano }, modelo) });
   return path;
 }

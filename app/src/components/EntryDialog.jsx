@@ -6,15 +6,16 @@ import { Estado } from "@/components/ui/estado";
 const ICONS = { "Novo arquivo": FilePlus2, "Nova pasta": FolderPlus, "Renomear pasta": Pencil, "Renomear arquivo": Pencil, Excluir: Trash2 };
 
 /** Pede um nome (`input`) ou confirma uma ação. `onOk(valor)` pode lançar erro de texto. */
-export function EntryDialog({ title, message, initial = "", input, okLabel = "OK", danger, onOk, onClose }) {
+export function EntryDialog({ title, message, initial = "", input, okLabel = "OK", danger, opcoes, onOk, onClose }) {
   const [v, setV] = useState(initial);
+  const [opcao, setOpcao] = useState(opcoes?.[0]?.id ?? null); // `opcoes`: [{ id, nome }] — por exemplo, o modelo da nota nova
   const [err, setErr] = useState("");
   const ref = useRef(null);
   const Icon = ICONS[title];
   useEffect(() => { ref.current?.focus(); ref.current?.select?.(); }, []);
   const submit = async () => {
     if (input && !v.trim()) return;
-    try { await onOk(v.trim()); onClose(); } catch (e) { setErr(String(e)); }
+    try { await onOk(v.trim(), opcao); onClose(); } catch (e) { setErr(String(e)); }
   };
   const key = (e) => { if (e.key === "Escape") { e.preventDefault(); onClose(); } else if (e.key === "Enter") { e.preventDefault(); submit(); } };
   return (
@@ -30,6 +31,12 @@ export function EntryDialog({ title, message, initial = "", input, okLabel = "OK
           {message && <p className="text-sm leading-relaxed text-muted-foreground">{message}</p>}
           {input && <input ref={ref} value={v} onChange={(e) => { setV(e.target.value); setErr(""); }} placeholder="Nome"
             className="h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20" />}
+          {opcoes?.length > 1 && (
+            <label className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">Modelo
+              <select value={opcao ?? ""} onChange={(e) => setOpcao(e.target.value)} aria-label="Modelo" className="h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-sm text-foreground outline-none focus:border-primary">
+                {opcoes.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
+              </select>
+            </label>)}
           {err && <Estado tipo="err" className="mt-2 text-sm">{err}</Estado>}
         </div>
         <div className="flex justify-end gap-2 border-t bg-muted/50 px-4 py-3">

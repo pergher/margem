@@ -51,6 +51,7 @@ import { useNavegacao } from "@/lib/useNavegacao";
 import { useHistoricoNavegacao } from "@/lib/useHistoricoNavegacao";
 import { useAtalhos } from "@/lib/useAtalhos";
 import { criarAula } from "@/lib/aula";
+import { lerModelos, modelosDoTipo } from "@/lib/modelos";
 import { criarCicloVazio } from "@/lib/ciclos";
 import { criarGramatica } from "@/lib/gramatica";
 import { RECURSOS, criarRecurso } from "@/lib/recursos";
@@ -192,18 +193,20 @@ export default function App() {
     message: `Excluir “${nome}”${n ? ` e as ${n} aulas dentro dela` : ""}? Vai para a pasta .lixeira do vault e pode ser recuperada de lá.`,
     onOk: async () => { await invoke("delete_entry", { path }); await refresh(); setStatus("Excluída"); ok(); },
   }));
-  const novaAula = (pasta = "") => setDialog({ title: "Nova aula", input: true, okLabel: "Criar", onOk: async (name) => {
-    const p = await criarAula(items, { titulo: name, turma: "", pasta: typeof pasta === "string" ? pasta : "" }); await refresh(); open(p);
+  // Modelos do tipo, para o diálogo de criação oferecer a escolha quando há mais de um (senão, null).
+  const opcoesModelo = async (tipo) => { try { const m = modelosDoTipo(await lerModelos(items), tipo); return m.length > 1 ? m.map((x) => ({ id: x.path, nome: x.name })) : null; } catch { return null; } };
+  const novaAula = async (pasta = "") => setDialog({ title: "Nova aula", input: true, okLabel: "Criar", opcoes: await opcoesModelo("aula"), onOk: async (name, modelo) => {
+    const p = await criarAula(items, { titulo: name, turma: "", pasta: typeof pasta === "string" ? pasta : "", modelo }); await refresh(); open(p);
   } });
   const novoCiclo = (pasta = "") => setDialog({ title: "Novo ciclo", input: true, okLabel: "Criar", onOk: async (name) => {
     const p = await criarCicloVazio(items, name, typeof pasta === "string" ? pasta : ""); await refresh(); open(p);
   } });
-  const novaGramatica = (pasta = "") => setDialog({ title: "Nova gramática", input: true, okLabel: "Criar", onOk: async (name) => {
-    const p = await criarGramatica(items, { topico: name, pasta: typeof pasta === "string" ? pasta : "" }); await refresh(); open(p);
+  const novaGramatica = async (pasta = "") => setDialog({ title: "Nova gramática", input: true, okLabel: "Criar", opcoes: await opcoesModelo("gramatica"), onOk: async (name, modelo) => {
+    const p = await criarGramatica(items, { topico: name, pasta: typeof pasta === "string" ? pasta : "", modelo }); await refresh(); open(p);
   } });
-  const novoRecurso = (tipo) => setDialog({ title: RECURSOS[tipo].dialogo, input: true, okLabel: "Criar", onOk: async (name) => {
+  const novoRecurso = async (tipo) => setDialog({ title: RECURSOS[tipo].dialogo, input: true, okLabel: "Criar", opcoes: await opcoesModelo(tipo), onOk: async (name, modelo) => {
     const sub = subDaPasta(documentosPasta, RECURSOS[tipo].pasta); // dentro da pasta do tipo, cria na subpasta aberta
-    const p = await criarRecurso(items, tipo, { nome: name, pasta: sub }); await refresh(); open(p);
+    const p = await criarRecurso(items, tipo, { nome: name, pasta: sub, modelo }); await refresh(); open(p);
   } });
   const createNote = (dir) => setDialog({ title: "Novo arquivo", input: true, okLabel: "Criar", onOk: async (name) => {
     const p = await invoke("create_note", { dir, name }); await refresh(); open(p);
@@ -362,7 +365,7 @@ export default function App() {
         </header>}
         {!compacto && <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />}
 
-        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} modoCompacto={{ modo: modoTela, setModo: setModoTela }} atalhoGlobal={{ ligado: P.atalhoGlobal, setLigado: P.setAtalhoGlobal, erro: erroAtalhoGlobal, bandeja: P.bandeja, setBandeja: P.setBandeja, erroBandeja }} />}
+        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} onOpen={open} modoCompacto={{ modo: modoTela, setModo: setModoTela }} atalhoGlobal={{ ligado: P.atalhoGlobal, setLigado: P.setAtalhoGlobal, erro: erroAtalhoGlobal, bandeja: P.bandeja, setBandeja: P.setBandeja, erroBandeja }} />}
         {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
         {(carregado || page === "config" || (page === "editor" && !personalizada)) && <>
         {page === "documentos" && <DocumentosPage filtroNav={documentosTipo} items={items} dirs={dirs} onOpen={open} onRefresh={refresh} onNovo={(id) => (id === "ciclo" ? novoCiclo(subDaPasta(documentosPasta, "Ciclos")) : id === "aula" ? novaAula(subDaPasta(documentosPasta, "Aulas")) : id === "gramatica" ? novaGramatica(subDaPasta(documentosPasta, "Gramática")) : novoRecurso(id))} onAtividade={(p) => { setTextoAtiv(p); irMontarProva(); }} aba={documentosAba} setAba={setDocumentosAba} pasta={documentosPasta} setPasta={setDocumentosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
