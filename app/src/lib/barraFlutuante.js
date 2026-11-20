@@ -62,6 +62,20 @@ export function alternarLinhas(view, { tira, poe }) {
   return true;
 }
 
+// Ícones em traço fino (24×24, estilo Tabler, como o resto do app): só os caminhos do desenho.
+const ICONES = {
+  negrito: ["M7 5h6a3.5 3.5 0 0 1 0 7h-6z", "M13 12h1a3.5 3.5 0 0 1 0 7h-7v-7"],
+  italico: ["M11 5h6", "M7 19h6", "M14 5l-4 14"],
+  destaque: ["M3 19h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4", "M12.5 5.5l4 4", "M4.5 13.5l4 4", "M21 15v4h-8l4 -4z"],
+  codigo: ["M7 8l-4 4l4 4", "M17 8l4 4l-4 4", "M14 4l-4 16"],
+  link: ["M9 15l6 -6", "M11 6l.463 -.536a5 5 0 0 1 7.071 7.072l-.534 .464", "M13 18l-.397 .534a5.068 5.068 0 0 1 -7.127 0a4.972 4.972 0 0 1 0 -7.071l.524 -.463"],
+  h2: ["M4 6v12", "M12 6v12", "M4 12h8", "M17 11a2 2 0 1 1 4 0c0 .6 -.4 1.3 -.8 1.9l-3.2 4.1h4"],
+  h3: ["M4 6v12", "M12 6v12", "M4 12h8", "M17 10h4l-2.5 3a2.2 2.2 0 1 1 -2 3.3"],
+  citacao: ["M10 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5", "M19 11h-4a1 1 0 0 1 -1 -1v-3a1 1 0 0 1 1 -1h3a1 1 0 0 1 1 1v6c0 2.667 -1.333 4.333 -4 5"],
+  lista: ["M9 6h11", "M9 12h11", "M9 18h11", "M5 6v.01", "M5 12v.01", "M5 18v.01"],
+};
+const svgDoIcone = (id) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONES[id].map((d) => `<path d="${d}"/>`).join("")}</svg>`;
+
 const TITULO = /^#{1,6} /, CITACAO = /^> ?/, LISTA = /^([-*+] |\d{1,9}[.)] )/;
 export const BOTOES = [
   { id: "negrito", rotulo: "N", dica: "Negrito", estilo: "font-weight:700", run: (v) => alternarEnvolver(v, "**") },
@@ -84,9 +98,8 @@ function criarBarra(view) {
   for (const b of BOTOES) {
     if (b.sep) { const s = document.createElement("span"); s.className = "cm-barra-sep"; dom.appendChild(s); continue; }
     const el = document.createElement("button");
-    el.type = "button"; el.textContent = b.rotulo; el.title = b.dica; el.setAttribute("aria-label", b.dica);
-    if (b.estilo) el.style.cssText = b.estilo;
-    if (b.classe) el.classList.add(b.classe);
+    el.type = "button"; el.title = b.dica; el.setAttribute("aria-label", b.dica);
+    if (ICONES[b.id]) el.innerHTML = svgDoIcone(b.id); else el.textContent = b.rotulo;
     el.addEventListener("mousedown", (e) => { e.preventDefault(); b.run(view); }); // mousedown: não tira a seleção do texto
     dom.appendChild(el);
   }
