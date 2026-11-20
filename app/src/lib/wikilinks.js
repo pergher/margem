@@ -1,9 +1,10 @@
 // Autocompletar de `[[`: ao digitar `[[`, lista as notas do vault pelo nome (sem acento nem maiúscula);
 // se nenhuma tem exatamente o nome digitado, oferece "Criar «nome»" (cria a nota ao lado da nota aberta e já liga o link).
+// Depois de `[[Nome#` sugere os títulos da nota (`titulos(nome)`); depois de `[[Nome|` sugere o apelido (o nome ou o título escolhido).
 import { EditorSelection } from "@codemirror/state";
 
-let provedor = { notas: () => [], criar: null };
-/** O App informa de onde vêm as notas (`notas()` → [{ name, rel }]) e como criar uma (`criar(nome)`). */
+let provedor = { notas: () => [], criar: null, titulos: null };
+/** O App informa de onde vêm as notas (`notas()` → [{ name, rel }]), como criar uma (`criar(nome)`) e os títulos de uma (`titulos(nome)` → [texto] ou Promise). */
 export const definirProvedorDeLinks = (p) => { provedor = { ...provedor, ...p }; };
 
 export const semAcento = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -42,6 +43,10 @@ function inserir(view, from, to, nome) {
 
 /** Fonte do autocompletar para o CodeMirror. */
 export function fonteDeWikilinks(ctx) {
+  const alvo = ctx.matchBefore(/\[\[[^\]\[\n|#^]+(?:#[^\]\[\n|^]*)?\|[^\]\[\n|]*/);
+  if (alvo) return fonteDeApelido(ctx, alvo);
+  const cab = ctx.matchBefore(/\[\[[^\]\[\n|#^]+#[^\]\[\n|^]*/);
+  if (cab) return fonteDeTitulos(ctx, cab);
   const m = ctx.matchBefore(/\[\[[^\]\[\n|#^]*/);
   if (!m) return null;
   const from = m.from + 2, consulta = ctx.state.sliceDoc(from, ctx.pos);
@@ -61,4 +66,29 @@ export function fonteDeWikilinks(ctx) {
   if (!options.length) return null;
   // `filter: false`: quem filtra e ordena é `filtrarNotas` (ignora acentos); a lista é refeita a cada tecla.
   return { from, options, filter: false };
+}
+
+const semBarraDePasta = (alvo) => alvo.split("/").pop().trim();
+
+/** `[[Nome#tít`: títulos da nota `Nome` que casam com o que foi digitado. */
+function fonteDeTitulos(ctx, m) {
+  if (!provedor.titulos) return null;
+  const corpo = m.text.slice(2), i = corpo.indexOf("#"), nome = semBarraDePasta(corpo.slice(0, i)), from = m.from + 2 + i + 1;
+  const consulta = semAcento(ctx.state.sliceDoc(from, ctx.pos).trim());
+  return Promise.resolve(provedor.titulos(nome)).then((lista) => {
+    const options = (lista ?? []).filter((t) => !consulta || semAcento(t).includes(consulta))
+      .map((t, k) => ({ label: t, detail: "título", type: "text", boost: -k, apply: (view, _c, f, to) => inserir(view, f, to, t) }));
+    return options.length ? { from, options, filter: false } : null;
+  }).catch(() => null);
+}
+
+/** `[[Nome|ap` ou `[[Nome#Título|ap`: sugere o título escolhido e o nome da nota como apelido. */
+function fonteDeApelido(ctx, m) {
+  const corpo = m.text.slice(2), barra = corpo.indexOf("|"), alvo = corpo.slice(0, barra), from = m.from + 2 + barra + 1;
+  const [nome, titulo] = alvo.split("#").map((x) => x.trim());
+  const consulta = semAcento(ctx.state.sliceDoc(from, ctx.pos).trim());
+  const base = [titulo, semBarraDePasta(nome)].filter(Boolean);
+  const options = [...new Set(base)].filter((t) => !consulta || semAcento(t).includes(consulta))
+    .map((t, k) => ({ label: t, detail: "apelido", type: "text", boost: -k, apply: (view, _c, f, to) => inserir(view, f, to, t) }));
+  return options.length ? { from, options, filter: false } : null;
 }

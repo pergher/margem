@@ -11,7 +11,7 @@ import { useCompacto, CompactoContext } from "@/lib/useCompacto";
 import { definirTabelasEditaveis } from "@/lib/livePreview";
 import { Editor } from "@/components/Editor";
 import { ResizeHandle } from "@/components/ResizeHandle";
-import { Outline } from "@/components/Outline";
+import { Outline, headingsOf } from "@/components/Outline";
 import { TocBarra } from "@/components/TocBarra";
 import { RightPanel } from "@/components/RightPanel";
 import { setProp, lineStart } from "@/lib/frontmatter";
@@ -125,6 +125,10 @@ export default function App() {
   useEffect(() => {
     definirProvedorDeLinks({
       notas: () => itemsRef.current,
+      titulos: async (nome) => {
+        const alvo = nome.toLowerCase(), it = itemsRef.current.find((i) => i.name.toLowerCase() === alvo);
+        return it ? headingsOf(await invoke("read_note", { path: it.path })).map((h) => h.title) : [];
+      },
       criar: (nome) => {
         const dir = (cur.current || "").replace(/[\\/][^\\/]*$/, "");
         if (!dir) return;

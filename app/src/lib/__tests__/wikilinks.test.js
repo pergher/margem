@@ -13,7 +13,8 @@ const notas = [
 ];
 
 function abrir(texto) {
-  const pos = texto.indexOf("|"), doc = texto.replace("|", "");
+  const marca = texto.includes("§") ? "§" : "|"; // `§` marca o cursor quando o texto tem um `|` de verdade (apelido)
+  const pos = texto.indexOf(marca), doc = texto.replace(marca, "");
   const view = new EditorView({ state: EditorState.create({ doc, selection: { anchor: pos } }), parent: document.body });
   const r = fonteDeWikilinks(new CompletionContext(view.state, pos, true));
   return { view, r };
@@ -36,11 +37,32 @@ describe("fonteDeWikilinks", () => {
     expect(abrir("veja [cron|").r).toBeNull();
     expect(abrir("veja [[cron|").r).not.toBeNull();
   });
-  it("não abre depois de `|`, `#` ou `]]`", () => {
-    definirProvedorDeLinks({ notas: () => notas, criar: null });
+  it("não abre depois de `]]`, nem em `#` sem provedor de títulos", () => {
+    definirProvedorDeLinks({ notas: () => notas, criar: null, titulos: null });
     expect(abrir("[[Crônica|").r).not.toBeNull();
     expect(abrir("[[Crônica#tit|").r).toBeNull();
     expect(abrir("[[Crônica]] cron|").r).toBeNull();
+  });
+  it("depois de `#` sugere os títulos da nota e fecha com `]]`", async () => {
+    definirProvedorDeLinks({ notas: () => notas, criar: null, titulos: async (n) => (n === "Crônica" ? ["Origem", "Estrutura da crônica", "Atividades"] : []) });
+    const { view, r } = abrir("[[Crônica#estru|");
+    const res = await r;
+    expect(res.options.map((o) => o.label)).toEqual(["Estrutura da crônica"]);
+    res.options[0].apply(view, res.options[0], res.from, 15);
+    expect(view.state.doc.toString()).toBe("[[Crônica#Estrutura da crônica]]");
+  });
+  it("depois de `#` sem nada digitado lista todos; nota sem títulos não abre", async () => {
+    definirProvedorDeLinks({ notas: () => notas, criar: null, titulos: async (n) => (n === "Crônica" ? ["A", "B"] : []) });
+    expect((await abrir("[[Crônica#|").r).options).toHaveLength(2);
+    expect(await abrir("[[Conto#|").r).toBeNull();
+  });
+  it("depois de `|` sugere o título escolhido e o nome como apelido", () => {
+    definirProvedorDeLinks({ notas: () => notas, criar: null, titulos: null });
+    expect(abrir("[[Crônica|§").r.options.map((o) => o.label)).toEqual(["Crônica"]);
+    const { view, r } = abrir("[[Pasta/Crônica#Origem|ori§");
+    expect(r.options.map((o) => o.label)).toEqual(["Origem"]);
+    r.options[0].apply(view, r.options[0], r.from, 26);
+    expect(view.state.doc.toString()).toBe("[[Pasta/Crônica#Origem|Origem]]");
   });
   it("insere o nome e fecha com `]]`", () => {
     definirProvedorDeLinks({ notas: () => notas, criar: null });
