@@ -2,6 +2,7 @@
 
 mod atalho_global;
 mod atualizacao;
+mod bandeja;
 mod busca;
 mod cache;
 mod caminhos;
@@ -52,14 +53,17 @@ impl App {
 pub fn run() {
     // Ordem: VAULT_ROOT (desenvolvimento) → pasta salva → (só em debug) vault de teste → nenhuma (o app pede).
     let env_root = std::env::var("VAULT_ROOT").map(PathBuf::from).ok();
-    let builder = tauri::Builder::default()
-        .plugin(tauri_plugin_dialog::init());
+    let builder = tauri::Builder::default();
+    // Uma única cópia do Margem (com a bandeja, a janela pode estar escondida): abrir de novo só traz a janela da que já roda.
+    #[cfg(not(target_os = "android"))]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| bandeja::mostrar_janela(app)));
+    let builder = builder.plugin(tauri_plugin_dialog::init());
     // Atualizador e reinício só existem no computador; no Android o app é atualizado pelo Obtainium.
     #[cfg(not(target_os = "android"))]
     let builder = builder.plugin(tauri_plugin_updater::Builder::new().build()).plugin(tauri_plugin_process::init()).plugin(atalho_global::plugin());
     let builder = builder
         .invoke_handler(tauri::generate_handler![
-            atalho_global::definir_atalho_global, notas::list_notes, notas::read_note, notas::save_note, notas::resolve_link, config::read_config, config::write_config,
+            atalho_global::definir_atalho_global, bandeja::definir_bandeja, notas::list_notes, notas::read_note, notas::save_note, notas::resolve_link, config::read_config, config::write_config,
             notas::create_note, notas::create_folder, notas::rename_entry, notas::move_entry, notas::delete_entry, notas::list_dirs,
             config::vault_ausente, config::vault_sem_acesso, config::abrir_permissao_arquivos, config::listar_pastas, notas::note_info, busca::search_text, busca::read_embed, notas::read_sidecar, notas::save_attachment,
             notas::vault_health, notas::list_history, notas::read_version, notas::restore_version, config::get_vault_root,

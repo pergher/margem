@@ -11,17 +11,10 @@ pub(crate) struct AtalhoGlobal(Mutex<Option<String>>);
 
 #[cfg(not(target_os = "android"))]
 pub(crate) fn plugin<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
-    use tauri::{Emitter, Manager};
     use tauri_plugin_global_shortcut::ShortcutState;
     tauri_plugin_global_shortcut::Builder::new()
         .with_handler(|app, _atalho, evento| {
-            if evento.state() != ShortcutState::Pressed { return; }
-            if let Some(janela) = app.get_webview_window("main") {
-                let _ = janela.unminimize();
-                let _ = janela.show();
-                let _ = janela.set_focus();
-            }
-            let _ = app.emit("margem://captura", ());
+            if evento.state() == ShortcutState::Pressed { crate::bandeja::pedir_captura(app); }
         })
         .build()
 }

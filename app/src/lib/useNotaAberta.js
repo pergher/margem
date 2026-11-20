@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
 import { headingsOf } from "@/components/Outline";
+import { bandejaPronta } from "@/lib/bandeja";
 
 const AUTOSAVE_MS = 800;
 
@@ -60,6 +61,7 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
         e.preventDefault();
         await save();
         if (dirty.current && !window.confirm("Não foi possível salvar a nota aberta. Fechar mesmo assim e perder o que foi digitado?")) return;
+        if (bandejaPronta()) { await w.hide(); return; } // modo bandeja: a nota já foi salva; o app segue rodando
         await w.destroy();
       }).then((f) => { if (vivo) desfazer = f; else f(); });
     });

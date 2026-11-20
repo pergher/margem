@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ACTIONS, comboOf, conflict, effective, hasModifier, pretty, saveOverrides } from "@/lib/shortcuts";
 import { Estado } from "@/components/ui/estado";
 import { isTauri } from "@/lib/api";
+import { temBandeja } from "@/lib/bandeja";
 
 export let capturing = false; // lido pelo tratador global de teclas, para não disparar ações durante a captura
 
@@ -58,6 +59,16 @@ export function ShortcutsPage({ overrides, setOverrides, atalhoGlobal }) {
               </span>
             </label>
             {atalhoGlobal.ligado && atalhoGlobal.erro && <Estado tipo="warn" className="mt-2 text-xs">Não deu para ativar: {atalhoGlobal.erro}</Estado>}
+            {temBandeja() && (
+              <label className="mt-3 flex items-start gap-3 border-t pt-3 text-sm">
+                <input type="checkbox" className="mt-1" checked={!!atalhoGlobal.bandeja} onChange={(e) => atalhoGlobal.setBandeja(e.target.checked)} />
+                <span>
+                  <span className="font-medium">Manter o Margem na bandeja ao fechar a janela</span>
+                  <span className="block text-xs text-muted-foreground">Fechar a janela só a esconde; o app continua rodando perto do relógio e o atalho acima segue valendo. Clique no ícone para abrir, ou use o menu dele para sair de vez.</span>
+                  {atalhoGlobal.bandeja && atalhoGlobal.erroBandeja && <Estado tipo="warn" className="mt-1 text-xs">Não deu para ativar: {atalhoGlobal.erroBandeja}</Estado>}
+                </span>
+              </label>
+            )}
           </div>
         )}
         <ul className="mt-6 divide-y rounded-xl border">
