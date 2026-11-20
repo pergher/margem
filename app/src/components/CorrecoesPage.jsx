@@ -95,7 +95,7 @@ export function CorrecoesPage({ items, turmasAno = [], onRefresh, onCorrigir, on
         { id: "acao", nome: "", w: "w-40", render: (x) => <span className="flex items-center gap-1.5"><BotaoAcao x={x} onClick={() => onCorrigir(x.path)} className="py-1" /></span> },
       ]}
       menuExtra={(x) => [{ nome: rotuloAcao(x), Icone: ClipboardCheck, fazer: () => onCorrigir(x.path) }, { nome: "Visão da turma", Icone: ChartColumn, fazer: () => onTurma(x.path) }, { nome: "Abrir arquivo", Icone: ClipboardCheck, fazer: () => onOpen(x.path) }]}
-      onOpen={(x) => { if (!compacto) onTurma(x.path); }} onRename={onRename} onDelete={onDelete}
+      onOpen={(x) => { if (!compacto) onTurma(x.path); }} onRename={onRename} onDelete={onDelete} onAtualizar={onRefresh}
       vazio={{ titulo: "Nenhuma correção ainda", texto: "Use “Nova correção” para começar: os lotes ficam em Anos/AAAA/Correcoes.", acao: compacto ? undefined : { rotulo: "Nova correção", onClick: () => setNova(true) } }}
     />
   </>);

@@ -168,7 +168,7 @@ export function DocumentosPage({ filtroNav, items, dirs, onOpen, onRefresh, aba,
         { id: "mod", nome: "Modificado em", w: "w-36", ordem: "modificado", render: (i) => <span className="text-xs text-muted-foreground">{quando(i.modified)}</span> },
       ]}
       menuExtra={(i) => (i.tipo_ === "banco" && i.lido ? [{ nome: "Montar prova com este banco", Icone: Plus, fazer: () => montar(i.path) }] : i.tipo_ === "texto" && onAtividade ? [{ nome: "Atividade a partir deste texto", Icone: Plus, fazer: () => onAtividade(i.path) }] : [])}
-      onOpen={(i) => onOpen(i.path)} onRename={onRename} onMove={onMove} onDelete={onDelete} onNovaPasta={onNovaPasta} onImportar={importar}
+      onOpen={(i) => onOpen(i.path)} onRename={onRename} onMove={onMove} onDelete={onDelete} onAtualizar={(paths) => { if (paths?.length) setMetas((m) => { const n = { ...m }; paths.forEach((x) => delete n[x]); return n; }); return onRefresh(); }} onNovaPasta={onNovaPasta} onImportar={importar}
       botoes={<BotaoNovo onEscolher={(id) => (id === "prova" ? montar(null) : onNovo?.(id))} />}
       vazio={{ titulo: "Nenhum documento ainda", texto: "Tudo o que está na pasta Acervo aparece aqui: aulas, gramática, textos, bancos de questões, oficinas e ciclos. As provas montadas (Acervo/Provas) também.", acao: { rotulo: "Criar uma aula", onClick: () => onNovo?.("aula") } }}
       vazioPasta="Esta pasta está vazia. Crie um documento, uma pasta ou arraste arquivos .md para cá."
