@@ -1,6 +1,6 @@
-// Ações dos blocos didáticos (botões "Copiar como imagem" e "Pedir ao Claude"). A imagem é desenhada direto num canvas
+// Ações dos blocos didáticos (botões "Copiar como imagem", "Copiar código" e "Pedir ao Claude"). A imagem é desenhada direto num canvas
 // (SVG com foreignObject deixaria o canvas "sujo" no WebKit e a cópia falharia).
-import { parseExemplos, parseSintaxe, matiz, pedidoSintaxe } from "@/lib/blocos";
+import { parseExemplos, parseSintaxe, matiz, pedidoSintaxe, blocoComoMarkdown } from "@/lib/blocos";
 
 const FONTE = "'Source Serif 4 Variable', Georgia, serif", UI = "'Inter Variable', system-ui, sans-serif";
 
@@ -117,6 +117,8 @@ export async function acionarBotao(alvo) {
   try {
     if (btn.dataset.acao === "pedir") {
       await navigator.clipboard.writeText(pedidoSintaxe(codigo)); msg = "Pedido copiado: cole no Claude";
+    } else if (btn.dataset.acao === "texto") {
+      await navigator.clipboard.writeText(blocoComoMarkdown({ lang, opcoes, codigo })); msg = "Código copiado";
     } else {
       const camadas = [...bloco.querySelectorAll("input[data-camada]")].filter((x) => x.checked).map((x) => x.dataset.camada);
       const png = await blocoParaPng({ lang, opcoes, codigo, ...(bloco.querySelector("input[data-camada]") ? { camadas } : {}) });

@@ -42,7 +42,10 @@ function marcas(s) {
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
-const ACOES = { imagem: "Copiar como imagem", pedir: "Pedir ao Claude" };
+const ACOES = { imagem: "Copiar como imagem", texto: "Copiar código", pedir: "Pedir ao Claude" };
+
+/** O bloco como está na nota (cerca, opções e conteúdo), para colar em outra nota. */
+export const blocoComoMarkdown = ({ lang, opcoes = [], codigo }) => "```" + lang + (opcoes.length ? " " + opcoes.join(" ") : "") + "\n" + codigo.replace(/\n+$/, "") + "\n```\n";
 /** Moldura do bloco: guarda idioma, opções e fonte (para as ações de copiar/pedir) e a barra de botões. */
 function moldura(cls, lang, opcoes, codigo, interior, acoes) {
   const btn = acoes.map((a) => `<button type="button" class="bl-btn" data-acao="${a}">${ACOES[a]}</button>`).join("");
@@ -55,7 +58,7 @@ export function htmlExemplo(codigo, opcoes = []) {
   const linhas = itens.map((x, i) => exercicio
     ? `<li class="ex-item"><div class="ex-l ex-errado"><span class="ex-r">${i + 1}.</span><span>${marcas((x.errado ?? x.certo ?? "").replace(/\[([^\]]+)\]\{(?:erro|ok)\}/g, "[$1]{erro}"))}</span></div><div class="ex-resp">Resposta:</div></li>`
     : `<li class="ex-item">${x.errado != null ? `<div class="ex-l ex-errado"><span class="ex-r">✗ errado</span><span>${marcas(x.errado)}</span></div>` : ""}${x.certo != null ? `<div class="ex-l ex-certo"><span class="ex-r">✓ certo</span><span>${marcas(x.certo)}</span></div>` : ""}${x.porque ? `<div class="ex-l ex-porque"><span class="ex-r">porquê</span><span>${marcas(x.porque)}</span></div>` : ""}</li>`);
-  return moldura("ex-bloco", "exemplo", opcoes, codigo, `<ol class="ex-lista">${linhas.join("")}</ol>`, ["imagem"]);
+  return moldura("ex-bloco", "exemplo", opcoes, codigo, `<ol class="ex-lista">${linhas.join("")}</ol>`, ["imagem", "texto"]);
 }
 
 // ---------- sintaxe ----------
@@ -100,11 +103,11 @@ export function htmlSintaxe(codigo, opcoes = []) {
   const frases = codigo.split("\n").map((l) => l.trim()).filter(Boolean).map(parseSintaxe);
   if (!frases.length) return null;
   const exercicio = opcoes.includes("exercicio") || opcoes.includes("exercício");
-  if (exercicio) return moldura("sx-bloco", "sintaxe", opcoes, codigo, frases.map((f, i) => `<div class="sx-ex"><div class="sx-frase-ex">${i + 1}. ${esc(textoDe(f))}</div><div class="ex-resp">Análise:</div></div>`).join(""), ["imagem"]);
+  if (exercicio) return moldura("sx-bloco", "sintaxe", opcoes, codigo, frases.map((f, i) => `<div class="sx-ex"><div class="sx-frase-ex">${i + 1}. ${esc(textoDe(f))}</div><div class="ex-resp">Análise:</div></div>`).join(""), ["imagem", "texto"]);
   const usadas = [...camadasDe(frases.flat())];
   const alternar = usadas.length > 1
     ? `<div class="sx-camadas" aria-label="Camadas">${usadas.map((c) => `<label><input type="checkbox" checked data-camada="${c}">${CAMADAS[c]}</label>`).join("")}</div>` : "";
-  return moldura("sx-bloco", "sintaxe", opcoes, codigo, alternar + frases.map((f) => `<div class="sx-frase">${nosHtml(f)}</div>`).join(""), ["imagem", "pedir"]);
+  return moldura("sx-bloco", "sintaxe", opcoes, codigo, alternar + frases.map((f) => `<div class="sx-frase">${nosHtml(f)}</div>`).join(""), ["imagem", "texto", "pedir"]);
 }
 
 /** HTML do bloco se a cerca é `exemplo` ou `sintaxe` e tem conteúdo; senão `null` (o texto fica como código). */

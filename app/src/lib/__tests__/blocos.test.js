@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cabecalhoCerca, parseExemplos, parseSintaxe, htmlBloco } from "../blocos";
+import { cabecalhoCerca, parseExemplos, parseSintaxe, htmlBloco, blocoComoMarkdown } from "../blocos";
 
 describe("blocos", () => {
   it("lê a linha de abertura", () => {
@@ -42,5 +42,14 @@ describe("blocos", () => {
   it("ignora outros idiomas e blocos vazios", () => {
     expect(htmlBloco("js", [], "x")).toBeNull();
     expect(htmlBloco("exemplo", [], "")).toBeNull();
+  });
+  it("o bloco volta como Markdown, com cerca e opções, para colar em outra nota", () => {
+    expect(blocoComoMarkdown({ lang: "sintaxe", opcoes: [], codigo: "[Os alunos]{sujeito} leram.\n" })).toBe("```sintaxe\n[Os alunos]{sujeito} leram.\n```\n");
+    expect(blocoComoMarkdown({ lang: "exemplo", opcoes: ["exercicio"], codigo: "errado: a\ncerto: b" })).toBe("```exemplo exercicio\nerrado: a\ncerto: b\n```\n");
+  });
+  it("exemplo e sintaxe (também em exercício) têm o botão Copiar código", () => {
+    for (const [lang, opcoes, codigo] of [["exemplo", [], "errado: a\ncerto: b"], ["exemplo", ["exercicio"], "errado: a\ncerto: b"], ["sintaxe", [], "[Eu]{sujeito} saí."], ["sintaxe", ["exercicio"], "Eu saí."]]) {
+      expect(htmlBloco(lang, opcoes, codigo)).toContain('data-acao="texto"');
+    }
   });
 });
