@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { EditorView } from "@codemirror/view";
 import { html } from "@/lib/aulaHtml";
 import { PainelGramatica } from "@/components/PainelGramatica";
 import { invoke } from "@/lib/api";
@@ -97,6 +98,17 @@ export function Abas({ rotulo, abas, atual, onSelect, extra, mt = "mt-5" }) {
 export const STATUS = ["pendente", "andamento", "finalizado", "arquivado"];
 const LISTAS = ["assuntos", "tags", "turmas", "habilidades"];
 
+/** Teclado no topo da aula: ↑/↓ andam entre título, status e o primeiro editor (elementos `data-topo-aula`). */
+function andarNoTopo(e, dir) {
+  const topos = [...document.querySelectorAll("[data-topo-aula]")], i = topos.indexOf(e.currentTarget), prox = topos[i + dir];
+  e.preventDefault();
+  if (prox) { prox.focus(); return; }
+  if (dir > 0) {
+    const ed = document.querySelector(".aula-ed .cm-content"), v = ed && EditorView.findFromDOM(ed);
+    if (v) { v.focus(); v.dispatch({ selection: { anchor: 0 }, scrollIntoView: true }); }
+  }
+}
+
 /** Título que vira campo ao clicar (renomeia o arquivo); Enter grava, Esc cancela. */
 export function TituloEditavel({ nome, onRename, rotulo = "aula" }) {
   const [edit, setEdit] = useState(false), [v, setV] = useState(nome), [erro, setErro] = useState("");
@@ -111,10 +123,11 @@ export function TituloEditavel({ nome, onRename, rotulo = "aula" }) {
   return (
     <>
       {edit
-        ? <input autoFocus value={v} onChange={(e) => setV(e.target.value)} onBlur={() => fim(true)} aria-label={`Título d${rotulo === "aula" ? "a" : "o"} ${rotulo}`}
-            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { e.preventDefault(); fim(false); } }}
+        ? <input autoFocus data-topo-aula value={v} onChange={(e) => setV(e.target.value)} onBlur={() => fim(true)} aria-label={`Título d${rotulo === "aula" ? "a" : "o"} ${rotulo}`}
+            onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); else if (e.key === "Escape") { e.preventDefault(); fim(false); } else if (e.key === "ArrowDown") { const el = e.currentTarget; andarNoTopo(e, 1); el.blur(); } }}
             className="mt-1 w-full rounded-md border bg-background px-1.5 py-0.5 font-serif text-2xl font-semibold leading-tight md:text-3xl" />
-        : <h1 role="button" tabIndex={0} title={`Clique para renomear ${rotulo === "aula" ? "a" : "o"} ${rotulo}`} onClick={() => setEdit(true)} onKeyDown={(e) => e.key === "Enter" && setEdit(true)}
+        : <h1 role="button" tabIndex={0} data-topo-aula title={`Clique para renomear ${rotulo === "aula" ? "a" : "o"} ${rotulo}`} onClick={() => setEdit(true)}
+            onKeyDown={(e) => { if (e.key === "Enter") setEdit(true); else if (e.key === "ArrowDown") andarNoTopo(e, 1); else if (e.key === "ArrowUp") andarNoTopo(e, -1); }}
             className="mt-1 cursor-text rounded-sm font-serif text-2xl font-semibold leading-tight md:text-3xl hover:bg-accent/60">{nome}</h1>}
       {erro && <div className="mt-1 text-xs text-err">{erro}</div>}
     </>
@@ -426,7 +439,8 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
               <label className="relative inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-accent py-0.5 pl-2.5 pr-2 text-xs font-medium text-foreground hover:bg-accent/70 focus-within:ring-2 focus-within:ring-ring" title="Clique para mudar o status">
                 <span className={cn("h-1.5 w-1.5 rounded-full", a.meta.status === "finalizado" ? "bg-ok" : a.meta.status ? "bg-warn" : "bg-muted-foreground")} />
                 {a.meta.status || "sem status"}<ChevronDown className="h-3 w-3 text-muted-foreground" />
-                <select aria-label="Status da aula" value={a.meta.status} onChange={(e) => mudarProp("status", e.target.value)} className="absolute inset-0 cursor-pointer opacity-0">
+                <select aria-label="Status da aula" data-topo-aula value={a.meta.status} onChange={(e) => mudarProp("status", e.target.value)}
+                  onKeyDown={(e) => { if (e.altKey) return; if (e.key === "ArrowDown") andarNoTopo(e, 1); else if (e.key === "ArrowUp") andarNoTopo(e, -1); }} className="absolute inset-0 cursor-pointer opacity-0">
                   {!statusLista.includes(a.meta.status) && <option value={a.meta.status}>{a.meta.status || "sem status"}</option>}
                   {statusLista.map((x) => <option key={x} value={x}>{x}</option>)}
                 </select>

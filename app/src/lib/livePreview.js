@@ -617,7 +617,13 @@ function passarAoVizinho(dir, horizontal) {
     if (!naBorda) return false;
     const todos = [...document.querySelectorAll(".aula-ed .cm-content")], i = todos.indexOf(view.contentDOM), viz = todos[i + dir];
     const v = i >= 0 && viz ? EditorView.findFromDOM(viz) : null;
-    if (!v) return false;
+    if (!v) {
+      // Acima do primeiro editor da aula ficam o status e o título (fora do CodeMirror, marcados com `data-topo-aula`).
+      const topo = i === 0 && dir < 0 ? [...document.querySelectorAll("[data-topo-aula]")].pop() : null;
+      if (!topo) return false;
+      topo.focus();
+      return true;
+    }
     v.focus();
     v.dispatch({ selection: { anchor: alvoFim ? 0 : v.state.doc.length }, scrollIntoView: true });
     return true;
