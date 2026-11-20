@@ -31,7 +31,7 @@ const SECOES = [
   { id: "sobre", label: "Sobre o Margem", icon: Info, soApp: true },
 ];
 
-export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh, modoCompacto }) {
+export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefresh, modoCompacto, atalhoGlobal }) {
   const compacto = useEhCompacto();
   const [secao, setSecao] = useState("aparencia");
   const [wNav, setWNav] = useWidth("config.menu", 208);
@@ -52,7 +52,7 @@ export function SettingsPage({ tema, overrides, setOverrides, items = [], onRefr
       {secao === "escola" && <EscolaEProfessor items={items} onRefresh={onRefresh} />}
       {secao === "notas" && <PastaDoVault />}
       {secao === "ia" && <ConfigIA />}
-      {secao === "atalhos" && <ShortcutsPage overrides={overrides} setOverrides={setOverrides} />}
+      {secao === "atalhos" && <ShortcutsPage overrides={overrides} setOverrides={setOverrides} atalhoGlobal={atalhoGlobal} />}
       {secao === "sobre" && <Atualizacoes />}
     </div>
   );

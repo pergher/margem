@@ -32,6 +32,7 @@ export function usePreferencias(aoMudarZoom) {
   const [showOutline, setShowOutline] = usePref("outline", true);
   const [panelTab, setPanelTab] = usePref("painel", "sumario");
   const [showSide, setShowSide] = usePref("side", true);
+  const [atalhoGlobal, setAtalhoGlobal] = usePref("atalhoGlobal", true); // captura rápida também fora do app (computador)
 
   const [destaques, setDestaques] = useState(() => ({ ...DESTAQUES_PADRAO, ...store.get("destaques", {}) }));
   useEffect(() => { aplicarDestaques(destaques); store.set("destaques", destaques); }, [destaques]);
@@ -48,6 +49,6 @@ export function usePreferencias(aoMudarZoom) {
   return {
     dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, fonte, setFonte, tamanhoTexto, setTamanhoTexto,
     estiloCallout, setEstiloCallout, forma, setForma, numeros, setNumeros, destaques, setDestaques,
-    zoom, setZoom, outlineW, setOutlineW, showOutline, setShowOutline, panelTab, setPanelTab, showSide, setShowSide,
+    zoom, setZoom, outlineW, setOutlineW, showOutline, setShowOutline, panelTab, setPanelTab, showSide, setShowSide, atalhoGlobal, setAtalhoGlobal,
   };
 }

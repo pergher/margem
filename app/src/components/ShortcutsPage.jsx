@@ -3,10 +3,11 @@ import { IconRotateClockwise as RotateCcw } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { ACTIONS, comboOf, conflict, effective, hasModifier, pretty, saveOverrides } from "@/lib/shortcuts";
 import { Estado } from "@/components/ui/estado";
+import { isTauri } from "@/lib/api";
 
 export let capturing = false; // lido pelo tratador global de teclas, para não disparar ações durante a captura
 
-export function ShortcutsPage({ overrides, setOverrides }) {
+export function ShortcutsPage({ overrides, setOverrides, atalhoGlobal }) {
   const [rec, setRec] = useState(null);   // id da ação em captura
   const [msg, setMsg] = useState(null);
   const map = effective(overrides);
@@ -47,6 +48,18 @@ export function ShortcutsPage({ overrides, setOverrides }) {
           <button onClick={() => { apply({}); setMsg(null); setRec(null); }} disabled={!Object.keys(overrides).length}
             className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-40">Restaurar todos</button>
         </div>
+        {isTauri && atalhoGlobal && (
+          <div className="mt-6 rounded-xl border px-4 py-3">
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" className="mt-1" checked={atalhoGlobal.ligado} onChange={(e) => atalhoGlobal.setLigado(e.target.checked)} />
+              <span>
+                <span className="font-medium">Captura rápida também fora do Margem</span>
+                <span className="block text-xs text-muted-foreground">Com o app aberto em segundo plano ou minimizado, o atalho “Captura rápida” (abaixo) traz a janela e abre a anotação. Funciona no Windows; no Linux com Wayland o sistema não permite. Se outro programa já usa a combinação, troque-a abaixo.</span>
+              </span>
+            </label>
+            {atalhoGlobal.ligado && atalhoGlobal.erro && <Estado tipo="warn" className="mt-2 text-xs">Não deu para ativar: {atalhoGlobal.erro}</Estado>}
+          </div>
+        )}
         <ul className="mt-6 divide-y rounded-xl border">
           {ACTIONS.map((a) => {
             const changed = map[a.id] !== a.def;

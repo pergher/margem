@@ -45,6 +45,7 @@ import { BarraRevisao } from "@/components/BarraRevisao";
 import { useIA } from "@/lib/useIA";
 import { PainelIA } from "@/components/PainelIA";
 import { usePreferencias } from "@/lib/usePreferencias";
+import { useAtalhoGlobal } from "@/lib/useAtalhoGlobal";
 import { useNavegacao } from "@/lib/useNavegacao";
 import { useHistoricoNavegacao } from "@/lib/useHistoricoNavegacao";
 import { useAtalhos } from "@/lib/useAtalhos";
@@ -216,6 +217,7 @@ export default function App() {
   useAtalhos({ compacto, overrides, go, save, page, cur, ed, foco, setSearchOpen, setPaletteOpen, setCapturaOpen, setShowSide, setFoco, setNumeros, setZoom, abrirIA: () => { setShowOutline(true); setPanelTab("ia"); } });
 
   const keys = effective(overrides);
+  const erroAtalhoGlobal = useAtalhoGlobal({ combo: keys.captura, ligado: P.atalhoGlobal && !compacto, aoDisparar: () => setCapturaOpen(true) });
   const commands = [
     { id: "p-editor", label: "Ir para o editor", run: () => setPage("editor") },
     { id: "p-hoje", label: "Ir para Hoje", hint: "dia início", run: () => irSecao("hoje") },
@@ -358,7 +360,7 @@ export default function App() {
         </header>}
         {!compacto && <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />}
 
-        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} modoCompacto={{ modo: modoTela, setModo: setModoTela }} />}
+        {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} modoCompacto={{ modo: modoTela, setModo: setModoTela }} atalhoGlobal={{ ligado: P.atalhoGlobal, setLigado: P.setAtalhoGlobal, erro: erroAtalhoGlobal }} />}
         {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
         {(carregado || page === "config" || (page === "editor" && !personalizada)) && <>
         {page === "documentos" && <DocumentosPage filtroNav={documentosTipo} items={items} dirs={dirs} onOpen={open} onRefresh={refresh} onNovo={(id) => (id === "ciclo" ? novoCiclo(subDaPasta(documentosPasta, "Ciclos")) : id === "aula" ? novaAula(subDaPasta(documentosPasta, "Aulas")) : id === "gramatica" ? novaGramatica(subDaPasta(documentosPasta, "Gramática")) : novoRecurso(id))} onAtividade={(p) => { setTextoAtiv(p); irMontarProva(); }} aba={documentosAba} setAba={setDocumentosAba} pasta={documentosPasta} setPasta={setDocumentosPasta} onRename={renomearNota} onMove={moverEntrada} onDelete={excluirEntrada} onNovaPasta={criarPastaEm} textoInicial={textoAtiv} onUsouTexto={() => setTextoAtiv(null)} />}
