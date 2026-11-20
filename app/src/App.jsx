@@ -1,3 +1,4 @@
+import { definirProvedorDeLinks } from "@/lib/wikilinks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke, isTauri } from "@/lib/api";
 import { IconArrowLeft as ArrowLeft, IconArrowRight as ArrowRight, IconListNumbers as ListOrdered, IconListTree as ListTree, IconLayoutSidebar as PanelLeft, IconSearch as Search, IconMaximize as Maximize2, IconPlus as Plus, IconSettings as Engrenagem } from "@tabler/icons-react";
@@ -115,6 +116,19 @@ export default function App() {
   }, []);
   const refresh = useCallback(() => Promise.all([invoke("list_notes"), invoke("list_dirs")]).then(([n, d]) => { setItems(n); setDirs(d); setCarregado(true); }).catch((e) => { setStatus(String(e)); setCarregado(true); }), []);
   useEffect(() => { if (vaultRoot) refresh(); }, [refresh, vaultRoot]);
+  // Autocompletar de `[[`: notas do vault; "Criar «nome»" cria a nota na pasta da nota aberta.
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  useEffect(() => {
+    definirProvedorDeLinks({
+      notas: () => itemsRef.current,
+      criar: (nome) => {
+        const dir = (cur.current || "").replace(/[\\/][^\\/]*$/, "");
+        if (!dir) return;
+        invoke("create_note", { dir, name: nome }).then(() => { setStatus(`Nota criada: ${nome}`); return refresh(); }).catch((e) => setStatus("Erro: " + e));
+      },
+    });
+  }, [refresh]);
   const obs = useObservador({ cur, dirty, refresh, aplicarDoDisco, manterMinha, vaultRoot });
   const props = usePropostas({ ed, cur, refresh, setStatus, vaultRoot });
   const getContextoIA = () => (cur.current && ed.current ? { path: cur.current, texto: ed.current.getText(), selecao: ed.current.getSelection() || window.getSelection()?.toString() || "" } : null);
