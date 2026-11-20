@@ -6,6 +6,7 @@ import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import { menuBarra } from "@/lib/menuBarra";
 import { indentarItem, recuarItem, enterNaLista } from "@/lib/listas";
+import { barraFlutuante } from "@/lib/barraFlutuante";
 import { revisaoCampo, resumoRevisao, iniciarRevisao, aceitarTudo, recusarTudo, irPara, definirModo, encerrarRevisao } from "@/lib/revisao";
 import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate, navegacaoBlocos, navegacaoEntreEditores, tituloExt, subirAoTitulo } from "@/lib/livePreview";
 
@@ -27,7 +28,7 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onR
   const novoEstado = (doc, anchor = 0) => EditorState.create({
     doc, selection: { anchor },
     extensions: [
-      history(), markdown({ extensions: [GFM] }), livePreview, menuBarra, revisaoCampo, EditorView.lineWrapping, comp.current.of(gutter(gutterAtual.current.numeros, gutterAtual.current.linhaInicial)),
+      history(), markdown({ extensions: [GFM] }), livePreview, menuBarra, barraFlutuante, revisaoCampo, EditorView.lineWrapping, comp.current.of(gutter(gutterAtual.current.numeros, gutterAtual.current.linhaInicial)),
       Prec.high(navegacaoBlocos), Prec.high(subirAoTitulo), Prec.high(navegacaoEntreEditores), tit.current.of(tituloExt(tituloAtual.current)),
       Prec.highest(keymap.of([{ key: "Tab", run: indentarItem }, { key: "Shift-Tab", run: recuarItem }, { key: "Enter", run: enterNaLista }])), // listas: nível e renumeração
       keymap.of([...defaultKeymap, ...historyKeymap]),

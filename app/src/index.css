@@ -287,3 +287,12 @@
 :root[data-compacto="sim"][data-teclado="sim"] button[aria-label="Anotar"] { display: none; }
 /* Respiro no fim das telas rolantes, para o botão flutuante não cobrir o último item. */
 :root[data-compacto="sim"] .min-h-0.flex-1.overflow-auto { padding-bottom: 5.5rem; }
+
+/* Barra flutuante do editor (lib/barraFlutuante.js) */
+.cm-tooltip:has(.cm-barra-flutuante) { border: none !important; background: transparent !important; }
+.cm-barra-flutuante { display: flex; align-items: center; gap: 1px; padding: 3px; border: 1px solid hsl(var(--border)); border-radius: 9px; background: hsl(var(--popover, var(--background))); color: hsl(var(--foreground)); box-shadow: 0 4px 14px hsl(0 0% 0% / .14); font-family: var(--f-ui, sans-serif); font-size: .8rem; margin-bottom: 4px; }
+.cm-barra-flutuante button { min-width: 28px; height: 26px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; line-height: 1; }
+.cm-barra-flutuante button:hover { background: hsl(var(--accent)); color: hsl(var(--accent-foreground, var(--foreground))); }
+.cm-barra-flutuante button.cm-h-mark { background: #fff3a6; color: #1f1d1a; padding: 0 6px; }
+.cm-barra-flutuante button.cm-h-mark:hover { background: #ffe97a; }
+.cm-barra-sep { width: 1px; height: 16px; margin: 0 3px; background: hsl(var(--border)); }

@@ -1,7 +1,8 @@
-// Autocompletar do editor: `/` no começo de uma linha (blocos) e `[[` (notas, em lib/wikilinks.js).
+// Autocompletar do editor: `/` no começo de uma linha (blocos) e `[[` (notas, em lib/wikilinks.js) e `:` (emoji, em lib/emojis.js).
 // Menu `/`: no começo de uma linha, `/` abre a lista de blocos para inserir (exemplo, sintaxe, callout, mapa, erros da turma).
 import { autocompletion, snippet } from "@codemirror/autocomplete";
 import { fonteDeWikilinks } from "@/lib/wikilinks";
+import { fonteDeEmoji } from "@/lib/emojis";
 
 const bloco = (rotulo, detalhe, modelo) => ({ label: rotulo, detail: detalhe, apply: snippet(modelo) });
 
@@ -29,4 +30,4 @@ const fonte = (ctx) => {
   return { from: m.from, options: OPCOES, validFor: /^\/[\p{L}-]*$/u };
 };
 
-export const menuBarra = autocompletion({ override: [fonte, fonteDeWikilinks], icons: false, defaultKeymap: true });
+export const menuBarra = autocompletion({ override: [fonte, fonteDeWikilinks, fonteDeEmoji], icons: false, defaultKeymap: true });
