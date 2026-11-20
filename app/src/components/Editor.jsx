@@ -5,6 +5,7 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
 import { menuBarra } from "@/lib/menuBarra";
+import { indentarItem, recuarItem, enterNaLista } from "@/lib/listas";
 import { revisaoCampo, resumoRevisao, iniciarRevisao, aceitarTudo, recusarTudo, irPara, definirModo, encerrarRevisao } from "@/lib/revisao";
 import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate, navegacaoBlocos, navegacaoEntreEditores, tituloExt, subirAoTitulo } from "@/lib/livePreview";
 
@@ -28,6 +29,7 @@ export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onR
     extensions: [
       history(), markdown({ extensions: [GFM] }), livePreview, menuBarra, revisaoCampo, EditorView.lineWrapping, comp.current.of(gutter(gutterAtual.current.numeros, gutterAtual.current.linhaInicial)),
       Prec.high(navegacaoBlocos), Prec.high(subirAoTitulo), Prec.high(navegacaoEntreEditores), tit.current.of(tituloExt(tituloAtual.current)),
+      Prec.highest(keymap.of([{ key: "Tab", run: indentarItem }, { key: "Shift-Tab", run: recuarItem }, { key: "Enter", run: enterNaLista }])), // listas: nível e renumeração
       keymap.of([...defaultKeymap, ...historyKeymap]),
       EditorView.updateListener.of((u) => { if (u.docChanged && !silent.current) cb.current.onChange(u.state.doc); }),
       EditorView.updateListener.of((u) => { const a = u.startState.field(revisaoCampo), b = u.state.field(revisaoCampo); if (a !== b) cb.current.onRevisao?.(resumoRevisao(b)); }),

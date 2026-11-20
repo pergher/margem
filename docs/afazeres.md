@@ -94,7 +94,7 @@ Objetivo central. Aplicado só em cópias/fixtures (`tests/fixtures/vault`, e o 
 Fonte: `docs/comparativo-inkdrop.md`. Itens decididos com o usuário; a ordem abaixo é a sugerida.
 
 - [x] **Autocompletar `[[`** (feito em 2026-11-20, `lib/wikilinks.js`; testado no navegador, falta ver no Tauri): lista as notas por nome (sem acento nem maiúscula; a pasta aparece ao lado) enquanto digita; se nenhuma tem esse nome, "Criar «nome»" cria a nota na pasta da nota aberta e já liga o link (não abre a nova, para não interromper a escrita). Falta: sugerir títulos depois de `#` e apelido depois de `|`.
-- [ ] **Tab / Shift+Tab em listas** (hoje o Tab não indenta) e **renumeração automática** de listas numeradas. O Enter já continua a lista.
+- [x] **Tab / Shift+Tab em listas e renumeração** (feito em 2026-11-20, `lib/listas.js`; testado no navegador, falta ver no Tauri): Tab recua o item pela largura do marcador do irmão de cima (não pula níveis), Shift+Tab volta ao recuo do pai; vale para várias linhas selecionadas e para tarefas; o frontmatter é ignorado. Listas numeradas se renumeram após Tab, Shift+Tab e Enter (o item que desce vira 1). Falta: renumerar ao apagar um item (Backspace/Delete), e Tab no celular (sem teclado; um botão na barra do compacto).
 - [ ] **Barra flutuante** ao selecionar texto (negrito, itálico, código, link, destaque, título), pensada para usuários comuns.
 - [ ] **Autocompletar emoji** (`:` + 2 letras); no mesmo bloco da barra flutuante.
 - [ ] **Colar link sobre texto selecionado** vira link; buscar o título da página só depois, se valer (usa internet; vai só a URL).
