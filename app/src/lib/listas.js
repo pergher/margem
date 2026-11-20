@@ -1,6 +1,6 @@
 // Listas no editor: Tab / Shift+Tab mudam o nível do item (pela largura do marcador do item de cima, não por um número fixo),
 // e as listas numeradas se renumeram depois de Tab, Shift+Tab e Enter. Comandos de estado (`{ state, dispatch }`), testáveis sem DOM.
-import { ChangeSet } from "@codemirror/state";
+import { ChangeSet, EditorState } from "@codemirror/state";
 import { insertNewlineContinueMarkup } from "@codemirror/lang-markdown";
 
 const ITEM = /^([ \t]*)([-*+]|\d{1,9}[.)])( +)/;
@@ -123,3 +123,24 @@ export const enterNaLista = (view) => {
   if (mud.length) view.dispatch(st.update({ changes: mud, userEvent: "input" }));
   return true;
 };
+
+/** Apagar um item de lista numerada (ou só o marcador dele, ou a quebra de linha entre dois itens) renumera os que vêm depois. */
+export const renumerarAoApagar = EditorState.transactionFilter.of((tr) => {
+  if (!tr.docChanged || !tr.isUserEvent("delete")) return tr;
+  const antes = tr.startState.doc, doc = tr.newDoc;
+  const linhas = new Set();
+  tr.changes.iterChangedRanges((fromA, toA, fromB) => {
+    const apagado = antes.sliceString(fromA, toA);
+    if (!apagado.includes("\n") && !/^\s*([-*+]|\d{1,9}[.)])\s*$/.test(apagado)) return; // só mexe quando some um item ou um marcador
+    const n = doc.lineAt(Math.min(fromB, doc.length)).number;
+    linhas.add(n); if (n > 1) linhas.add(n - 1);
+  });
+  const vistos = new Set(), mud = [];
+  for (const n of linhas) {
+    if (noFrontmatter(doc, n)) continue;
+    for (const m of mudancasDeRenumeracao(doc, n)) if (!vistos.has(m.from)) { vistos.add(m.from); mud.push(m); }
+  }
+  if (!mud.length) return tr;
+  mud.sort((a, b) => a.from - b.from);
+  return [tr, { changes: mud, sequential: true }];
+});

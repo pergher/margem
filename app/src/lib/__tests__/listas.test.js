@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { EditorState } from "@codemirror/state";
 import { markdown } from "@codemirror/lang-markdown";
 import { GFM } from "@lezer/markdown";
-import { indentarItem, recuarItem, enterNaLista, lerItem } from "../listas";
+import { indentarItem, recuarItem, enterNaLista, lerItem, renumerarAoApagar } from "../listas";
 
 // `|` marca o cursor. Devolve o texto (com `|` no cursor) depois do comando.
 function rodar(cmd, texto) {
@@ -73,5 +73,24 @@ describe("Enter", () => {
   });
   it("fora de lista deixa o Enter normal", () => {
     expect(rodar(enterNaLista, "texto|").tratou).toBe(false);
+  });
+});
+
+describe("renumerar ao apagar", () => {
+  const estado = (doc) => EditorState.create({ doc, extensions: [markdown({ extensions: [GFM] }), renumerarAoApagar] });
+  const apagar = (doc, de, ate, evento = "delete.backward") => estado(doc).update({ changes: { from: de, to: ate }, userEvent: evento }).state.doc.toString();
+  it("some um item inteiro: os seguintes sobem", () => {
+    const d = "1. a\n2. b\n3. c\n4. d";
+    expect(apagar(d, 5, 10)).toBe("1. a\n2. c\n3. d"); // apaga "2. b\n"
+  });
+  it("junta com o item de cima (Backspace no começo do texto): renumera o resto", () => {
+    expect(apagar("1. a\n2. b\n3. c", 4, 5)).toBe("1. a2. b\n2. c"); // junta "a" com "2. b" e o 3 vira 2
+  });
+  it("apagar só o marcador tira o item da lista e renumera", () => {
+    expect(apagar("1. a\n2. b\n3. c", 5, 8)).toBe("1. a\nb\n2. c");
+  });
+  it("não renumera ao apagar uma letra comum nem fora de 'delete'", () => {
+    expect(apagar("1. a\n3. bb\n7. c", 9, 10)).toBe("1. a\n3. b\n7. c");
+    expect(apagar("1. a\n2. b\n3. c", 5, 10, "input")).toBe("1. a\n3. c");
   });
 });
