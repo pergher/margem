@@ -3,7 +3,8 @@ import { IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconP
 import { FASES, lerCiclos } from "@/lib/ciclos";
 import { SITUACOES, situacaoAula, lerSemana, lerSemanas, semanaNova, importarLegado, cicloDaTurma, proximasDoCiclo, criarSemana, proximaSegunda, segundaDe, rotuloDe, nomeSemana, removerAulaSemana, adicionarAvulsa, promoverAvulsa, adicionarDoCiclo } from "@/lib/semana";
 import { corTurma } from "@/lib/cores";
-import { lerTurmas, gravarTurmas, turmasDeTexto } from "@/lib/turmas";
+import { lerTurmas, gravarTurmas } from "@/lib/turmas";
+import { DefinirTurmas } from "@/components/DefinirTurmas";
 import { invoke } from "@/lib/api";
 import { Estado, Carregando } from "@/components/ui/estado";
 import { useEhCompacto } from "@/lib/useCompacto";
@@ -52,7 +53,7 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath, turmaGlobal }) 
     } catch (e) { falha(e); }
   };
 
-  if (!turmas.length) return <DefinirTurmas ano={ano} onOk={(lista) => mexer(async () => { await gravarTurmas(items, ano, { turmas: lista, aulas: cfg.aulas }); await onRefresh(); })} />;
+  if (!turmas.length) return <DefinirTurmas ano={ano} onOk={(lista) => mexer(async () => { await gravarTurmas(items, ano, { turmas: lista, aulas: cfg.aulas }); await onRefresh(); })}>Cada turma ganha {cfg.aulas} espaços de aula por semana.</DefinirTurmas>;
   if (!semanas.length) return (
     <div className="min-h-0 flex-1 overflow-auto p-8">
       <h1 className="font-serif text-3xl font-semibold">Esta semana</h1>
@@ -151,22 +152,6 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath, turmaGlobal }) 
             </div>
           </div>
         ); })}
-      </div>
-    </div>
-  );
-}
-
-/** Primeira vez: pede as turmas do ano e grava `Anos/AAAA/Turmas AAAA.md`. */
-function DefinirTurmas({ ano, onOk }) {
-  const [txt, setTxt] = useState("");
-  const lista = turmasDeTexto(txt);
-  return (
-    <div className="min-h-0 flex-1 overflow-auto p-8">
-      <h1 className="font-serif text-3xl font-semibold">Quais são as suas turmas em {ano}?</h1>
-      <p className="mt-2 max-w-xl text-xs text-muted-foreground">Cada turma ganha 4 espaços de aula por semana. Você pode mudar isso depois em Configurações → Turmas do ano.</p>
-      <div className="mt-4 flex items-center gap-2">
-        <input autoFocus value={txt} onChange={(e) => setTxt(e.target.value)} onKeyDown={(e) => e.key === "Enter" && lista.length && onOk(lista)} placeholder="ex.: 61, 62, 71, 81" className="w-72 rounded-md border bg-background px-3 py-1.5 text-sm" />
-        <button disabled={!lista.length} onClick={() => onOk(lista)} className="rounded-md bg-primary px-4 py-1.5 text-sm text-primary-foreground hover:opacity-90 disabled:opacity-40">Salvar</button>
       </div>
     </div>
   );

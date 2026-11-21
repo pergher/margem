@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { PlanejarCicloDialog } from "@/components/PlanejarCicloDialog";
 import { FASES, anosLetivos, criarProximoAno, lerCiclos, incluirCicloNoAno, tirarCicloDoAno, moverCicloNoAno, progressoDoCiclo } from "@/lib/ciclos";
 import { lerSemanas, segundaDe } from "@/lib/semana";
-import { lerTurmas, turmasDeTexto, sugerirTurmasDoProximoAno, AULAS_PADRAO } from "@/lib/turmas";
+import { DefinirTurmas } from "@/components/DefinirTurmas";
+import { lerTurmas, gravarTurmas, turmasDeTexto, sugerirTurmasDoProximoAno, AULAS_PADRAO } from "@/lib/turmas";
 import { corTurma } from "@/lib/cores";
 import { Estado, Carregando, Erro, Vazio } from "@/components/ui/estado";
 import { useEhCompacto } from "@/lib/useCompacto";
@@ -44,6 +45,7 @@ function Aulas({ aulas, semana }) {
   );
 }
 
+const seriesDe = (ts) => ts.map((t) => Number(t[0])).filter((n) => n >= 6 && n <= 9);
 let ultimo = null; // última leitura: a tela reaparece na hora e é atualizada por baixo
 function LinhaFora({ c, onCiclo, onIncluir, fixo = false }) {
   const [ano, setAno] = useState(6), [tri, setTri] = useState(1);
@@ -81,7 +83,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
   const [anoSel, setAnoSel] = useState(null); // ano letivo mostrado (independente da Semana); null = o mais recente
   useEffect(() => { lerCiclos(items, anoSel).then(async (c) => {
     const [semanas, cfg] = await Promise.all([lerSemanas(items).catch(() => []), lerTurmas(items, c.anoLetivo ?? String(new Date().getFullYear())).catch(() => ({ turmas: [] }))]);
-    ultimo = { ...c, semanas, turmasCfg: cfg.turmas }; setDados(ultimo);
+    ultimo = { ...c, semanas, turmasCfg: cfg.turmas, aulasCfg: cfg.aulas }; setDados(ultimo);
   }).catch((e) => setErro(String(e))); }, [items, tick, anoSel]);
 
   if (erro) return <Erro>Erro: {erro}</Erro>;
@@ -116,9 +118,11 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
     </div>
   );
   const dialogo = <>{dialogoAno}{plan && <PlanejarCicloDialog items={items} anoLetivo={anoLetivo} onClose={() => setPlan(false)} onCriado={(p) => { setPlan(false); setTick((t) => t + 1); onRefresh?.(); onOpen?.(p); }} />}</>;
-  if (!ciclos.length) return <><div className="px-8 pt-8"><h1 className="font-serif text-2xl font-semibold md:text-3xl">Ano <span className="text-muted-foreground">{anoLetivo}</span> {navAno}</h1></div><Vazio titulo="Nenhum plano de ciclo ainda" acao={{ rotulo: "Planejar ciclo", onClick: () => setPlan(true) }}>Os planos ficam em Anos/AAAA/Planejamento. Crie o primeiro para ver o ano aqui.</Vazio>{dialogo}</>;
   // Turmas: as do arquivo do ano; sem ele, as que aparecem nas semanas.
   const turmas = dados.turmasCfg?.length ? dados.turmasCfg : [...new Set((dados.semanas ?? []).flatMap((sm) => sm.turmas.map((t) => t.turma)))].sort();
+  // Sem turmas, o Planejamento ajuda a criá-las (como a Semana): cada turma ganha seu ano escolar, com os 3 trimestres para incluir ciclos.
+  if (!turmas.length) return <DefinirTurmas ano={anoLetivo ?? String(new Date().getFullYear())} onOk={(lista) => gravarTurmas(items, anoLetivo ?? String(new Date().getFullYear()), { turmas: lista, aulas: dados.aulasCfg ?? AULAS_PADRAO }).then(() => { setTick((t) => t + 1); onRefresh?.(); }).catch((e) => setErro(String(e?.message ?? e)))}>Cada turma ganha, no Planejamento, os espaços para incluir ciclos em cada trimestre do seu ano escolar.</DefinirTurmas>;
+  if (!ciclos.length && !seriesDe(turmas).length) return <><div className="px-8 pt-8"><h1 className="font-serif text-2xl font-semibold md:text-3xl">Ano <span className="text-muted-foreground">{anoLetivo}</span> {navAno}</h1></div><Vazio titulo="Nenhum plano de ciclo ainda" acao={{ rotulo: "Planejar ciclo", onClick: () => setPlan(true) }}>Os planos ficam em Anos/AAAA/Planejamento. Crie o primeiro para ver o ano aqui.</Vazio>{dialogo}</>;
   // Progresso vem das notas de semana (✓ = aula dada); só ciclos ligados a uma turma têm situação.
   const progresso = (c) => progressoDoCiclo(c, dados.semanas);
   const seg = segundaDe(), chave = `${seg.getFullYear()}-${String(seg.getMonth() + 1).padStart(2, "0")}-${String(seg.getDate()).padStart(2, "0")}`;
@@ -128,7 +132,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
   // Filtro de turma: os ciclos do ano escolar da turma (61 → 6º ano) e os que ela já usa nas semanas.
   const visiveis = ciclos.filter((c) => c.incluido && (!filtro || String(c.ano) === filtro[0] || progresso(c).some((p) => p.turma === filtro)));
   const fora = ciclos.filter((c) => !c.incluido);
-  const seriesTurmas = (filtro ? [filtro] : turmas).map((t) => Number(t[0])).filter((n) => n >= 6 && n <= 9);
+  const seriesTurmas = seriesDe(filtro ? [filtro] : turmas);
   const anos = [...new Set([...visiveis.map((c) => c.ano), ...seriesTurmas])].filter(Boolean).sort((a, b) => a - b);
   const semHabilidade = ciclos.filter((c) => !c.habilidades.length);
   const semTitulo = ciclos.filter((c) => c.vazio);
@@ -152,7 +156,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
         <p className="mt-1 text-xs text-muted-foreground">Ciclos do Acervo que o Planejamento {anoLetivo} ainda não usa. Clique em Incluir para pôr o ciclo neste trimestre.</p>
         <div className="-mx-5 mt-3 flex max-h-[60vh] flex-col divide-y overflow-auto border-t">
           {fora.map((c) => <LinhaFora key={c.path} c={c} fixo onCiclo={(x) => { setIncl(null); onCiclo(x); }} onIncluir={() => incluir(c, { ano: incl.ano, tri: incl.tri })} />)}
-          {!fora.length && <div className="px-5 py-6 text-sm text-muted-foreground">Todos os ciclos do Acervo já estão no ano. Use “Planejar ciclo” para criar outro.</div>}
+          {!fora.length && <div className="px-5 py-6 text-sm text-muted-foreground">{ciclos.length ? "Todos os ciclos do Acervo já estão no ano. Use “Planejar ciclo” para criar outro." : "O Acervo ainda não tem ciclos. Use “Planejar novo ciclo…” para criar o primeiro."}</div>}
         </div>
         <div className="mt-4 flex justify-end"><button onClick={() => { setIncl(null); setPlan(true); }} className="rounded-md border px-3 py-2 text-sm hover:bg-accent">Planejar novo ciclo…</button></div>
       </div>
@@ -183,7 +187,8 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
       <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           {!filtro && !visiveis.length && fora.length > 0 && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">O planejamento de {anoLetivo} está vazio.{compacto ? " Monte-o no computador." : " Inclua ciclos abaixo, em “Fora de um ano”, ou use “Planejar ciclo”."}</div>}
-          {!visiveis.length && !fora.length && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Nenhum ciclo para a turma {filtro}.</div>}
+          {!ciclos.length && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">{compacto ? "Ainda não há ciclos. Crie-os no computador." : "Os espaços de cada turma já estão abaixo. Use “Incluir ciclo” em um trimestre ou “Planejar ciclo” para criar o primeiro ciclo."}</div>}
+          {!!ciclos.length && !visiveis.length && !fora.length && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Nenhum ciclo para a turma {filtro}.</div>}
           {anos.map((ano) => (
             <section key={ano} className="overflow-hidden rounded-xl border bg-background">
               <h2 className="px-4 py-3 font-serif text-xl font-semibold">{ano}º ano</h2>
