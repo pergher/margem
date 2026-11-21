@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { IconCommand as Command, IconFileText as FileText } from "@tabler/icons-react";
+import { IconCommand as Command } from "@tabler/icons-react";
+import { IconeDoTipo } from "@/lib/tiposNota";
 import { cn } from "@/lib/utils";
 import { useEhCompacto } from "@/lib/useCompacto";
 
@@ -52,7 +53,7 @@ export function CommandPalette({ commands, items, onOpenNote, onClose }) {
           {results.map((r, i) => (
             <button key={r.type + (r.c?.id ?? r.it.path)} onClick={() => exec(r)} onMouseMove={() => setIdx(i)}
               className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left", i === idx && "bg-accent")}>
-              {r.type === "cmd" ? <Command className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}
+              {r.type === "cmd" ? <Command className="h-4 w-4 shrink-0 text-muted-foreground" /> : <IconeDoTipo tipo={r.it.rel} />}
               <span className="min-w-0 flex-1 truncate text-sm">{r.type === "cmd" ? r.c.label : r.it.name}</span>
               <span className="ml-auto max-w-[40%] truncate pl-3 text-xs text-muted-foreground">
                 {r.type === "cmd" ? (compacto ? "" : r.c.keys) : r.it.rel.split("/").slice(0, -1).join(" / ")}

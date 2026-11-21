@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { IconFileText as FileText, IconSearch as Search, IconListSearch as TextSearch } from "@tabler/icons-react";
+import { IconeDoTipo } from "@/lib/tiposNota";
+import { IconSearch as Search, IconListSearch as TextSearch } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { visaoDe } from "@/lib/visoes";
@@ -64,7 +65,7 @@ export function SearchModal({ items, onPick, onClose }) {
               {text && !results[i - 1]?.text && <div className="px-3 pb-1 pt-2 text-xs uppercase tracking-wide text-muted-foreground">No texto dos arquivos</div>}
               <button onClick={() => onPick(it.path, text?.line)} onMouseMove={() => setIdx(i)}
                 className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left", i === idx && "bg-accent")}>
-                {text ? <TextSearch className="h-4 w-4 shrink-0 text-muted-foreground" /> : <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                {text ? <TextSearch className="h-4 w-4 shrink-0 text-muted-foreground" /> : <IconeDoTipo tipo={it.rel} />}
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm">{it.name}</span>
                   {text && <span className="block truncate text-xs text-muted-foreground">linha {text.line} · {text.snippet}</span>}

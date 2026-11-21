@@ -3,6 +3,7 @@
 import { autocompletion, snippet } from "@codemirror/autocomplete";
 import { fonteDeWikilinks } from "@/lib/wikilinks";
 import { fonteDeEmoji } from "@/lib/emojis";
+import { iconeDom } from "@/lib/tiposNota";
 
 const bloco = (rotulo, detalhe, modelo) => ({ label: rotulo, detail: detalhe, apply: snippet(modelo) });
 
@@ -30,4 +31,7 @@ const fonte = (ctx) => {
   return { from: m.from, options: OPCOES, validFor: /^\/[\p{L}-]*$/u };
 };
 
-export const menuBarra = autocompletion({ override: [fonte, fonteDeWikilinks, fonteDeEmoji], icons: false, defaultKeymap: true });
+export const menuBarra = autocompletion({ override: [fonte, fonteDeWikilinks, fonteDeEmoji], icons: false, defaultKeymap: true,
+  // `[[`: ícone na cor do tipo da nota (aula, texto, prova…), um "+" em "Criar", # nos títulos e @ nos apelidos
+  addToOptions: [{ position: 20, render: (c) => (c.icone ? iconeDom(c.icone) : null) }],
+});

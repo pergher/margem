@@ -4,6 +4,7 @@ import { anosLetivos, lerCiclos } from "@/lib/ciclos";
 import { lerSemanas, segundaDe, rotuloDe, situacaoAula } from "@/lib/semana";
 import { listaCorrecoes, lerCorrecao, num } from "@/lib/correcao";
 import { lerRecentes, haQuanto, tipoDeRel } from "@/lib/recentes";
+import { IconeDoTipo } from "@/lib/tiposNota";
 import { corTurma } from "@/lib/cores";
 import { invoke } from "@/lib/api";
 import { metaDe } from "@/lib/documentos";
@@ -326,7 +327,7 @@ function Recente({ r, onOpen }) {
   useEffect(() => { let vivo = true; invoke("read_note", { path: r.path }).then((t) => vivo && setM(metaDe(t))).catch(() => {}); return () => { vivo = false; }; }, [r.path]);
   return (
     <button onClick={() => onOpen(r.path)} className="flex min-h-12 w-full items-center gap-3 border-b px-4 text-left last:border-b-0 hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
-      <FileText aria-hidden className="h-4 w-4 shrink-0" style={{ color: tipo.cor }} strokeWidth={1.7} />
+      <IconeDoTipo tipo={r.it.rel} />
       <span className="min-w-0 flex-1 truncate text-sm font-medium">{r.it.name}</span>
       {m && <Anos anos={m.anos} />}
       <span className="hidden w-32 shrink-0 text-xs text-muted-foreground sm:block">{tipo.nome}</span>

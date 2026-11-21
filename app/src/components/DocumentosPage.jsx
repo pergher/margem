@@ -1,6 +1,7 @@
 import { raizBarra } from "@/lib/raiz";
 import { useEffect, useMemo, useState } from "react";
-import { IconBook as BookText, IconBookmarks as BookMarked, IconChevronDown as ChevronDown, IconClipboardList as ClipboardList, IconFileText as FileText, IconDeviceGamepad2 as Gamepad2, IconListCheck as ListChecks, IconNetwork as Network, IconPlus as Plus, IconQuote as Quote, IconRepeat as Repeat2 } from "@tabler/icons-react";
+import { IconBook as BookText, IconBookmarks as BookMarked, IconChevronDown as ChevronDown, IconClipboardList as ClipboardList, IconDeviceGamepad2 as Gamepad2, IconQuote as Quote, IconRepeat as Repeat2, IconFileText as FileText, IconListCheck as ListChecks, IconNetwork as Network, IconPlus as Plus } from "@tabler/icons-react";
+import { tipoDaNota } from "@/lib/tiposNota";
 import { ProvaPage } from "@/components/ProvaPage";
 import { Explorador, cmp } from "@/components/Explorador";
 import { Anos } from "@/components/ui/Anos";
@@ -12,9 +13,10 @@ import { cn } from "@/lib/utils";
 import { ANOS, SITUACOES, TIPOS, ehDoAcervo, ehProvaLegada, metaDe, metaFicha, metaGramatica, metaProva, quando, tipoDe } from "@/lib/documentos";
 
 const RAIZ = "Acervo";
-const ICONES = { aula: BookText, gramatica: BookMarked, texto: Quote, banco: FileText, oficina: Gamepad2, ciclo: Repeat2, prova: ClipboardList, doc: FileText };
 const tipoNome = (id) => TIPOS.find((t) => t.id === id)?.um ?? "Documento";
-const tipoIcone = (id) => ICONES[id] ?? FileText;
+// um componente de ícone (na cor do tipo) por tipo de documento, criado uma vez só
+const ICONES = Object.fromEntries(TIPOS.map((t) => { const { Icone, cor } = tipoDaNota(t.id === "doc" ? "nota" : t.id); return [t.id, (props) => <Icone {...props} style={{ color: cor }} />]; }));
+const tipoIcone = (id) => ICONES[id] ?? ICONES.doc;
 const sit = (id) => SITUACOES.find((s) => s.id === id) ?? SITUACOES[0];
 const FILTROS_FIXOS = ["aula", "gramatica", "texto", "ciclo"];
 const TEM_SITUACAO = ["aula", "gramatica"];

@@ -53,13 +53,13 @@ export function fonteDeWikilinks(ctx) {
   const notas = provedor.notas();
   const achadas = filtrarNotas(notas, consulta);
   const options = achadas.map((n, i) => ({
-    label: n.name, detail: pasta(n.rel), type: "text", boost: -i,
+    label: n.name, detail: pasta(n.rel), type: "text", boost: -i, icone: n.rel,
     apply: (view, _c, f, t) => inserir(view, f, t, n.name),
   }));
   const q = consulta.trim();
   if (q && provedor.criar && !notas.some((n) => semAcento(n.name) === semAcento(q))) {
     options.push({
-      label: `Criar «${q}»`, detail: "nova nota", type: "keyword", boost: -1000,
+      label: `Criar «${q}»`, detail: "nova nota", type: "keyword", boost: -1000, icone: "criar",
       apply: (view, _c, f, t) => { inserir(view, f, t, q); provedor.criar(q); },
     });
   }
@@ -77,7 +77,7 @@ function fonteDeTitulos(ctx, m) {
   const consulta = semAcento(ctx.state.sliceDoc(from, ctx.pos).trim());
   return Promise.resolve(provedor.titulos(nome)).then((lista) => {
     const options = (lista ?? []).filter((t) => !consulta || semAcento(t).includes(consulta))
-      .map((t, k) => ({ label: t, detail: "título", type: "text", boost: -k, apply: (view, _c, f, to) => inserir(view, f, to, t) }));
+      .map((t, k) => ({ label: t, detail: "título", type: "text", boost: -k, icone: "titulo", apply: (view, _c, f, to) => inserir(view, f, to, t) }));
     return options.length ? { from, options, filter: false } : null;
   }).catch(() => null);
 }
@@ -89,6 +89,6 @@ function fonteDeApelido(ctx, m) {
   const consulta = semAcento(ctx.state.sliceDoc(from, ctx.pos).trim());
   const base = [titulo, semBarraDePasta(nome)].filter(Boolean);
   const options = [...new Set(base)].filter((t) => !consulta || semAcento(t).includes(consulta))
-    .map((t, k) => ({ label: t, detail: "apelido", type: "text", boost: -k, apply: (view, _c, f, to) => inserir(view, f, to, t) }));
+    .map((t, k) => ({ label: t, detail: "apelido", type: "text", boost: -k, icone: "apelido", apply: (view, _c, f, to) => inserir(view, f, to, t) }));
   return options.length ? { from, options, filter: false } : null;
 }
