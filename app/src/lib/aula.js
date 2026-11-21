@@ -214,3 +214,17 @@ export function dadosDaAula(a, text) {
     faltam: ["objetivos", "habilidades", "conteudo", "atividades"].filter((id) => !itensDe(sec(id)) && !palavrasDe(sec(id))),
   };
 }
+
+/** Corpo da nota, depois do frontmatter: o que a página da aula edita num editor só. `ini` = linhas do arquivo antes dele. */
+export function corpoBruto(text) {
+  const linhas = text.split("\n"), fm = parseFm(text);
+  let ini = fm.has ? fm.end + 1 : 0;
+  while (ini < linhas.length && !linhas[ini].trim()) ini++;
+  return { ini, md: linhas.slice(ini).join("\n").replace(/\s+$/, "") };
+}
+
+/** Troca o corpo (tudo depois do frontmatter) pelo texto editado, mantendo o frontmatter como está. */
+export function trocarCorpo(text, md) {
+  const { ini } = corpoBruto(text);
+  return [...text.split("\n").slice(0, ini), ...md.replace(/\s+$/, "").split("\n"), ""].join("\n");
+}

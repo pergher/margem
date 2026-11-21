@@ -5,7 +5,7 @@ import { html } from "@/lib/aulaHtml";
 import { PainelGramatica } from "@/components/PainelGramatica";
 import { invoke } from "@/lib/api";
 import { desenharMermaid, partirMermaid } from "@/lib/mermaid";
-import { parseAula, secoesBrutas, trocarSecao, acrescentarMemoria } from "@/lib/aula";
+import { parseAula, secoesBrutas, trocarSecao, corpoBruto, trocarCorpo, acrescentarMemoria } from "@/lib/aula";
 import { DaUltimaVez, NotaDestaVez } from "@/components/MemoriaDaAula";
 import { JogoDialog } from "@/components/JogoDialog";
 import { acionarBotao } from "@/lib/blocoAcoes";
@@ -62,6 +62,13 @@ export function EditorSecao({ md, onChange, onSave, onLink, numeros, linhaInicia
   const ref = useRef(null);
   useEffect(() => { ref.current?.setText(md, false); }, []); // só ao abrir: depois, quem manda é o editor
   return <div className="aula-ed"><Editor ref={ref} onChange={(doc) => onChange(doc.toString())} onSave={onSave} onLink={onLink} numeros={numeros} linhaInicial={linhaInicial} /></div>;
+}
+
+/** A nota inteira (depois do frontmatter) num editor ao vivo só, como no modo Markdown: a seleção atravessa os títulos. */
+function EditorCorpo({ md, onChange, onSave, onLink, numeros, linhaInicial }) {
+  const ref = useRef(null);
+  useEffect(() => { ref.current?.setText(md, false); }, []); // só ao abrir: depois, quem manda é o editor
+  return <div className="aula-ed aula-corpo"><Editor ref={ref} onChange={(doc) => onChange(doc.toString())} onSave={onSave} onLink={onLink} numeros={numeros} linhaInicial={linhaInicial} /></div>;
 }
 
 /** Abas minimalistas: texto com filete sob a ativa; a linha que corre sob todas separa o cabeçalho do editor. */
@@ -196,8 +203,7 @@ export function ConexoesComuns({ info, onOpen, path, texto, onRestore, histTick,
 /** Visão de uma aula do acervo: abas (objetivos, habilidades, conteúdo, mindmap, atividades) e as anotações na margem. */
 export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, onRename, info, items, onTexto, onGramatica }) {
   const [t, setT] = useState(textoInicial ?? null), [erro, setErro] = useState("");
-  const [vista, setVista] = useState(null), [prog, setProg] = useState(0);
-  const [margem, setMargem] = useState(() => { try { return localStorage.getItem("margem.aula.margem") !== "0"; } catch { return true; } });
+  const [vista, setVista] = useState(null), [prog, setProg] = useState(0), [rev, setRev] = useState(0); // rev: muda quando o texto muda por fora do editor (memória) e ele precisa recomeçar
   const [jogo, setJogo] = useState(false);
   const compacto = useEhCompacto(), toast = useToast();
   const [recolhidas, setRecolhidas] = useState(() => new Set()), [editando, setEditando] = useState(null); // celular: seções recolhidas; só uma seção em edição
@@ -217,9 +223,10 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     clearTimeout(timer.current);
     const p = pend.current; if (!p || texto.current == null) return;
     pend.current = null;
-    // várias seções podem estar pendentes (página única): de trás para frente, para um `##` novo não deslocar as demais
     let novo = texto.current;
-    Object.keys(p.md).sort((x, y) => +y.slice(1) - +x.slice(1)).forEach((id) => { novo = trocarSecao(novo, id, p.md[id]); });
+    if (p.corpo != null) novo = trocarCorpo(novo, p.corpo); // computador: a nota inteira é um editor só
+    // celular: várias seções podem estar pendentes; de trás para frente, para um `##` novo não deslocar as demais
+    else Object.keys(p.md).sort((x, y) => +y.slice(1) - +x.slice(1)).forEach((id) => { novo = trocarSecao(novo, id, p.md[id]); });
     texto.current = novo; setT(novo);
     try { await invoke("save_note", { path: p.path, text: novo }); onTexto?.(novo); } catch (e) { setErro(String(e)); }
   };
@@ -238,7 +245,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     const novo = acrescentarMemoria(texto.current, { ...nota, data });
     if (novo === texto.current) return;
     await invoke("save_note", { path: caminho.current, text: novo }); onTexto?.(novo);
-    texto.current = novo; setT(novo);
+    texto.current = novo; setT(novo); setRev((n) => n + 1);
   };
   const renomear = async (novoNome) => {
     await gravar();
@@ -248,6 +255,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
       if (re.test(x)) await invoke("save_note", { path: novoPath, text: x.replace(re, `# ${novoNome}`) });
     } catch { /* sem ajuste do título interno */ }
   };
+  const editarCorpo = (md) => { pend.current = { path: caminho.current, corpo: md }; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
   const editar = (id, md) => { pend.current = { path: caminho.current, md: { ...(pend.current?.path === caminho.current ? pend.current.md : {}), [id]: md } }; clearTimeout(timer.current); timer.current = setTimeout(gravar, 600); };
   const a = useMemo(() => (t == null ? null : parseAula(t)), [t]);
   useEffect(() => { setVista(null); setEditando(null); setRecolhidas(new Set()); setGaveta(false); setAnotando(false); }, [item.path]);
@@ -260,7 +268,6 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     const el = fim ? els[els.length - 1] : els.filter((e) => e.getBoundingClientRect().top <= topo).pop() ?? els[0];
     setVista(el?.dataset.sec ?? null);
   };
-  const alternarMargem = () => { const v = !margem; setMargem(v); try { localStorage.setItem("margem.aula.margem", v ? "1" : "0"); } catch { /* sem armazenamento */ } };
   const ir = async (x) => {
     await gravar();
     setVista(x.id); rolagem.current?.querySelector(`[data-sec="${x.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -289,13 +296,12 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   if (!a) return <Carregando>Lendo a aula…</Carregando>;
 
   const abas = [...(a.intro ? [{ id: "intro", nome: "Introdução", md: a.intro }] : []), ...a.secoes];
-  const brutas = secoesBrutas(texto.current ?? t);
+  const brutas = secoesBrutas(texto.current ?? t), corpo = corpoBruto(texto.current ?? t);
   const atual = abas.find((x) => x.id === vista) ?? abas[0];
   const notasDe = (x) => (x.id === "intro" ? a.introNotas : x.notas) ?? [];
-  const aoLado = !compacto && margem && !gram && a.notas.length > 0; // sem anotações, o texto fica sozinho e centralizado
-  const largura = compacto ? "100%" : aoLado ? "60.5rem" : "44rem"; // texto (44rem) + vão (2.5rem) + margem (14rem)
+  const largura = compacto ? "100%" : "44rem";
   const secaoCompacta = (x) => {
-    const bruta = brutas.find((b) => b.id === x.id), notas = margem ? notasDe(x) : [];
+    const bruta = brutas.find((b) => b.id === x.id), notas = notasDe(x);
     const aberta = !recolhidas.has(x.id), emEdicao = editando === x.id && !!bruta;
     const alternar = () => setRecolhidas((r) => { const n = new Set(r); if (n.has(x.id)) n.delete(x.id); else n.add(x.id); return n; });
     return (
@@ -321,38 +327,13 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
       </section>
     );
   };
-  const secao = (x) => {
-    if (compacto) return secaoCompacta(x);
-    const bruta = brutas.find((b) => b.id === x.id), notas = margem ? notasDe(x) : [];
-    return (
-      <section key={x.id} data-sec={x.id} aria-label={x.nome} className={cn("scroll-mt-4 pb-10 first:pt-8 last:pb-4", x.id === "intro" && "pb-2", aoLado && "grid items-start gap-x-10")} style={aoLado ? { gridTemplateColumns: "minmax(0, 44rem) 14rem" } : undefined}>
-        <div className="min-w-0">
-          {bruta ? (
-            <>
-              {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
-              <EditorSecao key={`${item.path}:${x.id}:${brutas.length}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
-            </>
-          ) : <Markdown md={x.md} />}
-        </div>
-        {notas.length > 0 && (
-          <aside aria-label={`Na margem: ${x.nome}`} className={cn("flex min-w-0 flex-col gap-3", aoLado ? "pt-10" : "mt-3")}>
-            {notas.map((n, i) => <div key={i} className="border-l-2 border-err pl-3 text-sm text-muted-foreground"><Markdown md={n} /></div>)}
-          </aside>
-        )}
-      </section>
-    );
-  };
   const statusLista = info?.status?.length ? info.status : STATUS;
   const meta = [a.meta.ano && `${a.meta.ano}º ano`, a.meta.assuntos].filter(Boolean);
   return (
     <div className="flex min-h-0 flex-1">
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* O botão Margem entra na barra de ferramentas da nota (ou no cabeçalho, no celular); a linha fina abaixo mostra quanto da aula já foi lido */}
+      {/* O sumário do celular entra no cabeçalho do app; a linha fina abaixo mostra quanto da aula já foi lido */}
       {slot && compacto && createPortal(<><div className="flex-1" /><button type="button" aria-label="Sumário da aula" onClick={() => setGaveta(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"><List className="h-5 w-5" strokeWidth={1.7} /></button></>, slot)}
-      {slot && !compacto && createPortal(
-        <>
-          <button onClick={alternarMargem} aria-pressed={margem} title={margem ? "Esconder as anotações da margem" : "Mostrar as anotações da margem (callout > [!margem])"} className={cn("flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs", margem ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><StickyNote className="h-3.5 w-3.5" />Margem</button>
-        </>, slot)}
       <div role="progressbar" aria-label="Progresso de leitura" aria-valuenow={Math.round(prog * 100)} aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div className="h-full bg-primary transition-[width] duration-100" style={{ width: `${prog * 100}%` }} /></div>
       <div ref={rolagem} onScroll={aoRolar} {...(compacto ? aoTocar : {})} className="min-h-0 min-w-0 flex-1 overflow-auto">
         <div className={compacto ? "px-4 pt-4" : "px-8 pt-8"}>
@@ -376,8 +357,8 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
           </div>
         </div>
         <div className={cn("mx-auto pt-4", compacto ? "px-4 pb-6" : "px-8 pb-8")} style={{ maxWidth: compacto ? "100%" : `calc(${largura} + 4rem)` }}>
-          {abas.map(secao)}
-          {!atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
+          {compacto ? abas.map(secaoCompacta) : <EditorCorpo key={`${item.path}:${rev}`} md={corpo.md} linhaInicial={corpo.ini} onChange={editarCorpo} onSave={gravar} onLink={aoLink} numeros={numeros} />}
+          {compacto && !atual && <p className="text-sm text-muted-foreground">Esta aula ainda não tem conteúdo.</p>}
           {!compacto && <div className="mt-2"><NotaDestaVez key={item.path} onAdicionar={adicionarMemoria} /></div>}
         </div>
       </div>
