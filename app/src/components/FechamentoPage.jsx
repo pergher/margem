@@ -56,7 +56,7 @@ export function FechamentoPage({ items, turmaGlobal = "", onOpen, onCorrigir, on
   const diarioN = diarios.pendente + diarios.revisao;
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto"><div className={cn("mx-auto flex max-w-4xl flex-col gap-4", compacto ? "px-4 py-4" : "px-8 py-8")}>
+    <div className="min-h-0 flex-1 overflow-auto"><div className={cn("flex flex-col gap-4", compacto ? "px-4 py-4" : "px-8 py-8")}>
       <header className="flex flex-wrap items-end gap-x-6 gap-y-2">
         <div className="min-w-0 flex-1">
           <h1 className="font-serif text-2xl font-semibold leading-tight md:text-3xl">Fechamento do {dados.tri}º trimestre</h1>
