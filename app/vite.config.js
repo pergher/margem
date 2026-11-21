@@ -57,7 +57,7 @@ function devVault() {
         }
         if (u.pathname === "/health") {
           // dev: roda o CLI `vault validate` (target/debug/vault) e converte as linhas em JSON
-          const bin = path.resolve(import.meta.dirname, "../target/debug/vault");
+          const bin = path.resolve(import.meta.dirname, "../target/debug/vault" + (process.platform === "win32" ? ".exe" : ""));
           let txt = "";
           try { txt = execFileSync(bin, ["validate", root], { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }); } catch (e) { txt = String(e.stdout ?? ""); } // o CLI sai com código ≠ 0 quando há avisos
           {
