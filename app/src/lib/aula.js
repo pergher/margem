@@ -163,12 +163,20 @@ export function secoesBrutas(text) {
   const fm = parseFm(text), fimIntro = cab.length ? cab[0].i : linhas.length;
   let ini = fm.has ? fm.end + 1 : 0;
   while (ini < fimIntro && !linhas[ini].trim()) ini++;
-  const mdIntro = linhas.slice(ini, fimIntro).join("\n").replace(/\s+$/, "");
+  // Texto das linhas [a, b): entre seções, uma linha em branco no fim é o separador (trocarSecao a recoloca) e as demais são do autor, então ficam;
+  // no fim do arquivo, o espaço sobrando é cortado.
+  const trecho = (a, b) => {
+    const l = linhas.slice(a, b);
+    if (b >= linhas.length) return l.join("\n").replace(/\s+$/, "");
+    if (l.length && !l[l.length - 1].trim()) l.pop();
+    return l.join("\n");
+  };
+  const mdIntro = trecho(ini, fimIntro);
   if (mdIntro.trim()) out.push({ id: "intro", ini, fim: fimIntro, linha0: ini, md: mdIntro });
   cab.forEach((c, k) => {
     const fim = k + 1 < cab.length ? cab[k + 1].i : linhas.length;
     // `md` inclui a linha do título `##`; linha0: quantas linhas do arquivo vêm antes dela (para numerar as linhas como no arquivo)
-    out.push({ id: "s" + k, ini: c.i, fim, linha0: c.i, md: linhas.slice(c.i, fim).join("\n").replace(/\s+$/, "") });
+    out.push({ id: "s" + k, ini: c.i, fim, linha0: c.i, md: trecho(c.i, fim) });
   });
   return out;
 }
@@ -178,9 +186,12 @@ export function trocarSecao(text, id, md) {
   const s = secoesBrutas(text).find((x) => x.id === id);
   if (!s) return text;
   const linhas = text.split("\n");
-  let corpo = md.replace(/\s+$/, "");
-  if (id !== "intro" && !/^##\s/.test(corpo)) corpo = linhas[s.ini] + "\n" + corpo;
-  const novo = [...corpo.split("\n"), ...(s.fim < linhas.length ? [""] : [])];
+  const ultima = s.fim >= linhas.length;
+  let corpo = ultima ? md.replace(/\s+$/, "") : md; // entre seções, as linhas em branco do fim são do autor (o separador é acrescentado abaixo)
+  // Linhas em branco antes do título (Enter no começo de `## Objetivos`) são espaço do autor: ficam antes do título, sem duplicá-lo.
+  const semBrancos = corpo.replace(/^(?:[ \t]*\n)+/, "");
+  if (id !== "intro" && !/^##\s/.test(semBrancos)) corpo = linhas[s.ini] + "\n" + corpo;
+  const novo = [...corpo.split("\n"), ...(ultima ? [] : [""])];
   return [...linhas.slice(0, s.ini), ...novo, ...linhas.slice(s.fim)].join("\n");
 }
 

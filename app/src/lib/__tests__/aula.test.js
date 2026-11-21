@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAula } from "@/lib/aula";
+import { parseAula, secoesBrutas, trocarSecao } from "@/lib/aula";
 
 describe("parseAula: margem por seção", () => {
   const txt = "---\ntipo: aula\n---\n# T\n\n## Objetivos\n\n- a\n\n> [!margem] nota 1\n> mais\n\n## Conteúdo\n\ntexto\n\n> [!margem] nota 2\n";
@@ -40,5 +40,28 @@ describe("Memória da aula", () => {
   });
   it("lê linhas soltas, sem data", () => {
     expect(lerMemoria("## Memória\n\n- bom\n")).toEqual([{ data: "", turma: "", sinal: "", texto: "bom" }]);
+  });
+});
+
+describe("trocarSecao: Enter antes do primeiro título", () => {
+  const txt = "---\ntipo: aula\n---\n# T\n\n## Objetivos\n\n- a\n\n## Conteúdo\n\ntexto\n";
+  const md = (t, id) => secoesBrutas(t).find((s) => s.id === id).md;
+
+  it("Enter no começo de `## Objetivos` abre espaço e não duplica o título", () => {
+    const novo = trocarSecao(txt, "s0", "\n" + md(txt, "s0"));
+    expect(novo.match(/^## Objetivos$/gm)).toHaveLength(1);
+    expect(novo).toContain("# T\n\n\n## Objetivos");
+    expect(md(novo, "intro")).toBe("# T\n"); // o espaço extra aparece no fim da introdução
+  });
+
+  it("Enter no fim da introdução deixa a linha em branco no arquivo", () => {
+    const novo = trocarSecao(txt, "intro", md(txt, "intro") + "\n");
+    expect(novo).toContain("# T\n\n\n## Objetivos");
+    expect(md(novo, "intro")).toBe("# T\n");
+  });
+
+  it("sem edição o texto não muda", () => {
+    expect(trocarSecao(txt, "intro", md(txt, "intro"))).toBe(txt);
+    expect(trocarSecao(txt, "s0", md(txt, "s0"))).toBe(txt);
   });
 });
