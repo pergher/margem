@@ -29,11 +29,6 @@
       "Skill(catalogo-de-textos)",
       "Skill(catalogo-de-textos:catalogo-de-textos)",
 
-      "Skill(grilling)",
-      "Skill(wizard)",
-      "Skill(find-skills)",
-      "Skill(research)",
-
       "Skill(anthropic-skills:docx)",
       "Skill(anthropic-skills:pptx)",
       "Skill(anthropic-skills:xlsx)",
@@ -53,5 +48,11 @@
       "Skill(anthropic-skills:import-memory)",
       "Skill(anthropic-skills:explain-usage)"
     ]
+  },
+  "skillOverrides": {
+    "grilling": "user-invocable-only",
+    "wizard": "user-invocable-only",
+    "find-skills": "user-invocable-only",
+    "research": "user-invocable-only"
   }
 }
