@@ -218,8 +218,7 @@ export function dadosDaAula(a, text) {
 /** Corpo da nota, depois do frontmatter: o que a página da aula edita num editor só. `ini` = linhas do arquivo antes dele. */
 export function corpoBruto(text) {
   const linhas = text.split("\n"), fm = parseFm(text);
-  let ini = fm.has ? fm.end + 1 : 0;
-  while (ini < linhas.length && !linhas[ini].trim()) ini++;
+  const ini = fm.has ? fm.end + 1 : 0; // as linhas em branco logo depois do frontmatter também são do corpo: aparecem e se editam
   return { ini, md: linhas.slice(ini).join("\n").replace(/\s+$/, "") };
 }
 

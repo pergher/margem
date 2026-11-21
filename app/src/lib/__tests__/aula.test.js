@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseAula, secoesBrutas, trocarSecao } from "@/lib/aula";
+import { parseAula, secoesBrutas, trocarSecao, corpoBruto, trocarCorpo } from "@/lib/aula";
 
 describe("parseAula: margem por seção", () => {
   const txt = "---\ntipo: aula\n---\n# T\n\n## Objetivos\n\n- a\n\n> [!margem] nota 1\n> mais\n\n## Conteúdo\n\ntexto\n\n> [!margem] nota 2\n";
@@ -63,5 +63,18 @@ describe("trocarSecao: Enter antes do primeiro título", () => {
   it("sem edição o texto não muda", () => {
     expect(trocarSecao(txt, "intro", md(txt, "intro"))).toBe(txt);
     expect(trocarSecao(txt, "s0", md(txt, "s0"))).toBe(txt);
+  });
+});
+
+describe("corpoBruto / trocarCorpo: o corpo é tudo depois do frontmatter", () => {
+  const txt = "---\ntipo: aula\n---\n\n\n# T\n\n## Objetivos\n\n- a\n";
+  it("mantém as linhas em branco antes do primeiro título", () => {
+    const c = corpoBruto(txt);
+    expect(c.ini).toBe(3);
+    expect(c.md.startsWith("\n\n# T")).toBe(true);
+  });
+  it("gravar sem editar não muda o arquivo, e editar preserva o frontmatter e o espaço", () => {
+    expect(trocarCorpo(txt, corpoBruto(txt).md)).toBe(txt);
+    expect(trocarCorpo(txt, "\n\n\n# T\n")).toBe("---\ntipo: aula\n---\n\n\n\n# T\n");
   });
 });
