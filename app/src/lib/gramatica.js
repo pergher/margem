@@ -27,8 +27,6 @@ assuntos: []
 tags: []
 status: pendente
 ---
-# ${topico}
-
 ## Regra
 
 Em poucas linhas, nas suas palavras.

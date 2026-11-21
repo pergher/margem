@@ -3,8 +3,8 @@ import { raizDe, raizBarra } from "@/lib/raiz";
 
 export const RECURSOS = {
   texto: { pasta: "Textos", dialogo: "Novo texto", modelo: (n) => `---\ntipo: texto\ntitulo: ${n}\nautor:\ngenero:\npublicacao:\nfonte:\nlink:\ndominio_publico: false\ntags: []\nfoco: []\nconteudos: []\nalertas: []\n---\n## Texto\n\nCole aqui o texto.\n` },
-  oficina: { pasta: "Oficinas", dialogo: "Nova oficina", modelo: (n) => `---\ntipo: oficina\ntitulo: ${n}\nanos: []\nconteudo:\ntags: []\n---\n# ${n}\n\n**Dinâmica:** descreva em uma ou duas linhas.\n\n## Material\n\n## Como fazer\n\n## Variações\n` },
-  banco: { pasta: "Questoes", dialogo: "Novo banco de questões", modelo: (n) => `---\ntipo: banco\nano:\nconteudos: []\nconteudos_excluidos: []\ntextos: []\n---\n# ${n}\n\nConteúdos excluídos:\n\n## Texto 1 — Gênero — Autor, "Título"\n\n> Cole aqui o texto-base.\n\n### Questões sobre o Texto 1\n\n#### Questão 1 · Interpretação · Dissertativa\nEnunciado.\n(Resposta: 4 linhas)\n\n---\n\n## Questões independentes\n` },
+  oficina: { pasta: "Oficinas", dialogo: "Nova oficina", modelo: (n) => `---\ntipo: oficina\ntitulo: ${n}\nanos: []\nconteudo:\ntags: []\n---\n**Dinâmica:** descreva em uma ou duas linhas.\n\n## Material\n\n## Como fazer\n\n## Variações\n` },
+  banco: { pasta: "Questoes", dialogo: "Novo banco de questões", modelo: (n) => `---\ntipo: banco\nano:\nconteudos: []\nconteudos_excluidos: []\ntextos: []\n---\nConteúdos excluídos:\n\n## Texto 1 — Gênero — Autor, "Título"\n\n> Cole aqui o texto-base.\n\n### Questões sobre o Texto 1\n\n#### Questão 1 · Interpretação · Dissertativa\nEnunciado.\n(Resposta: 4 linhas)\n\n---\n\n## Questões independentes\n` },
 };
 
 /** Cria `Acervo/<pasta do tipo>/[subpasta/]<nome>.md` com o modelo e devolve o caminho; se já existir nota com o nome, só devolve o dela. `pasta` é relativa à pasta do tipo. */

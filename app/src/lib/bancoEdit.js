@@ -2,6 +2,8 @@
 // Dois formatos: "antigo" (## Texto N / #### Questão n · …, numeração global) e "blocos" (### T1 / ### A1 · T1 · …, rótulos por bloco).
 // Tudo trabalha em linhas: cada texto-base e cada questão é um intervalo [ini, fim) que se troca inteiro.
 
+import { parseFm, setProp } from "@/lib/frontmatter";
+
 const ehTraco = (l) => /^\s*(-{3,}|\*{3,})\s*$/.test(l);
 
 /** Mapa do arquivo: onde começa e termina cada texto-base, cada questão e o gabarito. */
@@ -143,19 +145,23 @@ export function novoTexto(text, est) {
   return { text: juntar(L), n };
 }
 
-/** Linha "Conteúdos excluídos: …" (cria depois do título se não houver). */
+const FRONTMATTER = /^---\n[\s\S]*?\n---\n?/;
+/** Linha "Conteúdos excluídos: …" (cria depois do título, ou do frontmatter se não houver título). */
 export function definirExcluidos(text, valor) {
   const linha = `Conteúdos excluídos: ${valor.trim()}`;
   if (/^Conteúdos excluídos:.*$/m.test(text)) return text.replace(/^Conteúdos excluídos:.*$/m, () => linha);
-  return text.replace(/^(#\s+.*)$/m, (h) => `${h}\n\n${linha}`);
+  if (/^#\s+.*$/m.test(text.replace(FRONTMATTER, ""))) return text.replace(/^(#\s+.*)$/m, (h) => `${h}\n\n${linha}`);
+  return FRONTMATTER.test(text) ? text.replace(FRONTMATTER, (f) => `${f}${linha}\n\n`) : `${linha}\n\n${text}`;
 }
-/** Assunto: a parte do meio do título "# Banco de questões — ASSUNTO — 6º ano". */
+/** Assunto: a parte do meio do título "# Banco de questões — ASSUNTO — 6º ano"; sem esse título (os modelos não têm `#`), vem da propriedade `assunto`. */
 export function assuntoDe(text) {
-  const h = /^#\s+(.*)$/m.exec(text.replace(/^---\n[\s\S]*?\n---\n?/, ""))?.[1] ?? "";
-  return h.replace(/^Banco de questões\s*—\s*/, "").replace(/\s*—\s*\d+º ano\s*$/, "");
+  const h = /^#\s+(.*)$/m.exec(text.replace(FRONTMATTER, ""))?.[1] ?? "";
+  if (/^Banco de questões\s*—/.test(h)) return h.replace(/^Banco de questões\s*—\s*/, "").replace(/\s*—\s*\d+º ano\s*$/, "");
+  return parseFm(text).entries.find((e) => e.key === "assunto")?.value ?? "";
 }
 export function definirAssunto(text, assunto, ano) {
-  return text.replace(/^(#\s+Banco de questões\s*—\s*).*$/m, (_, p) => `${p}${assunto.trim()}${ano ? ` — ${ano}º ano` : ""}`);
+  if (/^#\s+Banco de questões\s*—/m.test(text)) return text.replace(/^(#\s+Banco de questões\s*—\s*).*$/m, (_, p) => `${p}${assunto.trim()}${ano ? ` — ${ano}º ano` : ""}`);
+  return setProp(text, "assunto", assunto.trim());
 }
 
 /** Troca a seção de gabarito inteira (título "## Gabarito…" e o que vem abaixo). */

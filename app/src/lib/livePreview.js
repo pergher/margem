@@ -6,6 +6,7 @@ import { syntaxTree } from "@codemirror/language";
 import { invoke, srcDeImagem } from "@/lib/api";
 import { htmlBloco, cabecalhoCerca } from "@/lib/blocos";
 import { acionarBotao } from "@/lib/blocoAcoes";
+import { desenharMermaid, assinaturaTema } from "@/lib/mermaid";
 
 const hide = Decoration.replace({});
 
@@ -312,6 +313,26 @@ class BlocoWidget extends WidgetType {
   ignoreEvent() { return true; }
 }
 
+/** Mapa mental (```mermaid) desenhado no lugar do código. Clicar, o botão Editar ou ↓/↑ ao chegar nele abrem o código; ao sair, volta o desenho. */
+class MermaidWidget extends WidgetType {
+  constructor(codigo) { super(); this.codigo = codigo; this.tema = assinaturaTema(); }
+  eq(o) { return o.codigo === this.codigo && o.tema === this.tema; }
+  get estimatedHeight() { return 240; }
+  toDOM(view) {
+    const w = document.createElement("div");
+    w.className = "cm-bloco cm-mermaid bl";
+    w.innerHTML = '<div class="bl-acoes"><button type="button" class="bl-btn" data-editar>Editar</button></div><div class="mm-corpo mm-carregando">Desenhando o mapa…</div>';
+    const corpo = w.querySelector(".mm-corpo");
+    desenharMermaid(this.codigo).then((svg) => { corpo.className = "mm-corpo"; corpo.innerHTML = svg; view.requestMeasure(); })
+      .catch((e) => { corpo.className = "mm-corpo mm-erro"; corpo.textContent = "Não deu para desenhar o mapa: " + String(e?.message ?? e).split("\n")[0] + " (clique para editar o código)"; view.requestMeasure(); });
+    w.addEventListener("mousedown", (e) => {
+      e.preventDefault(); view.dispatch({ selection: { anchor: view.posAtDOM(w) + 1 }, scrollIntoView: true }); view.focus();
+    });
+    return w;
+  }
+  ignoreEvent() { return true; }
+}
+
 class PropsWidget extends WidgetType {
   constructor(text) { super(); this.text = text; }
   eq(o) { return o.text === this.text; }
@@ -393,6 +414,12 @@ function htmlDaCerca(doc, from, to) {
   return htmlBloco(c.lang, c.opcoes, doc.sliceString(doc.line(a.number + 1).from, z.from).replace(/\n$/, ""));
 }
 
+/** A cerca [from, to] é um bloco ```mermaid fechado e com código? */
+function ehMermaid(doc, from, to) {
+  const a = doc.lineAt(from), z = doc.lineAt(to), c = cabecalhoCerca(a.text);
+  return !!c && c.lang === "mermaid" && z.number > a.number + 1 && /^\s*(```|~~~)\s*$/.test(z.text);
+}
+
 function blockDecos(state) {
   const out = [];
   const fmEnd = frontmatterEnd(state.doc);
@@ -406,6 +433,11 @@ function blockDecos(state) {
         return false;
       }
       if (n.name === "FencedCode" && n.from >= fmEnd && !touches(state, n.from, n.to)) {
+        if (ehMermaid(state.doc, n.from, n.to)) {
+          const a = state.doc.lineAt(n.from), z = state.doc.lineAt(n.to);
+          out.push(Decoration.replace({ widget: new MermaidWidget(state.doc.sliceString(state.doc.line(a.number + 1).from, z.from).trim()), block: true }).range(n.from, n.to));
+          return false;
+        }
         const html = htmlDaCerca(state.doc, n.from, n.to);
         if (html) { out.push(Decoration.replace({ widget: new BlocoWidget(html), block: true }).range(n.from, n.to)); return false; }
       }
@@ -579,12 +611,12 @@ function build(view) {
   return Decoration.set(out, true);
 }
 
-/** Faixas de blocos desenhados (exemplo/sintaxe, tabelas e frontmatter) em que as setas verticais devem entrar, e não saltar. */
+/** Faixas de blocos desenhados (exemplo/sintaxe, mapa mental, tabelas e frontmatter) em que as setas verticais devem entrar, e não saltar. */
 function faixasDeBloco(state) {
   const out = [];
   state.field(blockField).between(0, state.doc.length, (from, to, d) => {
     const w = d.spec.widget;
-    if (w instanceof BlocoWidget || w instanceof PropsWidget || w instanceof TableWidget) out.push({ from, to });
+    if (w instanceof BlocoWidget || w instanceof MermaidWidget || w instanceof PropsWidget || w instanceof TableWidget) out.push({ from, to });
   });
   return out;
 }

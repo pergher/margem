@@ -78,6 +78,14 @@
 /* numeração de linhas (botão no cabeçalho) */
 .cm-editor .cm-gutters { background: transparent; border: none; color: hsl(var(--muted-foreground)); font-family: var(--f-mono, monospace); font-size: .72rem; }
 .cm-editor .cm-lineNumbers .cm-gutterElement { padding: 0 1.25rem 0 0; min-width: 0; opacity: .7; line-height: calc(var(--tamanho-texto, 1.0625rem) * 1.7); }
+/* Numeração das linhas, igual na Aula e no Markdown: os números começam onde a coluna do documento começa; o texto fica recuado ao lado dela.
+   No Markdown, o título e as propriedades (widgets do editor) recuam a largura da coluna e começam junto com os números. */
+/* --larg-numeros é a largura real da coluna (medida no Editor.jsx; cresce com 3 e 4 dígitos) */
+.cm-editor { --larg-numeros: 2.125rem; }
+.cm-editor .cm-gutters { margin-left: 1.5rem; }
+.aula-ed .cm-editor .cm-gutters { margin-left: 0; }
+.cm-editor .cm-gutters + .cm-content { padding-left: 0; }
+.cm-editor .cm-gutters + .cm-content > .cm-titulo, .cm-editor .cm-gutters + .cm-content > .cm-props { margin-left: calc(-1 * var(--larg-numeros)); }
 /* mesma folga e altura de linha dos títulos (1.7 × tamanho da fonte do título) e dos callouts */
 .cm-lineNumbers .cm-g-h1 { line-height: 3.91rem !important; }
 .cm-lineNumbers .cm-g-h2 { padding-top: 1.8rem !important; line-height: 2.55rem !important; }
@@ -138,7 +146,7 @@
 .cm-titulo input { width: 100%; font: inherit; letter-spacing: inherit; color: inherit; background: transparent; border: 0; border-radius: 6px; padding: 0 .25rem; margin: 0 -.25rem; outline: none; }
 .cm-titulo input:hover { background: hsl(var(--accent) / .6); }
 .cm-titulo input:focus { background: hsl(var(--background)); box-shadow: 0 0 0 2px hsl(var(--ring)); }
-.cm-titulo { font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: 1.9rem; font-weight: 700; line-height: 1.25; padding: 0 0 1.1rem; letter-spacing: -.01em; }
+.cm-titulo { font-family: var(--f-h1, 'Source Serif 4 Variable', Georgia, serif); font-size: 2.3rem; font-weight: 600; line-height: 1.2; padding: 0 0 1.1rem; }
 .cm-props { padding: 0 0 2rem; font-family: var(--f-ui, 'Inter Variable', sans-serif); font-size: .875rem; line-height: 1.5; }
 .cm-props-card { position: relative; display: grid; grid-template-columns: max-content 1fr; gap: .3rem 1.25rem; padding: .9rem 4.5rem .9rem 1.1rem; background: hsl(var(--secondary) / .55); border: 1px solid hsl(var(--border)); border-radius: 10px; }
 .cm-prop { display: contents; }
@@ -220,6 +228,13 @@
 /* Editor de seção: o título `##` que abre a seção não precisa do respiro de cima (o cabeçalho da página já separa). */
 .aula-ed .cm-content > .cm-line:first-child.cm-h2 { padding-top: 0 !important; }
 .aula-ed .cm-lineNumbers .cm-gutterElement:nth-child(2).cm-g-h2 { padding-top: 0 !important; }
+
+/* mapa mental (```mermaid) desenhado no lugar do código */
+.cm-mermaid { margin: .5rem 0; }
+.cm-mermaid .mm-corpo { overflow: auto; border: 1px solid hsl(var(--border)); border-radius: 12px; background: hsl(var(--background)); padding: .75rem; }
+.cm-mermaid .mm-corpo svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.cm-mermaid .mm-carregando, .cm-mermaid .mm-erro { font-family: var(--f-ui, sans-serif); font-size: .85rem; color: hsl(var(--muted-foreground)); min-height: 5rem; display: flex; align-items: center; justify-content: center; text-align: center; }
+.cm-mermaid .mm-erro { color: hsl(var(--warn)); }
 
 /* ---- blocos didáticos: ```exemplo e ```sintaxe (lib/blocos.js) ---- */
 /* widgets de bloco: sem margem vertical (o CodeMirror não a conta no mapa de alturas e o cursor vertical passa a pular linhas); folga por padding e margens dos filhos contidas */

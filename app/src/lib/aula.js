@@ -87,7 +87,7 @@ export function parseAula(text) {
   const tipoDe = (t) => SECOES.find((x) => x.casa.test(sem(t.replace(/^[^\p{L}\p{N}(]+/u, ""))))?.id ?? null;
   // A seção "Memória" não vira aba (aparece discreta no fim da aula); o id continua sendo a posição no arquivo.
   const secoes = partes.slice(1).map((p, k) => ({ id: "s" + k, tipo: tipoDe(p.titulo), nome: p.titulo || "(sem título)", md: limpas[k + 1].texto.trim(), notas: limpas[k + 1].notas, memoria: ehMemoria(p.titulo) })).filter((x) => !x.memoria);
-  const intro = limpas[0].texto.split("\n").filter((l) => !/^#\s/.test(l)).join("\n").trim();
+  const intro = limpas[0].texto.trim(); // inclui o `# Título` do arquivo, se houver: a visão mostra o que está no arquivo
   const introNotas = limpas[0].notas;
   return {
     meta: { status: val("status"), ano: val("ano"), assuntos: val("assuntos"), tags: val("tags") },
@@ -108,8 +108,6 @@ assuntos: []
 tags: []
 status: pendente
 ---
-# ${titulo}
-
 ## Objetivos
 
 - 
@@ -161,11 +159,9 @@ export function secoesBrutas(text) {
     if (h) cab.push({ i, titulo: h[1].trim() });
   });
   const out = [];
-  // Trecho antes do primeiro `##` (sem o título `#`): também se edita na página, como as demais seções.
+  // Trecho antes do primeiro `##` (com o `# Título`, se o arquivo tiver): também se edita na página, como as demais seções.
   const fm = parseFm(text), fimIntro = cab.length ? cab[0].i : linhas.length;
   let ini = fm.has ? fm.end + 1 : 0;
-  while (ini < fimIntro && !linhas[ini].trim()) ini++;
-  if (ini < fimIntro && /^#\s/.test(linhas[ini])) ini++;
   while (ini < fimIntro && !linhas[ini].trim()) ini++;
   const mdIntro = linhas.slice(ini, fimIntro).join("\n").replace(/\s+$/, "");
   if (mdIntro.trim()) out.push({ id: "intro", ini, fim: fimIntro, linha0: ini, md: mdIntro });

@@ -144,7 +144,7 @@ export function tirarDoPlanejamento(text, nomeCiclo) {
 }
 
 export function modeloPlanejamento(ano) {
-  return `---\ntipo: planejamento\nano_letivo: ${ano}\n---\n# Planejamento ${ano}\n\nCada linha liga um ciclo (\`Acervo/Ciclos\`) a um ano escolar e a um trimestre. O ciclo em si não tem ano nem turma.\n\n| Ano | Trimestre | Ordem | Ciclo |\n| --- | --- | --- | --- |\n`;
+  return `---\ntipo: planejamento\nano_letivo: ${ano}\n---\nCada linha liga um ciclo (\`Acervo/Ciclos\`) a um ano escolar e a um trimestre. O ciclo em si não tem ano nem turma.\n\n| Ano | Trimestre | Ordem | Ciclo |\n| --- | --- | --- | --- |\n`;
 }
 
 /** Põe o ciclo no Planejamento do Ano (cria a nota do ano se faltar). Devolve o caminho da nota. */

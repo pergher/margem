@@ -11,7 +11,12 @@ import { revisaoCampo, resumoRevisao, iniciarRevisao, aceitarTudo, recusarTudo, 
 import { livePreview, gutterAlinhado, frontmatterEnd as fmEnd, focusTableCellOnCreate, navegacaoBlocos, navegacaoEntreEditores, tituloExt, subirAoTitulo } from "@/lib/livePreview";
 
 // `numeros`: mostra a numeração das linhas; `linhaInicial`: número da linha em que o texto começa no arquivo (seções de uma aula).
-const gutter = (numeros, linhaInicial) => (numeros ? [lineNumbers({ formatNumber: (n) => String(n + linhaInicial) }), gutterAlinhado] : []);
+// Mede a coluna dos números (cresce com 3 ou 4 dígitos): o título e as propriedades recuam essa largura (--larg-numeros em index.css).
+const medirNumeros = EditorView.updateListener.of((u) => {
+  const g = u.view.dom.querySelector(".cm-gutters");
+  if (g && g.offsetWidth) u.view.dom.style.setProperty("--larg-numeros", g.offsetWidth + "px");
+});
+const gutter = (numeros, linhaInicial) => (numeros ? [lineNumbers({ formatNumber: (n) => String(n + linhaInicial) }), gutterAlinhado, medirNumeros] : []);
 
 export const Editor = forwardRef(function Editor({ onChange, onSave, onLink, onRename, onRevisao, numeros = false, linhaInicial = 0, titulo = "" }, ref) {
   const host = useRef(null), view = useRef(null), comp = useRef(new Compartment());

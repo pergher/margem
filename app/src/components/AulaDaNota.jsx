@@ -4,7 +4,8 @@ import { EditorView } from "@codemirror/view";
 import { html } from "@/lib/aulaHtml";
 import { PainelGramatica } from "@/components/PainelGramatica";
 import { invoke } from "@/lib/api";
-import { parseAula, mermaidDe, secoesBrutas, trocarSecao, acrescentarMemoria } from "@/lib/aula";
+import { desenharMermaid, partirMermaid } from "@/lib/mermaid";
+import { parseAula, secoesBrutas, trocarSecao, acrescentarMemoria } from "@/lib/aula";
 import { DaUltimaVez, NotaDestaVez } from "@/components/MemoriaDaAula";
 import { JogoDialog } from "@/components/JogoDialog";
 import { acionarBotao } from "@/lib/blocoAcoes";
@@ -17,26 +18,6 @@ import { Editor } from "@/components/Editor";
 import { Carregando, Erro, useToast } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 
-/** Cores do Mermaid tiradas das variáveis CSS do tema ativo (`--primary`, `--chart-*`…), para o mapa combinar com a interface. */
-function variaveisMermaid() {
-  const cs = getComputedStyle(document.documentElement);
-  const c = (v, alt) => { const x = cs.getPropertyValue(v).trim(); return x ? `hsl(${x.replace(/\s+/g, ", ")})` : alt; };
-  const escuro = document.documentElement.classList.contains("dark");
-  // Os temas do shadcn trazem --chart-1..5; os demais caem em --primary, --ok, --warn, --err e --muted-foreground.
-  const ramos = [["--chart-1", "--primary"], ["--chart-2", "--ok"], ["--chart-3", "--warn"], ["--chart-4", "--err"], ["--chart-5", "--muted-foreground"]]
-    .map(([a, b]) => c(a, c(b, "#888")));
-  const v = {
-    darkMode: escuro, background: c("--background", "#fff"), fontFamily: cs.getPropertyValue("--font-sans").trim() || "inherit",
-    primaryColor: c("--card", "#fff"), primaryTextColor: c("--foreground", "#222"), primaryBorderColor: c("--primary", "#888"),
-    lineColor: c("--muted-foreground", "#888"), secondaryColor: c("--accent", "#eee"), tertiaryColor: c("--background", "#fff"),
-    textColor: c("--foreground", "#222"), mainBkg: c("--card", "#fff"), nodeBorder: c("--primary", "#888"),
-  };
-  // Mindmap: cada ramo principal numa cor do tema, com o texto na cor de fundo (contraste).
-  ramos.forEach((r, i) => { v[`cScale${i}`] = r; v[`cScaleLabel${i}`] = c("--background", "#fff"); });
-  ramos.forEach((r, i) => { v[`cScale${i + 5}`] = ramos[(i + 2) % 5]; v[`cScaleLabel${i + 5}`] = c("--background", "#fff"); });
-  return v;
-}
-
 export { html };
 
 function Markdown({ md }) {
@@ -44,22 +25,24 @@ function Markdown({ md }) {
   return <div className="aula-md" onClick={(e) => { acionarBotao(e.target); }} dangerouslySetInnerHTML={{ __html: h }} />;
 }
 
-/** Mapa mental em Mermaid (carregado só quando a aba é aberta). Se o código falhar, mostra o texto-fonte. */
+/** Mapa mental em Mermaid, no lugar do código (visão de leitura do celular). Se o código falhar, mostra o texto-fonte. */
 function Mindmap({ codigo }) {
   const [svg, setSvg] = useState(null), [erro, setErro] = useState("");
-  const id = useRef("mm" + Math.random().toString(36).slice(2));
   useEffect(() => {
     let vivo = true; setSvg(null); setErro("");
-    import("mermaid").then(async ({ default: mermaid }) => {
-      mermaid.initialize({ startOnLoad: false, securityLevel: "strict", theme: "base", themeVariables: variaveisMermaid() });
-      const r = await mermaid.render(id.current + Math.random().toString(36).slice(2, 6), codigo);
-      if (vivo) setSvg(r.svg);
-    }).catch((e) => { if (vivo) setErro(String(e?.message ?? e)); });
+    desenharMermaid(codigo).then((r) => { if (vivo) setSvg(r); }).catch((e) => { if (vivo) setErro(String(e?.message ?? e)); });
     return () => { vivo = false; };
   }, [codigo]);
   if (erro) return <div><div className="mb-2 text-sm text-warn">Não deu para desenhar o mapa: {erro.split("\n")[0]}</div><pre className="overflow-auto rounded-lg bg-muted p-3 text-xs">{codigo}</pre></div>;
   if (svg == null) return <Carregando className="p-0">Desenhando o mapa…</Carregando>;
   return <div className="overflow-auto rounded-xl border bg-background p-3 [&_svg]:mx-auto [&_svg]:h-auto [&_svg]:max-w-full" dangerouslySetInnerHTML={{ __html: svg }} />;
+}
+
+/** Markdown da seção com o mapa mental no lugar do bloco ```mermaid (e não separado, acima do texto). */
+function MarkdownComMapa({ md }) {
+  return partirMermaid(md).map((p, i) => (p.tipo === "mermaid"
+    ? <div key={i} className="my-4"><QuandoVisivel altura={240}><Mindmap codigo={p.codigo} /></QuandoVisivel></div>
+    : <Markdown key={i} md={p.md} />));
 }
 
 /** Só monta os filhos quando o bloco chega perto da tela (o Mermaid de seções lá embaixo não pesa na abertura). */
@@ -313,7 +296,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   const largura = compacto ? "100%" : aoLado ? "60.5rem" : "44rem"; // texto (44rem) + vão (2.5rem) + margem (14rem)
   const secaoCompacta = (x) => {
     const bruta = brutas.find((b) => b.id === x.id), notas = margem ? notasDe(x) : [];
-    const aberta = !recolhidas.has(x.id), emEdicao = editando === x.id && !!bruta, codigo = mermaidDe(x.md);
+    const aberta = !recolhidas.has(x.id), emEdicao = editando === x.id && !!bruta;
     const alternar = () => setRecolhidas((r) => { const n = new Set(r); if (n.has(x.id)) n.delete(x.id); else n.add(x.id); return n; });
     return (
       <section key={x.id} data-sec={x.id} aria-label={x.nome} className="scroll-mt-4 border-b py-1 last:border-b-0">
@@ -327,10 +310,9 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
         {aberta && (
           <div className="min-w-0 pb-4">
             {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
-            {codigo && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={codigo} /></QuandoVisivel></div>}
             {emEdicao
               ? <EditorSecao key={`${item.path}:${x.id}:${brutas.length}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
-              : <Markdown md={x.md.replace(/```mermaid[\s\S]*?```/g, "")} />}
+              : <MarkdownComMapa md={x.md} />}
             {notas.length > 0 && <aside aria-label={`Na margem: ${x.nome}`} className="mt-3 flex flex-col gap-3">
               {notas.map((n, i) => <div key={i} className="border-l-2 border-err pl-3 text-sm text-muted-foreground"><Markdown md={n} /></div>)}
             </aside>}
@@ -348,7 +330,6 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
           {bruta ? (
             <>
               {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
-              {mermaidDe(x.md) && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={mermaidDe(x.md)} /></QuandoVisivel></div>}
               <EditorSecao key={`${item.path}:${x.id}:${brutas.length}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
             </>
           ) : <Markdown md={x.md} />}
