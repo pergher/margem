@@ -94,6 +94,13 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
     setWords(text.split(/\s+/).filter(Boolean).length); setHeadings(headingsOf(text)); setPropsText(text);
     refreshInfo(cur.current); setHistTick((n) => n + 1); setStatus("Versão restaurada");
   };
+  // Uma tela personalizada (Aula) gravou a nota no disco: o editor escondido e os painéis acompanham, sem aviso nem autosave.
+  const sincronizarTexto = (text) => {
+    clearTimeout(timer.current);
+    ed.current?.replaceDoc(text, { silencioso: true }); dirty.current = false;
+    setWords(text.split(/\s+/).filter(Boolean).length); setHeadings(headingsOf(text)); setPropsText(text);
+    refreshInfo(cur.current); setHistTick((n) => n + 1);
+  };
   // O texto do disco mudou por fora (Obsidian, Drive, Claude) e já foi lido: troca só o trecho diferente (cursor e desfazer
   // ficam), em modo silencioso, e cancela qualquer autosave pendente — senão a nota seria regravada logo em seguida.
   const aplicarDoDisco = (text) => {
@@ -104,5 +111,5 @@ export function useNotaAberta({ ed, setStatus, setPage, setItems }) {
     setStatus("Atualizada por fora às " + new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }));
   };
 
-  return { aplicarDoDisco, manterMinha: () => { forcar.current = cur.current; }, info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo };
+  return { aplicarDoDisco, manterMinha: () => { forcar.current = cur.current; }, info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, sincronizarTexto, refreshInfo };
 }

@@ -4,12 +4,11 @@ import { EditorView } from "@codemirror/view";
 import { html } from "@/lib/aulaHtml";
 import { PainelGramatica } from "@/components/PainelGramatica";
 import { invoke } from "@/lib/api";
-import { parseAula, mermaidDe, secoesBrutas, trocarSecao, dadosDaAula, acrescentarMemoria } from "@/lib/aula";
+import { parseAula, mermaidDe, secoesBrutas, trocarSecao, acrescentarMemoria } from "@/lib/aula";
 import { DaUltimaVez, NotaDestaVez } from "@/components/MemoriaDaAula";
 import { JogoDialog } from "@/components/JogoDialog";
 import { acionarBotao } from "@/lib/blocoAcoes";
 import { parseFm, setProp } from "@/lib/frontmatter";
-import { lerCiclos } from "@/lib/ciclos";
 import { IconChevronDown as ChevronDown, IconPlus as Plus, IconNote as StickyNote, IconPencil as Pencil, IconCheck as Check, IconList as List, IconX as X } from "@tabler/icons-react";
 import { lerSemanas, situacaoAula } from "@/lib/semana";
 import { useEhCompacto } from "@/lib/useCompacto";
@@ -172,21 +171,6 @@ export function Dado({ nome, children, aviso }) {
   return <div className="flex items-baseline justify-between gap-3 text-sm"><span className="text-muted-foreground">{nome}</span><span className={cn("text-right font-medium", aviso && "text-warn")}>{children}</span></div>;
 }
 
-/** Quais ciclos citam esta aula (`[[nome]]` na tabela de aulas). */
-function useCiclosDaAula(items, nome) {
-  const [lista, setLista] = useState(null);
-  useEffect(() => {
-    let vivo = true; setLista(null);
-    if (!items?.length) return;
-    const alvo = `[[${nome.toLowerCase()}`;
-    lerCiclos(items).then(({ ciclos }) => {
-      if (vivo) setLista(ciclos.map((c) => ({ nome: c.name, n: c.aulas.filter((x) => `${x.texto} ${x.recurso}`.toLowerCase().includes(alvo)).length })).filter((c) => c.n));
-    }).catch(() => { if (vivo) setLista([]); });
-    return () => { vivo = false; };
-  }, [items, nome]);
-  return lista;
-}
-
 /** Casca do painel lateral das visões personalizadas: abas Ficha e Conexões (com selo de avisos) e a área rolável. */
 export function PainelShell({ rotulo, aba, setAba, avisos = 0, ficha, conexoes }) {
   return (
@@ -226,39 +210,10 @@ export function ConexoesComuns({ info, onOpen, path, texto, onRestore, histTick,
   );
 }
 
-/** Painel lateral da aula: Ficha (propriedades e dados) e Conexões (ciclos, menções, avisos, histórico). */
-function PainelAula({ aba, setAba, texto, onSet, status, dados, ciclos, info, onOpen, path, onRestore, histTick }) {
-  return (
-    <PainelShell rotulo="Painel da aula" aba={aba} setAba={setAba} avisos={info?.issues?.length ?? 0}
-      ficha={<>
-        <section><TituloPainel>Propriedades</TituloPainel><Propriedades texto={texto} onSet={onSet} status={status} /></section>
-        <section aria-label="Dados da aula" className="flex flex-col gap-1.5">
-          <TituloPainel>Dados</TituloPainel>
-          <Dado nome="Mindmap" aviso={!dados.mindmap}>{dados.mindmap ? "sim" : "não tem"}</Dado>
-          <Dado nome="Objetivos">{dados.objetivos}</Dado>
-          <Dado nome="Habilidades (BNCC)">{dados.habilidades}</Dado>
-          <Dado nome="Atividades" aviso={!dados.atividades}>{dados.atividades}</Dado>
-          <Dado nome="Conteúdo"><span className="whitespace-nowrap">{dados.palavras} palavras · ~{Math.max(1, Math.round(dados.palavras / 200))} min</span></Dado>
-          {dados.imagens > 0 && <Dado nome="Imagens">{dados.imagens}</Dado>}
-          {dados.links > 0 && <Dado nome="Links para notas">{dados.links}</Dado>}
-          {dados.faltam.length > 0 && <p className="mt-1 text-xs text-warn">Seções vazias: {dados.faltam.map((id) => ({ objetivos: "Objetivos", habilidades: "Habilidades", conteudo: "Conteúdo", atividades: "Atividades" })[id]).join(", ")}.</p>}
-        </section>
-      </>}
-      conexoes={<>
-        <section><TituloPainel>Usada em</TituloPainel>
-          {ciclos == null ? <p className="text-sm text-muted-foreground">…</p> : ciclos.length
-            ? <ul className="list-disc pl-5 text-sm">{ciclos.map((c) => <li key={c.nome}>{c.nome}</li>)}</ul>
-            : <p className="text-sm text-warn">Nenhum ciclo usa esta aula.</p>}
-        </section>
-        <ConexoesComuns info={info} onOpen={onOpen} path={path} texto={texto} onRestore={onRestore} histTick={histTick} nome="aula" />
-      </>} />
-  );
-}
-
 /** Visão de uma aula do acervo: abas (objetivos, habilidades, conteúdo, mindmap, atividades) e as anotações na margem. */
-export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, onRename, info, items, painel, setPainel, onRestore, histTick }) {
+export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, onRename, info, items, onTexto, onGramatica }) {
   const [t, setT] = useState(textoInicial ?? null), [erro, setErro] = useState("");
-  const [abaPainel, setAbaPainel] = useState("ficha"), [vista, setVista] = useState(null), [prog, setProg] = useState(0), [rev, setRev] = useState(0);
+  const [vista, setVista] = useState(null), [prog, setProg] = useState(0);
   const [margem, setMargem] = useState(() => { try { return localStorage.getItem("margem.aula.margem") !== "0"; } catch { return true; } });
   const [jogo, setJogo] = useState(false);
   const compacto = useEhCompacto(), toast = useToast();
@@ -271,8 +226,8 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   const [gram, setGram] = useState(null); // gramática aberta no painel lateral: { item, anchor }
   const gramaticas = (nome) => { const n = nome.split("/").pop().trim().toLowerCase(); return items?.find((i) => /^Acervo\/Gram[aá]tica\//.test(i.rel) && i.name.toLowerCase() === n) ?? null; };
   // `[[Crase]]` de uma gramática abre no painel; os demais links seguem o caminho de sempre.
+  useEffect(() => { onGramatica?.(!!gram); return () => onGramatica?.(false); }, [gram, onGramatica]);
   const aoLink = (alvo, ancora = "") => { const it = gramaticas(alvo); if (it) setGram({ item: it, anchor: ancora }); else onLink(alvo, ancora); };
-  const ciclosDaAula = useCiclosDaAula(items, item.name);
   const texto = useRef(textoInicial ?? null), semLer = useRef(textoInicial != null), pend = useRef(null), timer = useRef(null), caminho = useRef(item.path);
   caminho.current = item.path;
   const gravar = async () => {
@@ -283,7 +238,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     let novo = texto.current;
     Object.keys(p.md).sort((x, y) => +y.slice(1) - +x.slice(1)).forEach((id) => { novo = trocarSecao(novo, id, p.md[id]); });
     texto.current = novo; setT(novo);
-    try { await invoke("save_note", { path: p.path, text: novo }); } catch (e) { setErro(String(e)); }
+    try { await invoke("save_note", { path: p.path, text: novo }); onTexto?.(novo); } catch (e) { setErro(String(e)); }
   };
   const gravarRef = useRef(gravar); gravarRef.current = gravar;
   useEffect(() => () => { gravarRef.current(); }, [item.path]); // ao sair da nota, grava o que faltar
@@ -292,14 +247,14 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     await gravar();
     const novo = setProp(texto.current, chave, valor);
     texto.current = novo; setT(novo);
-    try { await invoke("save_note", { path: caminho.current, text: novo }); } catch (e) { setErro(String(e)); }
+    try { await invoke("save_note", { path: caminho.current, text: novo }); onTexto?.(novo); } catch (e) { setErro(String(e)); }
   };
   const adicionarMemoria = async (nota) => {
     await gravar();
     const d = new Date(), data = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     const novo = acrescentarMemoria(texto.current, { ...nota, data });
     if (novo === texto.current) return;
-    await invoke("save_note", { path: caminho.current, text: novo });
+    await invoke("save_note", { path: caminho.current, text: novo }); onTexto?.(novo);
     texto.current = novo; setT(novo);
   };
   const renomear = async (novoNome) => {
@@ -323,8 +278,6 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     setVista(el?.dataset.sec ?? null);
   };
   const alternarMargem = () => { const v = !margem; setMargem(v); try { localStorage.setItem("margem.aula.margem", v ? "1" : "0"); } catch { /* sem armazenamento */ } };
-  const restaurar = (novo) => { onRestore?.(novo); texto.current = novo; setT(novo); setRev((n) => n + 1); };
-  const verFicha = () => { setAbaPainel("ficha"); setPainel(true); };
   const ir = async (x) => {
     await gravar();
     setVista(x.id); rolagem.current?.querySelector(`[data-sec="${x.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -355,7 +308,6 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   const abas = [...(a.intro ? [{ id: "intro", nome: "Introdução", md: a.intro }] : []), ...a.secoes];
   const brutas = secoesBrutas(texto.current ?? t);
   const atual = abas.find((x) => x.id === vista) ?? abas[0];
-  const dados = dadosDaAula(a, t);
   const notasDe = (x) => (x.id === "intro" ? a.introNotas : x.notas) ?? [];
   const aoLado = !compacto && margem && !gram && a.notas.length > 0; // sem anotações, o texto fica sozinho e centralizado
   const largura = compacto ? "100%" : aoLado ? "60.5rem" : "44rem"; // texto (44rem) + vão (2.5rem) + margem (14rem)
@@ -377,7 +329,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
             {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
             {codigo && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={codigo} /></QuandoVisivel></div>}
             {emEdicao
-              ? <EditorSecao key={`${item.path}:${x.id}:${brutas.length}:${rev}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
+              ? <EditorSecao key={`${item.path}:${x.id}:${brutas.length}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
               : <Markdown md={x.md.replace(/```mermaid[\s\S]*?```/g, "")} />}
             {notas.length > 0 && <aside aria-label={`Na margem: ${x.nome}`} className="mt-3 flex flex-col gap-3">
               {notas.map((n, i) => <div key={i} className="border-l-2 border-err pl-3 text-sm text-muted-foreground"><Markdown md={n} /></div>)}
@@ -397,7 +349,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
             <>
               {x.tipo === "habilidades" && a.codigos.length > 0 && <div className="mb-3 flex flex-wrap gap-1.5">{a.codigos.map((c) => <span key={c} className="rounded-full border px-2.5 py-0.5 font-mono text-xs">{c}</span>)}</div>}
               {mermaidDe(x.md) && <div className="mb-4"><QuandoVisivel altura={240}><Mindmap codigo={mermaidDe(x.md)} /></QuandoVisivel></div>}
-              <EditorSecao key={`${item.path}:${x.id}:${brutas.length}:${rev}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
+              <EditorSecao key={`${item.path}:${x.id}:${brutas.length}`} md={bruta.md} onChange={(md) => editar(x.id, md)} onSave={gravar} onLink={aoLink} numeros={numeros} linhaInicial={bruta.linha0} />
             </>
           ) : <Markdown md={x.md} />}
         </div>
@@ -446,7 +398,6 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
                 </select>
               </label>
               {meta.map((m) => <span key={m}>{m}</span>)}
-              {!compacto && <button onClick={verFicha} className="font-medium text-primary hover:underline">Ver ficha</button>}
               {!compacto && <button onClick={() => setJogo(true)} className="font-medium text-primary hover:underline">Gerar jogo</button>}
             </div>
             <DaUltimaVez entradas={a.memoria} />
@@ -487,9 +438,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
       )}
     </div>
     {jogo && <JogoDialog items={items} aula={item.name} textoAula={texto.current ?? t} onClose={() => setJogo(false)} />}
-    {gram
-      ? <PainelGramatica item={gram.item} anchor={gram.anchor} gramaticas={gramaticas} onNavegar={(it, anchor) => setGram({ item: it, anchor })} onAbrir={onLink} onFechar={() => setGram(null)} />
-      : painel && <PainelAula aba={abaPainel} setAba={setAbaPainel} texto={texto.current ?? t} onSet={mudarProp} status={info?.status?.length ? info.status : STATUS} dados={dados} ciclos={ciclosDaAula} info={info} onOpen={onOpen} path={item.path} onRestore={restaurar} histTick={histTick} />}
+    {gram && <PainelGramatica item={gram.item} anchor={gram.anchor} gramaticas={gramaticas} onNavegar={(it, anchor) => setGram({ item: it, anchor })} onAbrir={onLink} onFechar={() => setGram(null)} />}
     </div>
   );
 }

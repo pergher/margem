@@ -14,6 +14,7 @@ import { Editor } from "@/components/Editor";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { Outline, headingsOf } from "@/components/Outline";
 import { TocBarra } from "@/components/TocBarra";
+import { definirAssunto, assuntoDe } from "@/lib/bancoEdit";
 import { RightPanel } from "@/components/RightPanel";
 import { setProp, lineStart } from "@/lib/frontmatter";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -91,7 +92,7 @@ export default function App() {
   definirTabelasEditaveis(!compacto); // antes dos editores montarem // celular: sem menu lateral nem painel direito, com barra inferior
   const { dark, setDark, temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, destaques, setDestaques, numeros, setNumeros, forma, setForma, zoom, setZoom, outlineW, setOutlineW, showSide, setShowSide, showOutline, setShowOutline, panelTab, setPanelTab } = P;
   const { page, setPage, ciclo, setCiclo, anoAba, setAnoAba, documentosPasta, setDocumentosPasta, correcaoFoco, setCorrecaoFoco, correcaoVista, setCorrecaoVista, documentosAba, setDocumentosAba, textoAtiv, setTextoAtiv, documentosTipo, irAno, irMontarProva, irDocumentos, irSecao } = useNavegacao();
-  const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, refreshInfo, aplicarDoDisco, manterMinha } = useNotaAberta({ ed, setStatus, setPage, setItems });
+  const { info, propsText, setPropsText, current, setCurrent, words, headings, activeHeading, setActiveHeading, histTick, cur, dirty, save, onChange, load, restoreText, sincronizarTexto, refreshInfo, aplicarDoDisco, manterMinha } = useNotaAberta({ ed, setStatus, setPage, setItems });
 
   useEffect(() => { loadFromDisk().then((o) => o && setOverrides(o)); }, []);
   // undefined = verificando; null = nenhuma pasta escolhida (só no app); texto = pasta do vault
@@ -264,7 +265,7 @@ export default function App() {
   const rel = items.find((i) => i.path === current)?.rel;
   const visao = visaoDe(rel);
   const [prefVisao, setPrefVisao] = useState(() => store.get("visaoPorTipo", {}));
-  const [verTick, setVerTick] = useState(0);
+  const [verTick, setVerTick] = useState(0), [gramAberta, setGramAberta] = useState(false);
   const personalizada = !!visao && page === "editor" && prefVisao[visao.id] !== "markdown";
   // Revisão de uma proposta da IA dentro da própria nota (lib/revisao.js). Nota nova não tem texto antigo: segue no diálogo.
   const [revisao, setRevisao] = useState(null);
@@ -318,10 +319,18 @@ export default function App() {
     if (pos != null && headings.length) { let k = -1; headings.forEach((h, i) => { if (h.pos <= pos) k = i; }); if (k !== activeHeading) setActiveHeading(k); }
   };
   const goHeading = (pos, i) => { setActiveHeading(i); ed.current.goTo(pos); };
-  const setProperty = (key, value) => {
+  const notaPropria = personalizada && (visao.id === "aula" || visao.id === "banco"); // Aula e Banco gravam a nota por conta própria
+  const setProperty = async (key, value) => {
+    if (notaPropria) { // a tela tem o próprio texto: grava no disco e manda ela reler
+      let t = setProp(propsText, key, value);
+      if (visao.id === "banco" && key === "ano") t = definirAssunto(t, assuntoDe(t), value);
+      try { await invoke("save_note", { path: current, text: t }); } catch (e) { setStatus("Erro ao salvar: " + e); return; }
+      sincronizarTexto(t); setVerTick((n) => n + 1); return;
+    }
     const t = setProp(ed.current.getText(), key, value);
     ed.current.replaceDoc(t); setPropsText(t);
   };
+  const restaurarNota = (t) => { restoreText(t); if (notaPropria) setVerTick((n) => n + 1); };
   const goLine = (line) => { ed.current.goTo(lineStart(ed.current.getText(), line)); };
   const temPainel = page === "editor" && !!current; // o painel lateral só existe com uma nota aberta no editor
   const outlineVisible = showOutline && temPainel && !foco && !compacto;
@@ -384,8 +393,8 @@ export default function App() {
         {personalizada && visao.id === "semana" && <SemanaPage items={items} onOpen={open} onRefresh={refresh} focoPath={current} />}
         {personalizada && visao.id === "prova" && <ProvaDaNota item={items.find((i) => i.path === current)} items={items} onOpen={open} tick={verTick} />}
         {personalizada && (visao.id === "diario" || visao.id === "aluno") && <DiarioPage items={items} onOpen={open} onMarkdown={abrirMarkdown} onRefresh={refresh} focoPath={current} />}
-        {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible && panelTab !== "ia"} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
-        {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} painel={outlineVisible && panelTab !== "ia"} setPainel={setShowOutline} onRestore={restoreText} histTick={histTick} numeros={numeros} onRename={renomearNota} />}
+        {personalizada && visao.id === "aula" && <AulaDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} onTexto={sincronizarTexto} onGramatica={setGramAberta} textoInicial={ed.current?.getText()} numeros={numeros} onRename={renomearNota} />}
+        {personalizada && visao.id === "banco" && <BancoDaNota key={current} item={items.find((i) => i.path === current)} items={items} info={info} tick={verTick} onLink={link} onOpen={open} onTexto={sincronizarTexto} numeros={numeros} onRename={renomearNota} />}
         {personalizada && visao.id === "correcao" && <CorrecaoPage items={items} onOpen={open} focoPath={current} />}
         </>}
         <ErrosComuns items={items} />
@@ -432,11 +441,11 @@ export default function App() {
       )}
       {compacto && !foco && <BarraInferior ativo={ativoMenu} onGo={irSecao} />}
 
-      {outlineVisible && (!(personalizada && (visao.id === "aula" || visao.id === "banco")) || panelTab === "ia") && (
+      {outlineVisible && !(personalizada && visao.id === "aula" && gramAberta) && (
         <>
           <ResizeHandle width={outlineW} setWidth={setOutlineW} min={160} max={480} side="right" />
           <div style={{ width: outlineW }} className="shrink-0">
-            <RightPanel tab={panelTab} setTab={setPanelTab} info={info} text={propsText} onSet={setProperty} onOpen={open} onGoLine={goLine} path={current} histTick={histTick} onRestore={restoreText}
+            <RightPanel tab={panelTab} setTab={setPanelTab} info={info} text={propsText} onSet={setProperty} onOpen={open} onGoLine={goLine} path={current} histTick={histTick} onRestore={restaurarNota}
               painelIA={<PainelIA ia={ia} texto={propsText} getContexto={getContextoIA} onAbrirConfig={() => setPage("config")} onVerProposta={async (id) => { await props.recarregar(); await revisarProposta(id); }} />}>
               <Outline headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />
             </RightPanel>

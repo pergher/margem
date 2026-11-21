@@ -6,7 +6,7 @@ import { parseBanco } from "@/lib/prova";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { estrutura, corpoDe, novaQuestao, removerQuestao, novoTexto, definirExcluidos, assuntoDe, definirAssunto, trocarGabarito } from "@/lib/bancoEdit";
 import { listaProvas } from "@/lib/documentos";
-import { TituloEditavel, EditorSecao, Propriedades, Dado as DadoPainel, PainelShell, ConexoesComuns, TituloPainel, STATUS } from "@/components/AulaDaNota";
+import { TituloEditavel, EditorSecao, STATUS } from "@/components/AulaDaNota";
 import { Text } from "@/components/RightPanel";
 import { Carregando, Erro } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
@@ -42,10 +42,10 @@ function Trecho({ tipo, idx, ler, aplicar, refazer, onLink, numeros, apagar, abe
 }
 
 /** Visão de um banco de questões (Acervo/Questoes), no estilo da Aula: abas por texto-base, questões editáveis e os dados do banco na margem. */
-export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numeros, info, painel, setPainel, onRestore, histTick }) {
+export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numeros, info, onTexto }) {
   const [t, setT] = useState(null), [erro, setErro] = useState(""), [aba, setAba] = useState(null), [provas, setProvas] = useState(null);
   const [versao, setVersao] = useState(0), [abrir, setAbrir] = useState(null);
-  const [abaPainel, setAbaPainel] = useState("ficha"), [vista, setVista] = useState(null), [prog, setProg] = useState(0), [slot, setSlot] = useState(null);
+  const [vista, setVista] = useState(null), [prog, setProg] = useState(0), [slot, setSlot] = useState(null);
   const rolagem = useRef(null);
   useEffect(() => { setSlot(document.getElementById("slot-barra-aula")); }, []);
   const texto = useRef(null), sujo = useRef(false), timer = useRef(null), caminho = useRef(item.path);
@@ -54,7 +54,7 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
     clearTimeout(timer.current);
     if (!sujo.current || texto.current == null) return;
     sujo.current = false;
-    try { await invoke("save_note", { path: caminho.current, text: texto.current }); } catch (e) { setErro(String(e)); }
+    try { await invoke("save_note", { path: caminho.current, text: texto.current }); onTexto?.(texto.current); } catch (e) { setErro(String(e)); }
   };
   const gravarRef = useRef(gravar); gravarRef.current = gravar;
   useEffect(() => () => { gravarRef.current(); }, [item.path]); // ao sair, grava o que faltar
@@ -106,7 +106,6 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
   const statusAtual = parseFm(t).entries.find((e) => e.key === "status")?.value ?? "";
   const statusLista = info?.status?.length ? info.status : STATUS;
   const mudarProp = (chave, valor) => (chave === "ano" ? mudarAno(valor) : aplicar(setProp(ler(), chave, valor)));
-  const restaurar = (novo) => { onRestore?.(novo); texto.current = novo; setT(novo); setVersao((v) => v + 1); };
   // Destaque da parte atual ao rolar: a última cujo topo já passou da barra fixa.
   const aoRolar = () => {
     const r = rolagem.current; if (!r) return;
@@ -117,7 +116,6 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
     setVista(el?.dataset.sec ?? null);
   };
   const ir = (x) => { setVista(x.id); rolagem.current?.querySelector(`[data-sec="${x.id}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" }); };
-  const verFicha = () => { setAbaPainel("ficha"); setPainel?.(true); };
   const atual = abas.find((x) => x.id === vista) ?? abas[0];
   const aoLado = b.textos.some((x) => x.aviso); // sem avisos, o conteúdo fica sozinho e centralizado (44rem, como na Aula)
   const largura = aoLado ? "60.5rem" : "44rem";
@@ -153,31 +151,6 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
         <EditorSecao key={`${versao}:gab`} md={corpoDe(est, { ini: est.gab.ini - 1, fim: est.gab.fim })} onChange={(md) => aplicar(trocarGabarito(ler(), estrutura(ler()), md))} onSave={() => {}} onLink={onLink} numeros={numeros} linhaInicial={est.gab.ini} />
       </div>));
   };
-  const painelBanco = (
-    <PainelShell rotulo="Painel do banco" aba={abaPainel} setAba={setAbaPainel} avisos={info?.issues?.length ?? 0}
-      ficha={<>
-        <section><TituloPainel>Propriedades</TituloPainel><Propriedades texto={t} onSet={mudarProp} status={statusLista} /></section>
-        <section aria-label="Dados do banco" className="flex flex-col gap-2">
-          <TituloPainel>Dados do banco</TituloPainel>
-          <label className="block text-xs text-muted-foreground">Assunto<Text value={assuntoDe(t)} onCommit={(v) => aplicar(definirAssunto(ler(), v, ano))} /></label>
-          <label className="block text-xs text-muted-foreground">Conteúdos excluídos (separe com “;”)<Text value={b.excluidos.join("; ")} onCommit={(v) => aplicar(definirExcluidos(ler(), v))} /></label>
-          <div className="mt-1 flex flex-col gap-1.5">
-            <DadoPainel nome="Questões">{nQ}</DadoPainel>
-            <DadoPainel nome="Textos-base">{nTextos}</DadoPainel>
-            {interp + cont > 0 && <DadoPainel nome="Interpretação · Conteúdo">{interp} · {cont}</DadoPainel>}
-            <DadoPainel nome="Independentes" aviso={!nInd}>{nInd}</DadoPainel>
-          </div>
-        </section>
-      </>}
-      conexoes={<>
-        <section><TituloPainel>Usado em</TituloPainel>
-          {provas == null ? <p className="text-sm text-muted-foreground">…</p> : provas.length
-            ? <ul className="list-disc pl-5 text-sm">{provas.map((n) => <li key={n}>{n}</li>)}</ul>
-            : <p className="text-sm text-warn">Nenhuma prova usa este banco.</p>}
-        </section>
-        <ConexoesComuns info={info} onOpen={onOpen} path={item.path} texto={t} onRestore={restaurar} histTick={histTick} nome="banco" />
-      </>} />
-  );
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -214,7 +187,10 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
                 <span>{nQ} questões</span>
                 <span>{nTextos} {nTextos === 1 ? "texto-base" : "textos-base"}</span>
                 {provas != null && !provas.length && <span className="text-warn">nenhuma prova usa este banco</span>}
-                <button onClick={verFicha} className="font-medium text-primary hover:underline">Ver ficha</button>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <label className="block text-xs text-muted-foreground">Assunto<Text value={assuntoDe(t)} onCommit={(v) => aplicar(definirAssunto(ler(), v, ano))} /></label>
+                <label className="block text-xs text-muted-foreground">Conteúdos excluídos (separe com “;”)<Text value={b.excluidos.join("; ")} onCommit={(v) => aplicar(definirExcluidos(ler(), v))} /></label>
               </div>
             </div>
           </div>
@@ -224,7 +200,6 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
           </div>
         </div>
       </div>
-      {painel && painelBanco}
     </div>
   );
 }
