@@ -47,6 +47,13 @@ export function IconeDoTipo({ tipo, className = "h-4 w-4 shrink-0", ...resto }) 
   return <Icone aria-hidden className={className} strokeWidth={1.7} style={{ color: cor }} {...resto} />;
 }
 
+const componentes = {};
+/** Componente de ícone (na cor do tipo) para quem recebe um ícone como componente, como o Explorador. Um por tipo, estável. */
+export function iconeComoComponente(relOuId) {
+  const { id, Icone, cor } = tipoDaNota(relOuId);
+  return (componentes[id] ??= function IconeTipo(props) { return <Icone {...props} style={{ color: cor }} />; });
+}
+
 const EXTRAS = { criar: [IconPlus, "hsl(var(--primary))"], titulo: [IconHash, "hsl(var(--muted-foreground))"], apelido: [IconAt, "hsl(var(--muted-foreground))"] };
 
 /** Elemento DOM do ícone de um tipo de nota (ou de "criar", "titulo", "apelido"), para o autocompletar do CodeMirror. */

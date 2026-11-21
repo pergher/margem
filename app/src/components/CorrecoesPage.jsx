@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { iconeComoComponente } from "@/lib/tiposNota";
 import { IconClipboardCheck as ClipboardCheck, IconChartBar as ChartColumn } from "@tabler/icons-react";
 import { Explorador } from "@/components/Explorador";
 import { corTurma } from "@/lib/cores";
@@ -71,7 +72,7 @@ export function CorrecoesPage({ items, turmasAno = [], onRefresh, onCorrigir, on
         { id: "mes", nome: "Mês", chave: (x) => String(MESES.indexOf((x.mes ?? "").toLowerCase()) + 1).padStart(2, "0") },
       ]}
       faixa={(x) => (x.turma ? [corTurma(x.turma)] : [])}
-      icone={() => ClipboardCheck}
+      icone={() => iconeComoComponente("correcao")}
       previa={(x) => (
         <div className="flex h-full flex-col justify-center gap-2">
           <div className="font-serif text-lg font-semibold leading-snug text-foreground/80">{x.atividade || "Sem título"}</div>
