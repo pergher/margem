@@ -47,7 +47,7 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
   const [versao, setVersao] = useState(0), [abrir, setAbrir] = useState(null);
   const [vista, setVista] = useState(null), [prog, setProg] = useState(0), [slot, setSlot] = useState(null);
   const rolagem = useRef(null);
-  useEffect(() => { setSlot(document.getElementById("slot-barra-aula")); }, []);
+  useEffect(() => { setSlot(document.getElementById("slot-ferramentas") ?? document.getElementById("slot-barra-aula")); });
   const texto = useRef(null), sujo = useRef(false), timer = useRef(null), caminho = useRef(item.path);
   caminho.current = item.path;
   const gravar = async () => {
@@ -154,18 +154,9 @@ export function BancoDaNota({ item, items, tick, onRename, onLink, onOpen, numer
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* Sumário e botão "+ Texto" entram no cabeçalho do app, ao lado dos breadcrumbs; a linha fina abaixo mostra quanto do banco já foi lido */}
+        {/* O botão "+ Texto" entra na barra de ferramentas da nota; a linha fina abaixo mostra quanto do banco já foi lido */}
         {slot && createPortal(
           <>
-            <nav aria-label="Sumário do banco" className="flex min-w-0 items-center gap-0.5 overflow-x-auto border-l pl-3">
-              <div role="tablist" aria-label="Partes do banco" className="flex gap-0.5">
-                {abas.map((x) => (
-                  <button key={x.id} role="tab" aria-selected={atual === x} onClick={() => ir(x)}
-                    className={cn("h-7 shrink-0 whitespace-nowrap rounded-md px-2.5 text-xs", atual === x ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>{x.nome}</button>
-                ))}
-              </div>
-            </nav>
-            <div className="flex-1" />
             <button onClick={adicionarTexto} title="Novo texto-base" className="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Plus className="h-3.5 w-3.5" />Texto</button>
           </>, slot)}
         <div role="progressbar" aria-label="Progresso de leitura" aria-valuenow={Math.round(prog * 100)} aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div className="h-full bg-primary transition-[width] duration-100" style={{ width: `${prog * 100}%` }} /></div>

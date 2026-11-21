@@ -137,7 +137,7 @@ export function RightPanel({ tab, setTab, info, text, onSet, onOpen, onGoLine, p
   const n = info?.issues.length ?? 0;
   return (
     <aside aria-label="Painel" className="flex h-full flex-col bg-muted/50">
-      <div role="tablist" className="flex min-h-[3.5rem] shrink-0 items-center gap-1 border-b px-2 py-2">
+      <div role="tablist" className="flex min-h-11 shrink-0 items-center gap-1 border-b px-2 py-1.5">
         {TABS.map(([id, label, Icon]) => (
           <button key={id} role="tab" aria-selected={tab === id} title={label} onClick={() => setTab(id)}
             className={cn("relative flex h-8 min-w-0 items-center justify-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground", tab === id ? "flex-1 bg-accent text-foreground" : "shrink-0")}>

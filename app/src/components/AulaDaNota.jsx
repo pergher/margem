@@ -221,7 +221,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   const [gaveta, setGaveta] = useState(false), [anotando, setAnotando] = useState(false);
   const toque = useRef(null);
   const [slot, setSlot] = useState(null); // lugar, no cabeçalho do app, onde o sumário se junta aos breadcrumbs
-  useEffect(() => { setSlot(document.getElementById("slot-barra-aula")); }, []);
+  useEffect(() => { setSlot(document.getElementById("slot-ferramentas") ?? document.getElementById("slot-barra-aula")); });
   const rolagem = useRef(null);
   const [gram, setGram] = useState(null); // gramática aberta no painel lateral: { item, anchor }
   const gramaticas = (nome) => { const n = nome.split("/").pop().trim().toLowerCase(); return items?.find((i) => /^Acervo\/Gram[aá]tica\//.test(i.rel) && i.name.toLowerCase() === n) ?? null; };
@@ -366,19 +366,10 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   return (
     <div className="flex min-h-0 flex-1">
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      {/* Sumário e botão Margem entram no cabeçalho do app, ao lado dos breadcrumbs; a linha fina abaixo mostra quanto da aula já foi lido */}
+      {/* O botão Margem entra na barra de ferramentas da nota (ou no cabeçalho, no celular); a linha fina abaixo mostra quanto da aula já foi lido */}
       {slot && compacto && createPortal(<><div className="flex-1" /><button type="button" aria-label="Sumário da aula" onClick={() => setGaveta(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"><List className="h-5 w-5" strokeWidth={1.7} /></button></>, slot)}
       {slot && !compacto && createPortal(
         <>
-          <nav aria-label="Sumário da aula" className="flex min-w-0 items-center gap-0.5 overflow-x-auto border-l pl-3">
-            <div role="tablist" aria-label="Partes da aula" className="flex gap-0.5">
-              {abas.map((x) => (
-                <button key={x.id} role="tab" aria-selected={atual === x} onClick={() => ir(x)}
-                  className={cn("h-7 shrink-0 whitespace-nowrap rounded-md px-2.5 text-xs", atual === x ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground")}>{x.nome}</button>
-              ))}
-            </div>
-          </nav>
-          <div className="flex-1" />
           <button onClick={alternarMargem} aria-pressed={margem} title={margem ? "Esconder as anotações da margem" : "Mostrar as anotações da margem (callout > [!margem])"} className={cn("flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs", margem ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}><StickyNote className="h-3.5 w-3.5" />Margem</button>
         </>, slot)}
       <div role="progressbar" aria-label="Progresso de leitura" aria-valuenow={Math.round(prog * 100)} aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div className="h-full bg-primary transition-[width] duration-100" style={{ width: `${prog * 100}%` }} /></div>

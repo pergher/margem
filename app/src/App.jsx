@@ -13,7 +13,6 @@ import { definirTabelasEditaveis } from "@/lib/livePreview";
 import { Editor } from "@/components/Editor";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { Outline, headingsOf } from "@/components/Outline";
-import { TocBarra } from "@/components/TocBarra";
 import { definirAssunto, assuntoDe } from "@/lib/bancoEdit";
 import { RightPanel } from "@/components/RightPanel";
 import { setProp, lineStart } from "@/lib/frontmatter";
@@ -364,21 +363,26 @@ export default function App() {
               );
             })}
           </nav>
-          <div id="slot-barra-aula" data-tauri-drag-region={temBotoesJanela || undefined} className="flex min-w-0 flex-1 items-center gap-2 pl-3">{page === "editor" && !personalizada && current && <TocBarra headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />}</div>
+          <div id={compacto ? "slot-barra-aula" : undefined} data-tauri-drag-region={temBotoesJanela || undefined} className="flex min-w-0 flex-1 items-center gap-2 pl-3" />
+          <RailButton size="sm" label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-4 w-4" /></RailButton>
+          {compacto && <RailButton size="sm" label="Configurações" active={page === "config"} onClick={() => setPage("config")}><Engrenagem className="h-4 w-4" /></RailButton>}
+          {!compacto && <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>}
+          <BotoesJanela />
+        </header>}
+        {!compacto && <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />}
+        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {!foco && !compacto && temPainel && <div className="flex shrink-0 items-center justify-end gap-1 px-4 pb-1 pt-2">
+          <div id="slot-ferramentas" className="flex items-center gap-1" />
           {visao && page === "editor" && !compacto && (
             <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-xs">
               <button onClick={() => escolherVisao("markdown")} className={cn("px-3 py-1", !personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Editar</button>
               <button onClick={() => escolherVisao("personalizado")} className={cn("border-l px-3 py-1", personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Ver</button>
             </div>
           )}
-          <RailButton size="sm" label="Buscar" onClick={() => setSearchOpen(true)}><Search className="h-4 w-4" /></RailButton>
-          {compacto && <RailButton size="sm" label="Configurações" active={page === "config"} onClick={() => setPage("config")}><Engrenagem className="h-4 w-4" /></RailButton>}
-          {!compacto && <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>}
           {temPainel && !compacto && <RailButton size="sm" label={`${numeros ? "Ocultar" : "Mostrar"} a numeração das linhas (${pretty(keys.toggleNumeros)})`} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
           {temPainel && !compacto && <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>}
-          <BotoesJanela />
-        </header>}
-        {!compacto && <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />}
+        </div>}
 
         {page === "config" && <SettingsPage tema={{ temaClaro, setTemaClaro, temaEscuro, setTemaEscuro, dark, setDark, estiloCallout, setEstiloCallout, fonte, setFonte, tamanhoTexto, setTamanhoTexto, forma, setForma, destaques, setDestaques }} overrides={overrides} setOverrides={setOverrides} items={items} onRefresh={refresh} onOpen={open} modoCompacto={{ modo: modoTela, setModo: setModoTela }} atalhoGlobal={{ ligado: P.atalhoGlobal, setLigado: P.setAtalhoGlobal, erro: erroAtalhoGlobal, bandeja: P.bandeja, setBandeja: P.setBandeja, erroBandeja }} />}
         {!carregado && page !== "config" && page !== "editor" && !personalizada && <Carregando>Lendo o vault…</Carregando>}
@@ -406,6 +410,19 @@ export default function App() {
         <main onScrollCapture={aoRolarTexto} className={cn("min-h-0 flex-1 overflow-auto", (page !== "editor" || personalizada) && "hidden")}>
           <Editor ref={ed} titulo={(current || "").split(/[\\/]/).pop().replace(/\.md$/i, "")} onChange={onChange} onSave={save} onLink={link} onRename={(n) => current && renomearNota(current, n).catch((e) => setStatus("Erro: " + (e?.message ?? e)))} onRevisao={aoRevisar} numeros={numeros} />
         </main>
+        </div>
+        {outlineVisible && !(personalizada && visao.id === "aula" && gramAberta) && (
+          <>
+            <ResizeHandle width={outlineW} setWidth={setOutlineW} min={160} max={480} side="right" />
+            <div style={{ width: outlineW }} className="shrink-0">
+              <RightPanel tab={panelTab} setTab={setPanelTab} info={info} text={propsText} onSet={setProperty} onOpen={open} onGoLine={goLine} path={current} histTick={histTick} onRestore={restaurarNota}
+                painelIA={<PainelIA ia={ia} texto={propsText} getContexto={getContextoIA} onAbrirConfig={() => setPage("config")} onVerProposta={async (id) => { await props.recarregar(); await revisarProposta(id); }} />}>
+                <Outline headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />
+              </RightPanel>
+            </div>
+          </>
+        )}
+        </div>
 
         {props.desfazer && <div role="status" className="fixed bottom-10 right-6 z-40 max-md:bottom-20 max-md:right-3 flex items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-lg">
           {props.desfazer.texto}<button onClick={props.desfazerAgora} className="font-medium text-primary hover:underline">Desfazer</button>
@@ -440,18 +457,6 @@ export default function App() {
           className="fixed bottom-24 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:opacity-90"><Plus aria-hidden className="h-6 w-6" strokeWidth={2} /></button>
       )}
       {compacto && !foco && <BarraInferior ativo={ativoMenu} onGo={irSecao} />}
-
-      {outlineVisible && !(personalizada && visao.id === "aula" && gramAberta) && (
-        <>
-          <ResizeHandle width={outlineW} setWidth={setOutlineW} min={160} max={480} side="right" />
-          <div style={{ width: outlineW }} className="shrink-0">
-            <RightPanel tab={panelTab} setTab={setPanelTab} info={info} text={propsText} onSet={setProperty} onOpen={open} onGoLine={goLine} path={current} histTick={histTick} onRestore={restaurarNota}
-              painelIA={<PainelIA ia={ia} texto={propsText} getContexto={getContextoIA} onAbrirConfig={() => setPage("config")} onVerProposta={async (id) => { await props.recarregar(); await revisarProposta(id); }} />}>
-              <Outline headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />
-            </RightPanel>
-          </div>
-        </>
-      )}
 
       {dialog && <EntryDialog {...dialog} onClose={() => { setDialog(null); ed.current?.focus(); }} />}
       {paletteOpen && <CommandPalette commands={commands} items={items} onOpenNote={open} onClose={() => { setPaletteOpen(false); ed.current?.focus(); }} />}
