@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { definirRaiz, raizDe } from "@/lib/raiz";
 import { Carregando } from "@/components/ui/estado";
 import { Menu } from "@/components/Menu";
+import BotoesJanela, { temBotoesJanela } from "@/components/BotoesJanela";
 import { BarraInferior } from "@/components/BarraInferior";
 import { useCompacto, CompactoContext } from "@/lib/useCompacto";
 import { definirTabelasEditaveis } from "@/lib/livePreview";
@@ -338,11 +339,11 @@ export default function App() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {foco &&<button onClick={() => setFoco(false)} title={`Sair do modo foco (Esc ou ${pretty(keys.focus)})`} className="fixed right-3 top-3 z-20 rounded-md border bg-background/80 px-2 py-1 text-xs text-muted-foreground opacity-40 hover:opacity-100">Sair do foco (Esc)</button>}
-        {!foco && <header className={cn("flex shrink-0 items-center gap-2 border-b py-2", compacto ? "min-h-12 px-2" : "min-h-[3.5rem] px-4")}>
+        {!foco && <header data-tauri-drag-region={temBotoesJanela || undefined} className={cn("flex shrink-0 items-center gap-2 border-b py-2", compacto ? "min-h-12 px-2" : "min-h-[3.5rem] px-4")}>
           {!compacto && <RailButton size="sm" label={`Reduzir/ampliar o menu (${pretty(keys.toggleSide)})`} active={showSide} onClick={() => setShowSide(!showSide)}><PanelLeft className="h-4 w-4" /></RailButton>}
           <RailButton size="sm" label={compacto ? "Voltar" : `Voltar (${pretty(keys.back)})`} onClick={() => go(-1)} disabled={!canBack}><ArrowLeft className="h-4 w-4" /></RailButton>
           <RailButton size="sm" label={compacto ? "Avançar" : `Avançar (${pretty(keys.forward)})`} onClick={() => go(1)} disabled={!canFwd}><ArrowRight className="h-4 w-4" /></RailButton>
-          <nav aria-label="Caminho" className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground max-md:text-sm">
+          <nav aria-label="Caminho" data-tauri-drag-region={temBotoesJanela || undefined} className="ml-2 flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground max-md:text-sm">
             {crumbs.length === 0 && <span>Selecione um arquivo</span>}
             {(compacto ? crumbs.slice(-1) : crumbs).map((c, i, lista) => {
               const last = i === lista.length - 1;
@@ -354,7 +355,7 @@ export default function App() {
               );
             })}
           </nav>
-          <div id="slot-barra-aula" className="flex min-w-0 flex-1 items-center gap-2 pl-3">{page === "editor" && !personalizada && current && <TocBarra headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />}</div>
+          <div id="slot-barra-aula" data-tauri-drag-region={temBotoesJanela || undefined} className="flex min-w-0 flex-1 items-center gap-2 pl-3">{page === "editor" && !personalizada && current && <TocBarra headings={headings} active={activeHeading} onGo={(pos) => goHeading(pos, headings.findIndex((h) => h.pos === pos))} />}</div>
           {visao && page === "editor" && !compacto && (
             <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-xs">
               <button onClick={() => escolherVisao("markdown")} className={cn("px-3 py-1", !personalizada ? "bg-accent font-medium" : "text-muted-foreground hover:bg-accent")}>Editar</button>
@@ -366,6 +367,7 @@ export default function App() {
           {!compacto && <RailButton size="sm" label={`Modo foco (${pretty(keys.focus)})`} onClick={() => setFoco(true)}><Maximize2 className="h-4 w-4" /></RailButton>}
           {temPainel && !compacto && <RailButton size="sm" label={`${numeros ? "Ocultar" : "Mostrar"} a numeração das linhas (${pretty(keys.toggleNumeros)})`} active={numeros} onClick={() => setNumeros(!numeros)}><ListOrdered className="h-4 w-4" /></RailButton>}
           {temPainel && !compacto && <RailButton size="sm" label="Painel lateral" active={outlineVisible} onClick={() => setShowOutline(!showOutline)}><ListTree className="h-4 w-4" /></RailButton>}
+          <BotoesJanela />
         </header>}
         {!compacto && <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />}
 
