@@ -38,16 +38,16 @@ function Item({ item, ativo, onGo, compacto }) {
 }
 
 /** Menu lateral: marca, as três áreas de trabalho (Hoje, Documentos e Ano), ferramentas de apoio, configurações e tema. */
-/** `compacto`: versão reduzida (só ícones), usada quando o menu é fechado com Ctrl+B. */
+/** `compacto`: versão reduzida (só ícones, sem os submenus), usada quando o menu é fechado com Ctrl+B. */
 export function Menu({ ativo, onGo, dark, setDark, compacto }) {
   return (
-    <nav aria-label="Navegação" className={cn("flex shrink-0 flex-col border-r bg-muted", compacto ? "w-14 items-center gap-1.5 py-3" : "w-60 gap-6 px-3 py-5")}>
+    <nav aria-label="Navegação" className={cn("flex min-h-0 shrink-0 flex-col overflow-y-auto overflow-x-hidden border-r bg-muted [&>*]:shrink-0", compacto ? "w-14 items-center gap-1.5 py-3" : "w-60 gap-6 px-3 py-5")}>
       <button type="button" aria-label="Margem — ir para Hoje" title="Margem" onClick={() => onGo("hoje")}
         className={cn("flex items-center gap-2.5 rounded-lg text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring", compacto ? "mb-1" : "px-2")}>
         <Logo className={compacto ? "h-9 w-9 shrink-0" : "h-8 w-8 shrink-0"} />
         {!compacto && <span className="text-2xl font-semibold leading-none tracking-tight" style={{ fontFamily: "var(--f-h1)" }}>Margem</span>}
       </button>
-      <div className={cn("flex flex-col gap-0.5", compacto && "items-center")}>{PRINCIPAL.flatMap((i) => [<Item key={i.id} item={i} ativo={ativo} onGo={onGo} compacto={compacto} />, ...(SUBS[i.id] ? SUBS[i.id].map((s) => <Item key={s.id} item={s} ativo={ativo} onGo={onGo} compacto={compacto} />) : [])])}</div>
+      <div className={cn("flex flex-col gap-0.5", compacto && "items-center")}>{PRINCIPAL.flatMap((i) => [<Item key={i.id} item={i} ativo={ativo} onGo={onGo} compacto={compacto} />, ...(SUBS[i.id] && !compacto ? SUBS[i.id].map((s) => <Item key={s.id} item={s} ativo={ativo} onGo={onGo} compacto={compacto} />) : [])])}</div>
       <div className={cn("flex flex-col gap-0.5", compacto && "items-center border-t pt-1.5")}>
         {!compacto && <span className="px-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Mais</span>}
         {MAIS.map((i) => <Item key={i.id} item={i} ativo={ativo} onGo={onGo} compacto={compacto} />)}
