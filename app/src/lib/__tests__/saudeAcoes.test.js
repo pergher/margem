@@ -47,6 +47,11 @@ describe("planejar", () => {
   it("valor-invalido: status, ano, turma (sempre entre aspas) e turmas como número", () => {
     expect(planejar({ code: "valor-invalido", msg: 'status String("Em andamento") fora' }, it0, nota("status: Em andamento")).novo).toContain("status: andamento");
     expect(planejar({ code: "valor-invalido", msg: "ano x deve ser" }, it0, nota('ano: "7º"')).novo).toContain("ano: 7");
+    const ano = (t) => planejar({ code: "valor-invalido", msg: "ano x deve ser" }, it0, nota(t));
+    expect(ano("ano: [7º, 6º]").novo).toContain("ano: [6, 7]"); // lista com valores fora do formato
+    expect(ano('ano: "6, 7"').novo).toContain("ano: [6, 7]"); // texto com vários anos
+    expect(ano("ano: [6, 6º]").novo).toContain("ano: 6"); // repetição some
+    expect(ano("ano: [6, 10]")).toBeNull(); // sem correção segura
     expect(planejar({ code: "valor-invalido", msg: "turma x deve ser" }, it0, nota("turma: 61")).novo).toContain('turma: "61"');
     expect(planejar({ code: "valor-invalido", msg: "turmas deve ser" }, it0, nota("turmas: [61, 62]")).novo).toContain('turmas: ["61", "62"]');
     expect(planejar({ code: "valor-invalido", msg: "status x fora" }, it0, nota("status: talvez"))).toBeNull(); // sem correção segura

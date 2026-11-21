@@ -57,6 +57,13 @@ export function planejar(x, it, texto) {
       if (campo === "turmas") { // lista de turmas escritas como número ([61, 62]): volta a ser texto
         return e.items?.length && e.items.every((i) => /^\d{2}$/.test(i)) ? plano(`turmas: ${e.items.map((i) => `"${i}"`).join(", ")}`, setProp(texto, "turmas", e.items)) : null;
       }
+      if (campo === "ano") { // vários anos: lista ([6º, 7º]) ou texto ("6, 7"); cada um é corrigido, e a lista sai ordenada e sem repetição
+        const bruto = e.items ?? String(e.value ?? "").split(/[\s,;]+(?:e[\s,;]+)?/).filter(Boolean);
+        const anos = bruto.map((x) => valorCorrigido("ano", x));
+        if (!bruto.length || anos.includes(null)) return null;
+        const lista = [...new Set(anos)].sort(), novo = lista.length === 1 ? lista[0] : lista;
+        return plano(`ano: ${lista.length === 1 ? lista[0] : `[${lista.join(", ")}]`}`, setProp(texto, "ano", novo));
+      }
       if (e.items) return null;
       const novo = valorCorrigido(campo, e.value);
       return novo === null ? null : plano(`${campo}: ${novo}`, setProp(texto, campo, novo, campo === "turma" ? { aspas: true } : undefined));

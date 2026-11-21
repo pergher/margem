@@ -48,7 +48,7 @@ const fmtScalar = (s) => (s === "" ? "" : needsQuote(s) ? JSON.stringify(s) : s)
 
 /** `aspas`: grava o valor sempre entre aspas (texto como "61", que sem aspas viraria número). */
 export function formatLine(key, value, { aspas = false } = {}) {
-  if (Array.isArray(value)) return `${key}: [${value.map(fmtItem).join(", ")}]`;
+  if (Array.isArray(value)) return `${key}: [${value.map(key === "ano" && value.every((x) => /^[6-9]$/.test(x)) ? String : fmtItem).join(", ")}]`; // anos são números (6, 7), não texto
   const v = aspas && String(value) !== "" ? JSON.stringify(String(value)) : fmtScalar(String(value));
   return v ? `${key}: ${v}` : `${key}:`;
 }
