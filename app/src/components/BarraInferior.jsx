@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 const ABAS = [
   { id: "hoje", nome: "Hoje", Icone: House },
   { id: "documentos", nome: "Documentos", Icone: Library },
-  { id: "ano", nome: "Ano", Icone: CalendarRange },
+  { id: "ano", nome: "Semana", Icone: CalendarRange },
 ];
 
 /** Barra inferior do modo compacto: as três áreas de trabalho, com alvos de toque de 44 px ou mais. */

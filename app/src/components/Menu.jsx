@@ -1,13 +1,13 @@
-import { IconListCheck as ListCheck, IconHome as House, IconCalendarWeek as CalendarRange, IconLibrary as Library, IconHeartbeat as HeartPulse, IconSettings as Settings, IconBook as BookText, IconBookmarks as BookMarked, IconQuote as Quote, IconRepeat as Repeat2, IconCalendarEvent as CalendarEvent, IconTimeline as Timeline, IconClipboardCheck as ClipboardCheck, IconNotebook as Notebook, IconSun as Sun, IconMoon as Moon } from "@tabler/icons-react";
+import { IconListCheck as ListCheck, IconHome as House, IconCalendarWeek as CalendarRange, IconLibrary as Library, IconHeartbeat as HeartPulse, IconSettings as Settings, IconBook as BookText, IconBookmarks as BookMarked, IconQuote as Quote, IconRepeat as Repeat2, IconTimeline as Timeline, IconClipboardCheck as ClipboardCheck, IconNotebook as Notebook, IconSun as Sun, IconMoon as Moon } from "@tabler/icons-react";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
 const PRINCIPAL = [
   { id: "hoje", nome: "Hoje", Icone: House, dica: "O dia: próximas aulas, correção em curso e documentos recentes" },
   { id: "documentos", nome: "Documentos", Icone: Library, dica: "Toda a pasta Acervo: aulas, gramática, textos, questões, oficinas…" },
-  { id: "ano", nome: "Ano", Icone: CalendarRange, dica: "Semana, planejamento, produções e diário" },
+  { id: "ano:semana", nome: "Semana", Icone: CalendarRange, dica: "As aulas da semana, turma por turma" },
 ];
-// Atalhos sob Documentos (já filtrados por tipo) e sob Ano (abrem na aba escolhida).
+// Atalhos sob Documentos (já filtrados por tipo) e sob Semana (abrem na aba escolhida).
 const SUBS = {
   documentos: [
     { id: "documentos:aula", nome: "Aulas", Icone: BookText, dica: "Documentos, só aulas", sub: true },
@@ -15,8 +15,7 @@ const SUBS = {
     { id: "documentos:texto", nome: "Textos", Icone: Quote, dica: "Documentos, só textos", sub: true },
     { id: "documentos:ciclo", nome: "Ciclos", Icone: Repeat2, dica: "Documentos, só ciclos", sub: true },
   ],
-  ano: [
-    { id: "ano:semana", nome: "Semana", Icone: CalendarEvent, dica: "Ano: as aulas da semana", sub: true },
+  "ano:semana": [
     { id: "ano:plano", nome: "Planejamento", Icone: Timeline, dica: "Ano: os ciclos por trimestre", sub: true },
     { id: "ano:prod", nome: "Produções", Icone: ClipboardCheck, dica: "Ano: produções a corrigir e corrigidas", sub: true },
     { id: "ano:diario", nome: "Diário", Icone: Notebook, dica: "Ano: diário de classe", sub: true },
@@ -37,7 +36,7 @@ function Item({ item, ativo, onGo, compacto }) {
   );
 }
 
-/** Menu lateral: marca, as três áreas de trabalho (Hoje, Documentos e Ano), ferramentas de apoio, configurações e tema. */
+/** Menu lateral: marca, as três áreas de trabalho (Hoje, Documentos e Semana), ferramentas de apoio, configurações e tema. */
 /** `compacto`: versão reduzida (só ícones, sem os submenus), usada quando o menu é fechado com Ctrl+B. */
 export function Menu({ ativo, onGo, dark, setDark, compacto }) {
   return (

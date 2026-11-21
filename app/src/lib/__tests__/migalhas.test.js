@@ -62,8 +62,8 @@ describe("migalhas de uma nota aberta", () => {
     p[2].ir(); expect(ir.ano).toHaveBeenCalledWith("prod");
   });
   it("a página Ano mostra a aba aberta", () => {
-    expect(textos(migalhas({ ...base, page: "ano", anoAba: "diario" }, mk()))).toEqual(["Ano", "Diário"]);
-    expect(textos(migalhas({ ...base, page: "ano", anoAba: "plano" }, mk()))).toEqual(["Ano", "Planejamento"]);
+    expect(textos(migalhas({ ...base, page: "ano", anoAba: "diario" }, mk()))).toEqual(["Semana", "Diário"]);
+    expect(textos(migalhas({ ...base, page: "ano", anoAba: "plano" }, mk()))).toEqual(["Semana", "Planejamento"]);
   });
 });
 

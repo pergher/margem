@@ -6,7 +6,7 @@ export const NOMES_PASTA = { Questoes: "Questões" };
 /** Rótulo da tela quando ela não é uma nota nem uma listagem com pastas. */
 export const NOMES_ABA = { semana: "Semana", plano: "Planejamento", prod: "Produções", diario: "Diário", fechamento: "Fechamento" };
 export const rotuloDaTela = (page) => ({
-  inicio: "Hoje", ano: "Ano", documentos: "Documentos", saude: "Saúde do vault", config: "Configurações",
+  inicio: "Hoje", ano: "Semana", documentos: "Documentos", saude: "Saúde do vault", config: "Configurações",
 })[page] ?? "";
 
 /**
@@ -17,7 +17,7 @@ export function migalhas({ page, rel, anoAba, ciclo, documentosPasta, documentos
   const pastas = (pasta) => (pasta ? pasta.split("/") : []);
   if (page === "documentos" && documentosAba !== "montar") return [{ t: "Documentos", ir: () => ir.documentos("") }, ...pastas(documentosPasta).map((t, i, a) => ({ t: NOMES_PASTA[t] ?? t.replace(/^_/, ""), ir: () => ir.documentos(a.slice(0, i + 1).join("/")) }))];
   if (page === "ciclo") return [{ t: "Ciclos", ir: () => ir.secao("ciclos") }, { t: ciclo?.titulo ?? "Ciclo" }];
-  if (page === "ano") return [{ t: "Ano" }, { t: NOMES_ABA[anoAba] ?? NOMES_ABA.semana }];
+  if (page === "ano") return anoAba && anoAba !== "semana" ? [{ t: "Semana" }, { t: NOMES_ABA[anoAba] ?? NOMES_ABA.semana }] : [{ t: "Semana" }];
   if (page !== "editor") return [rotuloDaTela(page)].filter(Boolean).map((t) => ({ t }));
   if (!rel) return [];
   return rel.replace(/\.md$/, "").split("/").map((t, i, a) => {
