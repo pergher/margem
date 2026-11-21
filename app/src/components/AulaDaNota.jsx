@@ -123,6 +123,18 @@ export function TituloEditavel({ nome, onRename, rotulo = "aula" }) {
   );
 }
 
+/** Ano(s) escolar(es) da aula: 6º a 9º, um ou vários (grava `ano: 6` ou `ano: [6, 7]`). */
+function Anos({ valor, onChange }) {
+  const ativos = [...new Set(valor.join(" ").match(/[6-9]/g) ?? [])];
+  const alternar = (x) => { const n = ativos.includes(x) ? ativos.filter((y) => y !== x) : [...ativos, x].sort(); onChange(n.length === 1 ? n[0] : n); };
+  return (
+    <div role="group" aria-label="Ano escolar" className="flex flex-wrap gap-1">
+      {["6", "7", "8", "9"].map((x) => <button key={x} type="button" aria-pressed={ativos.includes(x)} onClick={() => alternar(x)}
+        className={cn("h-7 rounded-md border px-2 text-xs", ativos.includes(x) ? "border-primary bg-primary/10 font-medium" : "text-muted-foreground hover:bg-accent")}>{x}º</button>)}
+    </div>
+  );
+}
+
 /** Propriedades (frontmatter) da aula, editáveis aqui mesmo. */
 export function Propriedades({ texto, onSet, status }) {
   const fm = parseFm(texto), [novo, setNovo] = useState(null);
@@ -141,9 +153,7 @@ export function Propriedades({ texto, onSet, status }) {
                     {status.map((x) => <option key={x}>{x}</option>)}
                   </select>
                 : e.key === "ano"
-                  ? <select value={e.value} onChange={(ev) => onSet("ano", ev.target.value)} className="h-7 w-full rounded-md border bg-background px-1.5 text-xs">
-                      <option value="">—</option>{["6", "7", "8", "9"].map((x) => <option key={x} value={x}>{x}º ano</option>)}
-                    </select>
+                  ? <Anos valor={e.items ?? [e.value]} onChange={(v) => onSet("ano", v)} />
                   : <Text value={e.value} onCommit={(v) => onSet(e.key, v)} />}
           </Fragment>
         ))}
@@ -328,7 +338,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
     );
   };
   const statusLista = info?.status?.length ? info.status : STATUS;
-  const meta = [a.meta.ano && `${a.meta.ano}º ano`, a.meta.assuntos].filter(Boolean);
+  const anosAula = (a.meta.ano.match(/[6-9]/g) ?? []), meta = [anosAula.length && `${anosAula.join("º, ")}º ano`, a.meta.assuntos].filter(Boolean);
   return (
     <div className="flex min-h-0 flex-1">
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
