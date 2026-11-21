@@ -76,6 +76,7 @@ export const invoke = inTauri ? tauriInvoke : async (cmd, a = {}) => {
     anexos[a.name.toLowerCase()] = `data:image/${ext === "png" ? "png" : "jpeg"};base64,${b64(a.data)}`;
     return a.dir + "/" + a.name;
   }
+  if (cmd === "apagar_foto_diario") { delete anexos[a.path.split("/").pop().toLowerCase()]; return null; }
   if (cmd === "resolve_link") return get("/resolve?target=" + encodeURIComponent(a.target));
   if (cmd === "save_note") { await guardar(a.path, false); salvas[a.path] = a.text; return null; }
   if (cmd === "list_history") return (hist[a.path] ?? []).map((v) => ({ id: v.id, ts: v.ts, bytes: v.texto.length }));

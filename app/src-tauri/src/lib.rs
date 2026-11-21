@@ -65,7 +65,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             atalho_global::definir_atalho_global, bandeja::definir_bandeja, notas::list_notes, notas::read_note, notas::save_note, notas::resolve_link, config::read_config, config::write_config,
             notas::create_note, notas::create_folder, notas::rename_entry, notas::move_entry, notas::delete_entry, notas::list_dirs,
-            config::vault_ausente, config::vault_sem_acesso, config::abrir_permissao_arquivos, config::listar_pastas, notas::note_info, busca::search_text, busca::read_embed, notas::read_sidecar, notas::save_attachment,
+            config::vault_ausente, config::vault_sem_acesso, config::abrir_permissao_arquivos, config::listar_pastas, notas::note_info, busca::search_text, busca::read_embed, notas::read_sidecar, notas::save_attachment, notas::apagar_foto_diario,
             notas::vault_health, notas::list_history, notas::read_version, notas::restore_version, config::get_vault_root,
             config::set_vault_root, atualizacao::agendar_reabertura, observador::verificar_nota, observador::ler_do_disco,
             propostas::listar_propostas, propostas::descartar_proposta, propostas::aplicar_proposta, propostas::propor_teste,

@@ -4,7 +4,7 @@ import { invoke } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { corTurma } from "@/lib/cores";
 import { lerSemanas, rotuloDe } from "@/lib/semana";
-import { CATEGORIAS, abreviar, aulasDoDiario, criarAluno, criarDiario, dataDaSemana, insereTags, inserirOcorrencia, mudarEstado, listarAlunos, listarDiarios, nomeDoMes, registrosDoDiario, turmasDe } from "@/lib/diario";
+import { CATEGORIAS, abreviar, aulasDoDiario, criarAluno, criarDiario, dataDaSemana, insereTags, inserirOcorrencia, aprovarDiario as aprovarTranscricao, listarAlunos, listarDiarios, nomeDoMes, registrosDoDiario, turmasDe } from "@/lib/diario";
 import { Chip, norm } from "@/components/Explorador";
 import { Carregando, Estado, Vazio } from "@/components/ui/estado";
 import { DiarioAlunos } from "@/components/DiarioAlunos";
@@ -91,8 +91,10 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
   }, [lista]);
   const editar = onMarkdown ?? onOpen;
 
-  const aprovarDiario = async (path) => {
-    try { await invoke("save_note", { path, text: mudarEstado(await invoke("read_note", { path }), "aprovada") }); setRecarga((x) => x + 1); await onRefresh(); }
+  const [confirmaAprovar, setConfirmaAprovar] = useState(null); // { path, turma } de um diário com foto: pergunta se apaga a foto
+  const aprovarDiario = async (path, apagarFoto = false) => {
+    setConfirmaAprovar(null);
+    try { await aprovarTranscricao(path, { apagarFoto }); setRecarga((x) => x + 1); await onRefresh(); }
     catch (e) { setErro(String(e?.message ?? e)); }
   };
   const gravarOcorrencia = async ({ diario, n, nome, ids, texto, turma }) => {
@@ -157,10 +159,10 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
               <section key={g.k} aria-label={g.titulo} className="flex flex-col gap-1.5">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1">
                   <h2 className="text-sm font-medium">{g.titulo}<span className="ml-2 text-xs font-normal text-muted-foreground">{g.itens.length}</span></h2>
-                  {[...new Map(g.itens.filter((r) => r.transcricao !== "aprovada").map((r) => [r.diario, r.turma]))].map(([path, turma]) => (
+                  {[...new Map(g.itens.filter((r) => r.transcricao !== "aprovada").map((r) => [r.diario, r]))].map(([path, r]) => (
                     <span key={path} className="inline-flex items-center gap-2 rounded-full border border-warn/50 py-0.5 pl-2.5 pr-1 text-xs text-warn">
-                      Turma {turma}: transcrição a aprovar
-                      <button onClick={() => aprovarDiario(path)} title="Marca a transcrição desta semana como conferida" className="rounded-full bg-warn/15 px-2 py-0.5 font-medium hover:bg-warn/25">Aprovar</button>
+                      Turma {r.turma}: transcrição a aprovar
+                      <button onClick={() => (r.foto ? setConfirmaAprovar({ path, turma: r.turma, foto: r.foto }) : aprovarDiario(path))} title="Marca a transcrição desta semana como conferida" className="rounded-full bg-warn/15 px-2 py-0.5 font-medium hover:bg-warn/25">Aprovar</button>
                     </span>
                   ))}
                 </div>
@@ -171,6 +173,17 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
             ))}
         </>}
 
+      {confirmaAprovar && (
+        <Caixa titulo={`Aprovar a transcrição da turma ${confirmaAprovar.turma}`} onClose={() => setConfirmaAprovar(null)}>
+          <p>Este diário tem a foto da página do caderno (<code>{confirmaAprovar.foto}</code>). Depois de conferida a transcrição, a foto só ocupa espaço.</p>
+          <p className="text-xs text-muted-foreground">Apagar remove o arquivo de vez, sem passar pela lixeira.</p>
+          <div className="flex flex-wrap justify-end gap-3 pt-1">
+            <button onClick={() => setConfirmaAprovar(null)} className="rounded-md px-3 py-1.5 text-muted-foreground hover:text-foreground">Cancelar</button>
+            <button onClick={() => aprovarDiario(confirmaAprovar.path, false)} className="rounded-md border px-3 py-1.5 hover:bg-accent">Aprovar e manter a foto</button>
+            <button onClick={() => aprovarDiario(confirmaAprovar.path, true)} className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground">Aprovar e apagar a foto</button>
+          </div>
+        </Caixa>
+      )}
       {dialogo === "aluno" && <NovoAluno turmas={todasTurmas} turmaInicial={turmas[0]} onClose={() => setDialogo(null)} onOk={async (turma, nome) => { await criarAluno(items, { ano, turma, nome }); await onRefresh(); setDialogo(null); }} />}
       {dialogo === "diario" && <NovoDiario turmas={todasTurmas} turmaInicial={turmas[0]} semanas={semanas} diarios={diarios} onClose={() => setDialogo(null)}
         onOk={async (turma, semana, aulas, arquivo) => { const foto = arquivo ? await guardarFotoDiario(items, { ano, turma, semana, arquivo }) : ""; const p = await criarDiario(items, { ano, turma, semana, aulas, foto }); setDialogo(null); await onRefresh(); editar(p); }} />}

@@ -84,6 +84,21 @@ export function inserirOcorrencia(text, n, aluno, texto) {
 }
 export const mudarEstado = (text, estado) => setProp(text, "transcricao", estado);
 
+/**
+ * Aprova a transcrição. Com `apagarFoto`, a foto da página some de vez do vault (não vai para a lixeira) e o `foto:` sai do diário:
+ * depois de transcrita e conferida, ela só ocupa espaço. Apaga a foto antes de gravar a nota, para a nota nunca apontar para um arquivo que sumiu.
+ */
+export async function aprovarDiario(path, { apagarFoto = false } = {}) {
+  let text = await invoke("read_note", { path });
+  const foto = lerMeta(text).foto;
+  if (apagarFoto && foto) {
+    const achada = await invoke("read_embed", { target: foto }).catch(() => null);
+    if (achada) await invoke("apagar_foto_diario", { path: `${path.replace(/\/[^/]+$/, "")}/Fotos/${foto}` });
+    text = setProp(text, "foto", undefined);
+  }
+  await invoke("save_note", { path, text: mudarEstado(text, "aprovada") });
+}
+
 // ---------- comportamentos e registros (página Diário) ----------
 // Na linha da ocorrência o professor pode etiquetar: "- [[Nome]] — #conversa #celular texto livre".
 // Sem etiqueta, o app sugere pelo texto (marcado como "sugerido"); a etiqueta no arquivo sempre vale mais.
@@ -132,7 +147,7 @@ export const nomeDoMes = (ym) => { const [a, m] = ym.split("-"); return `${MESES
  */
 export function registrosDoDiario(text, d) {
   const meta = lerMeta(text), data = dataDaSemana(meta.semana, d.ano), linhas = text.split("\n");
-  const base = { diario: d.path, turma: d.turma, ano: d.ano, semana: meta.semana, data, mes: mesDe(data), transcricao: meta.transcricao };
+  const base = { diario: d.path, turma: d.turma, ano: d.ano, semana: meta.semana, data, mes: mesDe(data), transcricao: meta.transcricao, foto: meta.foto };
   const aulas = aulasDoDiario(text), regs = [];
   aulas.forEach((a, k) => {
     const [rot, tema = ""] = a.titulo.split(/\s+—\s+/), n = Number(/\d+/.exec(rot)?.[0] ?? k + 1);

@@ -64,6 +64,25 @@ pub fn save_attachment(app: State<App>, dir: String, name: String, data: Vec<u8>
     Ok(slash(&p))
 }
 
+/// Apaga de vez (sem passar pela lixeira) a foto de um diário depois de a transcrição ser aprovada, para não ocupar espaço.
+/// Só aceita `Anos/AAAA/Diarios/<turma>/Fotos/<imagem>`: nenhum outro arquivo do vault pode ser apagado por aqui.
+pub(crate) fn apagar_foto_em(root: &Path, path: &str) -> Result<(), String> {
+    let root = canon(root).map_err(|e| e.to_string())?;
+    let p = inside_any_em(&root, path)?;
+    let rel: Vec<String> = p.strip_prefix(&root).map_err(|_| "fora do vault".to_string())?.components().map(|c| c.as_os_str().to_string_lossy().to_string()).collect();
+    let ext = p.extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+    let ok = rel.len() == 6 && rel[0] == "Anos" && rel[2] == "Diarios" && rel[4] == "Fotos" && ["jpg", "jpeg", "png"].contains(&ext.as_str()) && p.is_file();
+    if !ok { return Err("só dá para apagar fotos de diário (Anos/AAAA/Diarios/<turma>/Fotos)".into()); }
+    std::fs::remove_file(&p).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn apagar_foto_diario(app: State<App>, path: String) -> Result<(), String> {
+    let r = apagar_foto_em(&app.root(), &path);
+    app.invalidar();
+    r
+}
+
 #[tauri::command]
 pub fn save_note(app: State<App>, path: String, text: String, force: Option<bool>) -> Result<(), String> {
     let p = inside(&app, &path)?;
@@ -334,6 +353,30 @@ mod tests {
             std::fs::write(&p, &orig).unwrap();
         }
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn apaga_so_foto_de_diario() {
+        let d = tmpdir("foto-diario");
+        let fotos = d.join("Anos/2026/Diarios/71/Fotos");
+        std::fs::create_dir_all(&fotos).unwrap();
+        std::fs::write(fotos.join("a.jpg"), "x").unwrap();
+        std::fs::write(fotos.join("nota.md"), "x").unwrap();
+        std::fs::write(d.join("Anos/2026/Diarios/71/Diario.md"), "x").unwrap();
+        std::fs::create_dir_all(d.join("Acervo")).unwrap();
+        std::fs::write(d.join("Acervo/logo.png"), "x").unwrap();
+        let s = |p: PathBuf| p.to_string_lossy().to_string();
+        // fora da pasta de fotos de diário, ou de outro tipo: recusa e não apaga
+        assert!(apagar_foto_em(&d, &s(d.join("Acervo/logo.png"))).is_err());
+        assert!(apagar_foto_em(&d, &s(fotos.join("nota.md"))).is_err());
+        assert!(apagar_foto_em(&d, &s(d.join("Anos/2026/Diarios/71/Diario.md"))).is_err());
+        assert!(apagar_foto_em(&d, &s(fotos.clone())).is_err());
+        assert!(d.join("Acervo/logo.png").exists() && fotos.join("nota.md").exists());
+        // a foto do diário some de vez
+        apagar_foto_em(&d, &s(fotos.join("a.jpg"))).unwrap();
+        assert!(!fotos.join("a.jpg").exists());
+        assert!(apagar_foto_em(&d, &s(fotos.join("a.jpg"))).is_err(), "já apagada");
+        let _ = std::fs::remove_dir_all(&d);
     }
 
     #[test]
