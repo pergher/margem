@@ -54,7 +54,15 @@ As etapas K–N (observador de arquivos, propostas, painel de IA, provedores) e 
 - [ ] **Propostas (L e revisão na nota)**: "Propor (teste)" com nota aberta e fechada; aceitar/recusar trecho a trecho; Ctrl+Z; desfazer; mudança por fora recusa a proposta; duas propostas e contador no rodapé.
 - [ ] **PDF/imprimir da Prova** e DOCX (2 colunas, cabeçalho e logo): principal risco de layout, nunca visto no Tauri.
 - [ ] Confirmar com o usuário o que já foi conferido pelo uso das versões 0.1.5–0.1.11: reabertura após atualizar (`agendar_reabertura`), imagens via `asset:` (escopo dinâmico na pasta do vault, `config.rs`), CSP, renomear só com troca de maiúsculas, conflito de gravação.
-- [ ] CI com clippy/ESLint/vitest/cobertura: conferir que está verde no GitHub (Actions).
+- [ ] **Roteiro de testes do usuário no Windows (anotado em 2026-11-21; cada item leva uns 2 min):**
+  - [ ] Nota limpa alterada por fora (Bloco de Notas) recarrega sozinha; nota suja alterada por fora mostra a faixa "Carregar a do disco / Manter a minha" e "Ver diferenças"; salvar no Margem não gera aviso.
+  - [ ] Prova: "Imprimir/PDF" e DOCX (2 colunas, cabeçalho, logo); abrir o DOCX no Word. Maior risco de layout.
+  - [ ] Jogo da Aula: caça-palavras com "PDF/imprimir" (o diálogo nunca foi visto no Tauri).
+  - [ ] Propostas: "Propor (teste)" com nota aberta; aceitar um trecho, recusar outro, Ctrl+Z, Desfazer; sem chave de IA.
+  - [ ] Corretor ortográfico pt-BR (palavra errada sublinhada) e aba Histórico do painel direito (listar, comparar, restaurar).
+  - [ ] Ações em lote no Explorador: Ctrl+clique, Shift+clique, Mover e Mudar status em duas notas de teste.
+- [x] CI verde no GitHub (conferido em 2026-11-21: CI e Release v0.1.20 com sucesso). Local no mesmo dia: vitest 316 testes ok, `cargo test` ok, ESLint 0 erros e 6 avisos, clippy 17 avisos de estilo (12 de `if` colapsável).
+- [x] **Instalar e atualizar no Windows** (v0.1.20, conferido pelo usuário em 2026-11-21): atualização automática funciona; bandeja e atalho global de captura funcionam; teclado normal no app (sem colisão de AltGr).
 
 ## P2 — IA: testar com chave real e privacidade
 
@@ -78,7 +86,8 @@ Objetivo central. Aplicado só em cópias/fixtures (`tests/fixtures/vault`, e o 
 
 ## P4 — Uso diário
 
-- [ ] **Diário:** a foto ainda é um nome de arquivo digitado no diálogo; falta importar a foto para dentro do vault pelo app. (A transcrição é feita pela skill `transcrever-diario`, com o Claude fora do MCP.)
+- [x] **Diário: importar a foto pelo app** (feito em 2026-11-21; `lib/fotoDiario.js`, diálogo "Novo diário"; testado no navegador, falta ver no Tauri e no Android): botão "Escolher foto" (no celular oferece a câmera); o app reduz a imagem (até 2000 px, JPEG, abaixo de 2 MB) e guarda em `Anos/AAAA/Diarios/<turma>/Fotos/Foto diario <turma> - <semana>.jpg`, com `foto:` no diário. Uma foto por semana. Não aceita HEIC. (A transcrição é feita pela skill `transcrever-diario`, com o Claude fora do MCP.) **Falta:** acrescentar foto a um diário que já existe; mostrar a foto dentro da página Diário para conferir a transcrição.
+- [ ] **Ideia (2026-11-21), para as correções de produções textuais:** importar um PDF digitalizado com os manuscritos de uma turma e separar as páginas em uma imagem por aluno (miniaturas, o professor indica a quem cada página pertence). Pede leitor de PDF (pdf.js) e seletor de arquivos; o diário não precisa disso.
 - [ ] Ao mover arquivos: avisar quando o destino contraria o tipo; Ctrl+Z global do movimento; pastas renomeadas por fora não geram aviso (só os `.md`).
 
 ## P4b — Ideias aprovadas em 2026-11-18

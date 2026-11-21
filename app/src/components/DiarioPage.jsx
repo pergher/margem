@@ -8,6 +8,7 @@ import { CATEGORIAS, abreviar, aulasDoDiario, criarAluno, criarDiario, dataDaSem
 import { Chip, norm } from "@/components/Explorador";
 import { Carregando, Estado, Vazio } from "@/components/ui/estado";
 import { DiarioAlunos } from "@/components/DiarioAlunos";
+import { guardarFotoDiario } from "@/lib/fotoDiario";
 import { useEhCompacto } from "@/lib/useCompacto";
 
 const ler = (k, p) => { try { return JSON.parse(localStorage.getItem(k)) ?? p; } catch { return p; } };
@@ -172,7 +173,7 @@ export function DiarioPage({ items, onOpen, onMarkdown, onRefresh, focoPath, tur
 
       {dialogo === "aluno" && <NovoAluno turmas={todasTurmas} turmaInicial={turmas[0]} onClose={() => setDialogo(null)} onOk={async (turma, nome) => { await criarAluno(items, { ano, turma, nome }); await onRefresh(); setDialogo(null); }} />}
       {dialogo === "diario" && <NovoDiario turmas={todasTurmas} turmaInicial={turmas[0]} semanas={semanas} diarios={diarios} onClose={() => setDialogo(null)}
-        onOk={async (turma, semana, aulas, foto) => { const p = await criarDiario(items, { ano, turma, semana, aulas, foto }); setDialogo(null); await onRefresh(); editar(p); }} />}
+        onOk={async (turma, semana, aulas, arquivo) => { const foto = arquivo ? await guardarFotoDiario(items, { ano, turma, semana, arquivo }) : ""; const p = await criarDiario(items, { ano, turma, semana, aulas, foto }); setDialogo(null); await onRefresh(); editar(p); }} />}
       {dialogo === "registrar" && <Registrar turmas={todasTurmas} turmaInicial={turmas[0]} diarios={diarios} alunos={alunos} onClose={() => setDialogo(null)}
         onOk={async (d) => { await gravarOcorrencia(d); setDialogo(null); }} />}
     </div></div>
@@ -266,11 +267,11 @@ function NovoAluno({ turmas, turmaInicial, onClose, onOk }) {
 }
 
 function NovoDiario({ turmas, turmaInicial, semanas, diarios, onClose, onOk }) {
-  const [turma, setTurma] = useState(turmaInicial ?? turmas[0] ?? ""), [i, setI] = useState(semanas.length - 1), [foto, setFoto] = useState(""), [erro, setErro] = useState("");
+  const [turma, setTurma] = useState(turmaInicial ?? turmas[0] ?? ""), [i, setI] = useState(semanas.length - 1), [foto, setFoto] = useState(null), [erro, setErro] = useState("");
   const s = semanas[i];
   const aulas = (s?.turmas.filter((t) => turmasDe(t.turma).includes(turma)).flatMap((t) => t.aulas) ?? []).map((a) => a.texto.replace(/\*\*/g, ""));
   const ja = s && diarios.some((d) => d.name === `Diario ${turma} - ${s.rotulo}`);
-  const salvar = async () => { try { await onOk(turma, s.rotulo || s.name, aulas, foto.trim()); } catch (e) { setErro(String(e?.message ?? e)); } };
+  const salvar = async () => { try { await onOk(turma, s.rotulo || s.name, aulas, foto); } catch (e) { setErro(String(e?.message ?? e)); } };
   return (
     <Caixa titulo="Novo diário" onClose={onClose}>
       {!semanas.length ? <div className="text-muted-foreground">Crie antes uma semana na tela Semana: o diário usa as aulas dela.</div> : (
@@ -280,7 +281,16 @@ function NovoDiario({ turmas, turmaInicial, semanas, diarios, onClose, onOk }) {
             <Campo nome="Semana"><select value={i} onChange={(e) => setI(Number(e.target.value))} className={entrada}>{semanas.map((x, k) => <option key={x.path} value={k}>{x.rotulo || x.name}</option>)}</select></Campo>
           </div>
           <div className="text-xs text-muted-foreground">{aulas.length ? `${aulas.length} aula(s) desta turma na semana, já copiadas do planejamento.` : "Esta turma não tem aulas na semana; o diário começa vazio."}</div>
-          <Campo nome="Foto do caderno (opcional)"><input value={foto} onChange={(e) => setFoto(e.target.value)} placeholder="nome-do-arquivo.jpg" className={entrada} /></Campo>
+          <Campo nome="Foto da página do caderno (opcional)">
+            <div className="flex items-center gap-2">
+              <label className="flex min-h-9 cursor-pointer items-center rounded-md border px-3 text-sm hover:bg-accent">
+                {foto ? "Trocar foto" : "Escolher foto"}
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { setFoto(e.target.files?.[0] ?? null); setErro(""); e.target.value = ""; }} />
+              </label>
+              {foto && <><span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{foto.name}</span>
+                <button type="button" onClick={() => setFoto(null)} className="text-xs text-muted-foreground hover:text-foreground">Tirar</button></>}
+            </div>
+          </Campo>
           {ja && <Estado tipo="warn" className="text-xs">já existe um diário desta turma para esta semana</Estado>}
           {erro && <Estado tipo="err">{erro}</Estado>}
         </>
