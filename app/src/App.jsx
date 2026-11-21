@@ -371,8 +371,8 @@ export default function App() {
         </header>}
         {!compacto && <AvisoAtualizacao versao={novaVersao} onDepois={() => setNovaVersao(null)} />}
         <div className="flex min-h-0 flex-1">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {!foco && !compacto && temPainel && <div className="flex shrink-0 items-center justify-end gap-1 px-4 pb-1 pt-2">
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+        {!foco && !compacto && temPainel && <div className="absolute right-6 top-3 z-10 flex items-center gap-1 rounded-lg bg-background/85 p-0.5 backdrop-blur-sm">
           <div id="slot-ferramentas" className="flex items-center gap-1" />
           {visao && page === "editor" && !compacto && (
             <div role="group" aria-label="Modo de exibição" className="flex overflow-hidden rounded-md border text-xs">
