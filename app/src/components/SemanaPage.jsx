@@ -122,14 +122,14 @@ export function SemanaPage({ items, onOpen, onRefresh, focoPath, turmaGlobal }) 
           const vazios = Math.max(0, cfg.aulas - t.aulas.length);
           const sugestoes = proximasDoCiclo({ ciclos, semanas, turma: t.turma, nomeCiclo: ciclo0, qtd: vazios });
           return (
-          <div key={t.turma} className="w-full rounded-xl border bg-background p-4">
-            <div className="mb-3 flex items-baseline justify-between gap-2"><span className="flex items-center gap-2 font-serif text-xl font-semibold"><span aria-hidden className="h-3 w-3 rounded-full" style={{ background: corTurma(t.turma) }} />Turma {t.turma}</span>
+          <div key={t.turma} className="w-full overflow-hidden rounded-xl border bg-background">
+            <div className="flex items-baseline justify-between gap-2 px-4 py-3"><span className="flex items-center gap-2 font-serif text-xl font-semibold"><span aria-hidden className="h-3 w-3 rounded-full" style={{ background: corTurma(t.turma) }} />Turma {t.turma}</span>
               <span className="flex items-center gap-1.5">
                 {vazios > 0 && sugestoes.length > 0 && <button title={`Preencher os espaços vazios com as próximas aulas de ${ciclo0}`} onClick={() => mexer(async () => { for (const a of sugestoes) await adicionarDoCiclo(s.path, t.turma, a); })} className="rounded-md border px-2.5 py-1 text-xs hover:bg-accent">Preencher</button>}
               </span></div>
-            <div className="flex flex-col divide-y">
+            <div className="flex flex-col divide-y border-t">
               {t.aulas.map((a) => (
-                <div key={a.n} className={"flex flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 " + (a.situacao === "dada" ? "opacity-70" : a.situacao === "pulada" ? "opacity-75" : a.situacao === "descartada" ? "opacity-60" : "")}>
+                <div key={a.n} className={"flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2.5 transition-colors hover:bg-accent/50 " + (a.situacao === "dada" ? "opacity-70" : a.situacao === "pulada" ? "opacity-75" : a.situacao === "descartada" ? "opacity-60" : "")}>
                   <div className={compacto ? "min-w-0 flex-1 basis-40" : "min-w-[16rem] flex-1"}>
                     <span className="block truncate text-xs text-muted-foreground" title={a.cicloNome ? undefined : "aula escrita por você"}>{a.cicloNome ? `${a.cicloNome.replace(/^\d{3}\s*-\s*/, "").replace(/\s*-\s*(PR|PT|TG)$/, "")} · aula ${a.cicloN ?? "?"}` : "aula escrita por você"}</span>
                     <div className={"text-sm font-medium leading-snug " + (a.situacao === "descartada" ? "line-through" : "")}>{a.cicloNome && <><span style={{ color: fase[a.fase].cor }}>{fase[a.fase].nome}</span> · </>}<Inline texto={a.texto} /></div>
@@ -177,12 +177,12 @@ function DefinirTurmas({ ano, onOk }) {
 /** Espaço vazio da semana: um clique abre as sugestões do ciclo (e um campo para escrever qualquer coisa). */
 function Espaco({ n, turma, ciclos, semanas, cicloInicial, onCiclo, onTexto }) {
   const [aberto, setAberto] = useState(false), [texto, setTexto] = useState(""), [ciclo, setCiclo] = useState(cicloInicial ?? "");
-  if (!aberto) return <button onClick={() => setAberto(true)} className="flex min-h-11 w-full items-center gap-1.5 py-2.5 text-xs text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" />Aula {n} — adicionar</button>;
+  if (!aberto) return <button onClick={() => setAberto(true)} className="flex min-h-11 w-full items-center gap-1.5 px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground"><Plus className="h-3.5 w-3.5" />Aula {n} — adicionar</button>;
   const sugestoes = proximasDoCiclo({ ciclos, semanas, turma, nomeCiclo: ciclo, qtd: 5 });
   const fechar = () => { setAberto(false); setTexto(""); };
   const escrever = () => { if (texto.trim()) { onTexto(texto.trim()); fechar(); } };
   return (
-    <div className="my-2 flex flex-col gap-2 rounded-lg border border-primary/40 p-3 text-xs">
+    <div className="m-2 flex flex-col gap-2 rounded-lg border border-primary/40 p-3 text-xs">
       <div className="flex items-center gap-2"><span className="text-muted-foreground">Sugestões de</span>
         <select value={ciclo} onChange={(e) => setCiclo(e.target.value)} aria-label="Ciclo das sugestões" className="min-w-0 flex-1 rounded border bg-background px-1 py-1">
           <option value="">(escolha um ciclo)</option>{(ciclos.some((c) => String(c.ano) === turma[0]) ? ciclos.filter((c) => String(c.ano) === turma[0] || c.ano == null || c.name === ciclo) : ciclos).map((c) => <option key={c.path} value={c.name}>{c.name}</option>)}</select></div>

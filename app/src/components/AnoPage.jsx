@@ -185,19 +185,19 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
           {!filtro && !visiveis.length && fora.length > 0 && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">O planejamento de {anoLetivo} está vazio.{compacto ? " Monte-o no computador." : " Inclua ciclos abaixo, em “Fora de um ano”, ou use “Planejar ciclo”."}</div>}
           {!visiveis.length && !fora.length && <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">Nenhum ciclo para a turma {filtro}.</div>}
           {anos.map((ano) => (
-            <section key={ano} className="rounded-xl border bg-background p-4">
-              <h2 className="mb-1 font-serif text-xl font-semibold">{ano}º ano</h2>
+            <section key={ano} className="overflow-hidden rounded-xl border bg-background">
+              <h2 className="px-4 py-3 font-serif text-xl font-semibold">{ano}º ano</h2>
               {[1, 2, 3].map((t) => {
                 const lista = visiveis.filter((c) => c.ano === ano && c.tri === t);
                 return (
-                  <div key={t} className={"-mx-4 border-t px-4 first:border-t-0 " + (alvo === `fim:${ano}:${t}` ? "bg-accent/40" : "")}
+                  <div key={t} className={"border-t " + (alvo === `fim:${ano}:${t}` ? "bg-accent/40" : "")}
                     onDragOver={(e) => { if (arrasto) { e.preventDefault(); setAlvo(`fim:${ano}:${t}`); } }} onDrop={(e) => { e.preventDefault(); soltar(ano, t, null); }}>
-                    <div className="flex items-center pb-1 pt-3"><span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}º trimestre</span>{!compacto && <button onClick={() => setIncl({ ano, tri: t })} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Plus className="h-3.5 w-3.5" />Incluir ciclo</button>}</div>
+                    <div className="flex items-center px-4 pb-1 pt-3"><span className="flex-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t}º trimestre</span>{!compacto && <button onClick={() => setIncl({ ano, tri: t })} className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><Plus className="h-3.5 w-3.5" />Incluir ciclo</button>}</div>
                     <div className="flex flex-col divide-y">
                       {lista.map((c, idx) => {
                         const prog = progresso(c), sit = situacao(prog);
                         return (
-                          <div key={c.path} className={"group -mx-4 flex items-center gap-2 px-4 transition-colors hover:bg-accent/50 " + (arrasto?.path === c.path ? "opacity-40 " : "") + (alvo === c.path ? "shadow-[inset_0_2px_0_0_hsl(var(--primary))]" : "")}
+                          <div key={c.path} className={"group flex items-center gap-2 px-4 transition-colors hover:bg-accent/50 " + (arrasto?.path === c.path ? "opacity-40 " : "") + (alvo === c.path ? "shadow-[inset_0_2px_0_0_hsl(var(--primary))]" : "")}
                             draggable={!compacto && !c.legado} onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", c.name); setArrasto(c); }} onDragEnd={() => { setArrasto(null); setAlvo(null); }}
                             onDragOver={(e) => { if (arrasto && arrasto.path !== c.path) { e.preventDefault(); e.stopPropagation(); setAlvo(c.path); } }} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); soltar(ano, t, c); }}>
                           {!compacto && !c.legado && <Grip aria-hidden title="Arraste para mudar a ordem ou o trimestre" className="-ml-2 h-4 w-4 shrink-0 cursor-grab text-muted-foreground/60" />}
@@ -214,7 +214,7 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
                           </div>
                         );
                       })}
-                      {!lista.length && <div className="py-2.5 text-xs text-muted-foreground">A planejar{compacto ? "" : " · use “Incluir ciclo”"}</div>}
+                      {!lista.length && <div className="px-4 py-2.5 text-xs text-muted-foreground">A planejar{compacto ? "" : " · use “Incluir ciclo”"}</div>}
                     </div>
                   </div>
                 );
@@ -222,10 +222,10 @@ export function AnoPage({ items, onOpen, onCiclo, onRefresh, turmaGlobal }) { //
             </section>
           ))}
           {!compacto && fora.length > 0 && (
-            <section className="rounded-xl border border-dashed bg-background p-4">
-              <h2 className="font-serif text-xl font-semibold">Fora de um ano</h2>
-              <p className="mb-1 text-xs text-muted-foreground">Ciclos do Acervo que o Planejamento {anoLetivo} não usa. Um ciclo é atemporal: inclua-o no ano quando for aplicá-lo.</p>
-              <div className="-mx-4 flex flex-col divide-y">
+            <section className="overflow-hidden rounded-xl border border-dashed bg-background">
+              <h2 className="px-4 pt-3 font-serif text-xl font-semibold">Fora de um ano</h2>
+              <p className="px-4 pb-3 text-xs text-muted-foreground">Ciclos do Acervo que o Planejamento {anoLetivo} não usa. Um ciclo é atemporal: inclua-o no ano quando for aplicá-lo.</p>
+              <div className="flex flex-col divide-y border-t">
                 {fora.map((c) => <LinhaFora key={c.path} c={c} onCiclo={onCiclo} onIncluir={(pos) => incluir(c, pos)} />)}
               </div>
             </section>

@@ -10,17 +10,17 @@ import { cn } from "@/lib/utils";
 import { useEhCompacto } from "@/lib/useCompacto";
 
 const Cartao = ({ titulo, vazio, nada, children }) => (
-  <section className="rounded-xl border p-4">
-    <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</h2>
-    {nada ? <Estado tipo="ok" className="text-sm text-muted-foreground">{vazio}</Estado> : children}
+  <section className="overflow-hidden rounded-xl border">
+    <h2 className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{titulo}</h2>
+    {nada ? <Estado tipo="ok" className="px-4 pb-3 text-sm text-muted-foreground">{vazio}</Estado> : <div className="border-t">{children}</div>}
   </section>
 );
 const Linha = ({ onClick, children, direita }) => onClick === null ? (
-  <div className="flex w-full items-center gap-3 border-b px-1 py-2 text-sm last:border-b-0">
+  <div className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-sm last:border-b-0">
     <span className="min-w-0 flex-1">{children}</span>{direita && <span className="shrink-0 text-xs text-muted-foreground">{direita}</span>}
   </div>
 ) : (
-  <button onClick={onClick} className="flex w-full items-center gap-3 border-b px-1 py-2 text-left text-sm last:border-b-0 hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+  <button onClick={onClick} className="flex w-full items-center gap-3 border-b px-4 py-2.5 text-left text-sm last:border-b-0 hover:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
     <span className="min-w-0 flex-1">{children}</span>{direita && <span className="shrink-0 text-xs text-muted-foreground">{direita}</span>}
   </button>
 );
@@ -88,11 +88,11 @@ export function FechamentoPage({ items, turmaGlobal = "", onOpen, onCorrigir, on
         </>}
       </Cartao>
 
-      <section className="rounded-xl border p-4" aria-label={`Meus itens do ${dados.tri}º trimestre`}>
-        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus itens</h2>
-        {manuais.length > 0 && <ul className="mb-2 flex flex-col">
+      <section className="overflow-hidden rounded-xl border" aria-label={`Meus itens do ${dados.tri}º trimestre`}>
+        <h2 className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Meus itens</h2>
+        {manuais.length > 0 && <ul className="flex flex-col border-t">
           {manuais.map((m) => (
-            <li key={m.linha} className="group flex items-start gap-2 rounded-md px-1 py-1 text-sm hover:bg-accent">
+            <li key={m.linha} className="group flex items-start gap-2 px-4 py-1.5 text-sm hover:bg-accent">
               <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
                 <input type="checkbox" disabled={compacto} checked={m.feito} onChange={() => mudar((x) => alternarItem(x, m.linha, m.texto))} className="mt-1" />
                 <span className={cn("min-w-0 flex-1 break-words", m.feito && "text-muted-foreground line-through")}>{m.texto}</span>
@@ -100,8 +100,8 @@ export function FechamentoPage({ items, turmaGlobal = "", onOpen, onCorrigir, on
               <button aria-label={`Apagar “${m.texto}”`} onClick={() => mudar((x) => removerItem(x, m.linha, m.texto))} className="invisible shrink-0 text-xs text-muted-foreground hover:text-foreground group-hover:visible focus-visible:visible">apagar</button>
             </li>))}
         </ul>}
-        {!compacto && <input value={novo} onChange={(e) => setNovo(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionar(); } }}
-          placeholder="+ Acrescentar (ex.: lançar notas na SED)" aria-label="Novo item" className="h-8 w-full rounded-md border bg-background px-2 text-sm outline-none focus:border-primary" />}
+        {!compacto && <div className="border-t px-4 py-3"><input value={novo} onChange={(e) => setNovo(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionar(); } }}
+          placeholder="+ Acrescentar (ex.: lançar notas na SED)" aria-label="Novo item" className="h-8 w-full rounded-md border bg-background px-2 text-sm outline-none focus:border-primary" /></div>}
       </section>
     </div></div>
   );

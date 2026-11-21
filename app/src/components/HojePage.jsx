@@ -202,15 +202,15 @@ function Caixa({ items, tick, onCapturar, onOpen }) {
   const mudar = async (fn) => { try { await gravarCaixa(items, fn); setRecarga((x) => x + 1); } catch (e) { toast(`Não deu para atualizar a caixa: ${e.message ?? e}`, { tipo: "err" }); } };
   const pendentes = tarefas.filter((t) => !t.feito), feitas = tarefas.length - pendentes.length;
   return (
-    <section aria-label="Caixa de entrada" className="flex flex-col gap-2 rounded-xl border p-4">
-      <h2 className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-muted-foreground">Caixa de entrada
+    <section aria-label="Caixa de entrada" className="flex flex-col overflow-hidden rounded-xl border">
+      <h2 className="flex items-center justify-between px-4 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Caixa de entrada
         <button onClick={onCapturar} className="rounded-md border bg-background px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-foreground hover:bg-accent">+ Anotar</button>
       </h2>
-      {tarefas.length === 0 ? <p className="text-sm text-muted-foreground">{compacto ? "Nada anotado. O botão + guarda uma ideia ou tarefa em qualquer tela." : "Nada anotado. Ctrl+Alt+M guarda uma ideia ou tarefa em qualquer tela."}</p>
-        : <ul className="flex flex-col gap-1">
+      {tarefas.length === 0 ? <p className="px-4 pb-3 text-sm text-muted-foreground">{compacto ? "Nada anotado. O botão + guarda uma ideia ou tarefa em qualquer tela." : "Nada anotado. Ctrl+Alt+M guarda uma ideia ou tarefa em qualquer tela."}</p>
+        : <ul className="flex flex-col border-t">
           {tarefas.map((t) => (
             <li key={t.linha}>
-              <label className="flex cursor-pointer items-start gap-2 rounded-md px-1 py-1 text-sm hover:bg-accent">
+              <label className="flex cursor-pointer items-start gap-2 px-4 py-1.5 text-sm hover:bg-accent">
                 <input type="checkbox" checked={t.feito} onChange={() => mudar((x) => alternar(x, t.linha, t.texto))} className="mt-1" />
                 <span className={cn("min-w-0 flex-1 break-words", t.feito && "text-muted-foreground line-through")}>{t.texto}</span>
               </label>
@@ -218,7 +218,7 @@ function Caixa({ items, tick, onCapturar, onOpen }) {
           ))}
         </ul>}
       {(feitas > 0 || tarefas.length > 0) && (
-        <div className="flex justify-between text-xs text-muted-foreground">
+        <div className="flex justify-between border-t px-4 py-2.5 text-xs text-muted-foreground">
           <button onClick={() => onOpen(caminhoCaixa(items))} className="hover:text-foreground">Abrir arquivo</button>
           {feitas > 0 && <button onClick={() => mudar(limparFeitas)} className="hover:text-foreground">Limpar {feitas} {feitas === 1 ? "feita" : "feitas"}</button>}
         </div>)}
@@ -245,7 +245,7 @@ function Reunioes({ items, onRefresh }) {
       <h2 className="mb-3 text-lg font-semibold">Reuniões com responsáveis</h2>
       {lista.length === 0 ? <p className="text-sm text-muted-foreground">Nenhuma reunião solicitada ou agendada.</p> : <div className="overflow-hidden rounded-xl border">
         {lista.map((r) => (
-          <div key={`${r.path}#${r.linha}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3 last:border-b-0">
+          <div key={`${r.path}#${r.linha}`} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-3 transition-colors last:border-b-0 hover:bg-accent/50">
             <Reuniao aria-hidden className="h-4 w-4 shrink-0 text-primary" strokeWidth={1.7} />
             <div className="min-w-0 flex-1 basis-52">
               <div className="flex flex-wrap items-center gap-x-2 text-sm font-medium">{abreviar(r.aluno)}<span className="text-xs font-normal text-muted-foreground">turma {r.turma}</span></div>
