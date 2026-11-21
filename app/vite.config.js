@@ -90,7 +90,8 @@ export default {
   plugins: [react(), devVault()],
   resolve: { alias: { "@": path.resolve(import.meta.dirname, "src") } },
   clearScreen: false,
-  server: { port: 1420, strictPort: true },
+  // No Windows o Vite travava (EBUSY) ao vigiar os arquivos que o Rust grava em src-tauri/target.
+  server: { port: 1420, strictPort: true, watch: { ignored: ["**/src-tauri/**"] } },
   build: { target: "es2022" },
   // Testes que precisam de DOM declaram `// @vitest-environment jsdom` no topo do arquivo.
   test: { coverage: { provider: "v8", include: ["src/lib/**", "src/components/**"], reporter: ["text-summary", "json-summary"],
