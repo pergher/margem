@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { IconArrowLeft as ArrowLeft, IconChevronDown as ChevronDown, IconSearch as Search, IconAdjustmentsHorizontal as SlidersHorizontal, IconX as X } from "@tabler/icons-react";
+import { IconArrowLeft as ArrowLeft, IconSearch as Search, IconAdjustmentsHorizontal as SlidersHorizontal, IconX as X } from "@tabler/icons-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
+import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { AtividadeDialog } from "@/components/AtividadeDialog";
 import { useConfigProva } from "@/lib/useConfigProva";
 import { PADRAO } from "@/lib/configProva";
@@ -190,31 +191,6 @@ function Detalhes({ children }) {
     <div ref={ref} className="relative">
       <button onClick={() => setAberto(!aberto)} aria-haspopup="dialog" aria-expanded={aberto} className="flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent"><SlidersHorizontal className="h-4 w-4" />Detalhes</button>
       {aberto && <div role="dialog" aria-label="Detalhes da prova" className="absolute right-0 top-full z-30 mt-1 w-72 rounded-md border bg-background p-4 shadow-lg">{children}</div>}
-    </div>
-  );
-}
-
-function MenuAcoes({ itens }) {
-  const [aberto, setAberto] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    if (!aberto) return;
-    const fora = (e) => { if (!ref.current?.contains(e.target)) setAberto(false); };
-    const esc = (e) => { if (e.key === "Escape") setAberto(false); };
-    document.addEventListener("mousedown", fora); document.addEventListener("keydown", esc);
-    return () => { document.removeEventListener("mousedown", fora); document.removeEventListener("keydown", esc); };
-  }, [aberto]);
-  return (
-    <div ref={ref} className="relative">
-      <button onClick={() => setAberto(!aberto)} aria-haspopup="menu" aria-expanded={aberto} className="flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm hover:bg-accent">Ações<ChevronDown className="h-3.5 w-3.5" /></button>
-      {aberto && (
-        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-64 rounded-md border bg-background p-1 shadow-lg">
-          {itens.map((it) => (
-            <button key={it.rotulo} role="menuitem" disabled={it.off} title={it.dica} onClick={() => { setAberto(false); it.fn(); }}
-              className="block w-full rounded px-3 py-1.5 text-left text-sm hover:bg-accent disabled:opacity-40 disabled:hover:bg-transparent">{it.rotulo}</button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

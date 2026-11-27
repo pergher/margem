@@ -44,7 +44,7 @@ export function useAtalhos({ compacto = false, overrides, go, save, page, cur, e
       if (!id) return;
       if (ACTIONS.find((a) => a.id === id)?.plain) { // tecla simples: só fora de campos de texto e com a tela registrada
         const t = e.target;
-        if (t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName)) return;
+        if (t?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t?.tagName) || t?.closest?.("[data-sem-atalhos]")) return; // menus abertos usam as próprias teclas
         if (!handlers[id]) return;
         e.preventDefault(); e.stopPropagation();
         handlers[id]();

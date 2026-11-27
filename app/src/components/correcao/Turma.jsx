@@ -59,7 +59,7 @@ export function Turma({ d, est, rotulo, onAluno, onTodas }) {
   return (
     <div className="min-h-0 flex-1 overflow-auto"><div className="flex w-full flex-col gap-8 px-8 py-8">
       <div className="flex flex-wrap items-center gap-2">
-        <h2 className="mr-auto text-lg font-semibold">Visão da turma <span className="font-normal text-muted-foreground">· {n} produções</span></h2>
+        <h2 className="mr-auto text-lg font-semibold">Resumo da turma <span className="font-normal text-muted-foreground">· {n} produções</span></h2>
         <Button size="sm" variant="outline" onClick={onTodas}><Download aria-hidden className="h-4 w-4" />Baixar todas as devolutivas</Button>
       </div>
 

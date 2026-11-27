@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { IconArrowLeft as ArrowLeft, IconChartBar as ChartColumn, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconCircleCheck as CircleCheck } from "@tabler/icons-react";
+import { IconArrowLeft as ArrowLeft, IconChartBar as ChartColumn, IconPencil as Pencil, IconChevronLeft as ChevronLeft, IconChevronRight as ChevronRight, IconCircleCheck as CircleCheck } from "@tabler/icons-react";
 import { ResizeHandle } from "@/components/ResizeHandle";
 import { useWidth } from "@/lib/useWidth";
 import { abreviar } from "@/lib/diario";
@@ -11,7 +11,7 @@ import { corTurma } from "@/lib/cores";
 import { baixar } from "./correcao/baixar";
 import { PainelEnunciado } from "./correcao/PainelEnunciado";
 import { Turma } from "./correcao/Turma";
-import { ListaAlunos } from "./correcao/ListaAlunos";
+import { SeletorAluno } from "./correcao/SeletorAluno";
 import { PainelFoto } from "./correcao/PainelFoto";
 import { Transcricao } from "./correcao/Transcricao";
 import { Avaliacao } from "./correcao/Avaliacao";
@@ -29,9 +29,8 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
   const [zoom, setZoom] = useState(1), [rot, setRot] = useState(0);
   const toast = useToast();
   const [lupa, setLupa] = useState(true);
-  const [wLista, setWLista] = useWidth("correcao.lista", 208), [wFoto, setWFoto] = useWidth("correcao.foto", 300), [wAval, setWAval] = useWidth("correcao.avaliacao", 420);
+  const [wFoto, setWFoto] = useWidth("correcao.foto", 300), [wAval, setWAval] = useWidth("correcao.avaliacao", 420);
 
-  const [busca, setBusca] = useState("");
   const [abertos, setAbertos] = useState(new Set()); // critérios com o comentário aberto
   const alternar = (n) => setAbertos((s) => { const x = new Set(s); x.has(n) ? x.delete(n) : x.add(n); return x; });
   const [crit, setCrit] = useState(0);       // critério ativo (atalhos 1–4)
@@ -57,10 +56,8 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
   const rotulo = (x) => abreviar(x.nome);
   const pend = est.marcas;
   const lista = d.alunos.map((x, i) => ({ x, i })).sort((p, q) => ordem === "nota-" ? (q.x.total ?? -1) - (p.x.total ?? -1) : ordem === "nota+" ? (p.x.total ?? 99) - (q.x.total ?? 99) : ordem === "pendencia" ? q.x.marcas - p.x.marcas || p.i - q.i : p.i - q.i);
-  const q = busca.trim().toLowerCase();
-  const visiveis = q ? lista.filter(({ x, i }) => i === sel || rotulo(x).toLowerCase().includes(q)) : lista; // o aluno aberto fica sempre na lista
-  const pos = visiveis.findIndex((e) => e.i === sel);
-  const go = (k) => { const e = visiveis[Math.max(0, Math.min(visiveis.length - 1, pos + k))]; if (e) setSel(e.i); };
+  const pos = lista.findIndex((e) => e.i === sel);
+  const go = (k) => { const e = lista[Math.max(0, Math.min(lista.length - 1, pos + k))]; if (e) setSel(e.i); }; // anterior/próximo seguem a ordem escolhida no seletor
   ctl.current.go = vista === "aluno" ? go : null;
   ctl.current.crit = (k) => setCrit((c) => Math.max(0, Math.min(a.criterios.length - 1, c + k)));
   ctl.current.nivel = (n) => {
@@ -95,22 +92,19 @@ export function CorrecaoPage({ items, onOpen, focoPath, onVoltar, vistaInicial }
         {vista === "aluno" && (
           <div role="group" aria-label="Navegar entre alunos" className="flex h-9 items-center gap-1 rounded-lg border bg-background px-1 text-xs">
             <button aria-label="Aluno anterior" onClick={() => go(-1)} className="rounded p-1 hover:bg-accent"><ChevronLeft className="h-4 w-4" /></button>
-            <span className="min-w-[8.5rem] text-center">{rotulo(a)} · {pos + 1} de {visiveis.length}</span>
+            <SeletorAluno total={d.alunos.length} pend={pend} ordem={ordem} setOrdem={setOrdem} lista={lista} sel={sel} setSel={setSel} rotulo={rotulo} />
             <button aria-label="Próximo aluno" onClick={() => go(1)} className="rounded p-1 hover:bg-accent"><ChevronRight className="h-4 w-4" /></button>
           </div>
         )}
         <div className="flex items-center gap-2">
           {d.transcricao !== "aprovada" && <Button size="sm" variant="outline" onClick={aprovar} disabled={est.marcas > 0} title={est.marcas > 0 ? `Ainda há ${est.marcas} marca(s) [?]/[ilegível] nos textos` : ""}>Aprovar transcrição</Button>}
-          <Button size="sm" variant={vista === "aluno" ? "default" : "outline"} onClick={() => setVista(vista === "aluno" ? "turma" : "aluno")}>{vista === "aluno" ? <ChartColumn aria-hidden className="h-4 w-4" /> : <ArrowLeft aria-hidden className="h-4 w-4" />}{vista === "aluno" ? "Visão da turma" : "Voltar para a correção"}</Button>
+          <Button size="sm" variant={vista === "aluno" ? "outline" : "default"} onClick={() => setVista(vista === "aluno" ? "turma" : "aluno")}>{vista === "aluno" ? <ChartColumn aria-hidden className="h-4 w-4" /> : <Pencil aria-hidden className="h-4 w-4" />}{vista === "aluno" ? "Resumo da turma" : "Corrigir"}</Button>
         </div>
       </header>
       <PainelEnunciado d={d} onSalvo={carregar} dizer={dizer} onErro={setErro} />
 
       {vista === "turma" ? <Turma d={d} est={est} rotulo={rotulo} onAluno={(i) => { setSel(i); setVista("aluno"); }} onTodas={() => baixar(`Devolutivas ${d.turma} - ${d.atividade}.md`, d.alunos.map((x) => devolutiva(d, x)).join("\n---\n\n"))} /> : (
       <div className="flex min-h-0 flex-1 overflow-x-auto"> {/* em janela estreita as colunas encolhem até o mínimo e, abaixo disso, rola de lado */}
-        <ListaAlunos largura={wLista} d={d} pend={pend} ordem={ordem} setOrdem={setOrdem} visiveis={visiveis} sel={sel} setSel={setSel} rotulo={rotulo} />
-        <ResizeHandle width={wLista} setWidth={setWLista} min={150} max={360} side="left" />
-
         <PainelFoto largura={wFoto} a={a} zoom={zoom} setZoom={setZoom} rot={rot} setRot={setRot} lupa={lupa} setLupa={setLupa} />
         <ResizeHandle width={wFoto} setWidth={setWFoto} min={200} max={700} side="left" />
 

@@ -196,5 +196,5 @@ A tela **Recursos** (antes "Questões") reúne o que a aula usa e que mora no Ac
 
 ## Enunciado da produção (`tipo: correcao`)
 
-O que foi pedido aos alunos fica na própria nota `Transcrições e devolutivas.md`, numa seção `## Enunciado` logo antes do primeiro aluno (gênero, tema, extensão, estrutura, material de apoio). O app mostra a seção, recolhida, no alto da Visão da turma e da correção (Produções → abrir o lote), com "Adicionar/Editar" e "Copiar", e a seção não conta como aluno. Ao montar o pedido de avaliação para o Gemini/ChatGPT, copie o enunciado dali em vez de redigi-lo de novo (o MCP não lê `Correcoes/`).
+O que foi pedido aos alunos fica na própria nota `Transcrições e devolutivas.md`, numa seção `## Enunciado` logo antes do primeiro aluno (gênero, tema, extensão, estrutura, material de apoio). O app mostra a seção, recolhida, no alto do Resumo da turma e da correção (Produções → abrir o lote), com "Adicionar/Editar" e "Copiar", e a seção não conta como aluno. Ao montar o pedido de avaliação para o Gemini/ChatGPT, copie o enunciado dali em vez de redigi-lo de novo (o MCP não lê `Correcoes/`).
 

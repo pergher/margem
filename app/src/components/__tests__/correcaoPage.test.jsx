@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-// CorrecaoPage dividida em painéis (lista, foto, transcrição, avaliação) e visão da turma: renderiza com uma nota real,
-// troca de aluno, muda uma nota e abre a visão da turma.
+// CorrecaoPage dividida em painéis (foto, transcrição, avaliação), com seletor de alunos no cabeçalho, e resumo da turma: renderiza com uma nota real,
+// troca de aluno, muda uma nota e abre o resumo da turma.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
@@ -52,8 +52,9 @@ afterEach(cleanup);
 
 const abrir = async (props = {}) => {
   render(<CorrecaoPage items={items} onOpen={() => {}} focoPath={items[0].path} {...props} />);
-  await screen.findByLabelText("Alunos");
+  await screen.findByLabelText("Transcrição");
 };
+const abrirSeletor = () => { fireEvent.click(screen.getByRole("button", { name: /Escolher aluno/ })); return screen.getByRole("dialog", { name: "Alunos" }); };
 
 describe("CorrecaoPage", () => {
   it("sem lotes mostra o estado vazio", () => {
@@ -64,7 +65,8 @@ describe("CorrecaoPage", () => {
   it("mostra o cabeçalho, a lista de alunos, a transcrição e a avaliação", async () => {
     await abrir();
     expect(screen.getByRole("heading", { name: "Conto" })).toBeTruthy();
-    const lista = within(screen.getByLabelText("Alunos"));
+    expect(screen.queryByRole("dialog", { name: "Alunos" })).toBeNull();
+    const lista = within(abrirSeletor());
     expect(lista.getByText("Ana")).toBeTruthy();
     expect(lista.getByText("Beto")).toBeTruthy();
     const transc = within(screen.getByLabelText("Transcrição"));
@@ -82,10 +84,23 @@ describe("CorrecaoPage", () => {
 
   it("escolher outro aluno troca a transcrição", async () => {
     await abrir();
-    fireEvent.click(within(screen.getByLabelText("Alunos")).getByText("Beto"));
+    fireEvent.click(within(abrirSeletor()).getByText("Beto"));
+    expect(screen.queryByRole("dialog", { name: "Alunos" })).toBeNull();
     expect(within(screen.getByLabelText("Transcrição")).getByText("Texto do Beto.")).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Aluno anterior"));
     expect(within(screen.getByLabelText("Transcrição")).queryByText("Texto do Beto.")).toBeNull();
+  });
+
+  it("o seletor de alunos anda com as setas e fecha com Esc", async () => {
+    await abrir();
+    const lista = within(abrirSeletor());
+    const ana = lista.getByRole("button", { name: /Ana/ });
+    expect(document.activeElement).toBe(ana);
+    fireEvent.keyDown(ana, { key: "ArrowDown" });
+    expect(document.activeElement).toBe(lista.getByRole("button", { name: /Beto/ }));
+    fireEvent.keyDown(document.activeElement, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Alunos" })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /Escolher aluno/ }));
   });
 
   it("mudar a nota de um critério grava a nota na nota do lote", async () => {
@@ -98,13 +113,13 @@ describe("CorrecaoPage", () => {
     expect(salvo.text).toMatch(/\| Tema \| 0,5 \|/);
   });
 
-  it("a visão da turma mostra as estatísticas e volta para a correção", async () => {
+  it("o resumo da turma mostra as estatísticas e o botão Corrigir abre a correção", async () => {
     render(<CorrecaoPage items={items} onOpen={() => {}} focoPath={items[0].path} vistaInicial="turma" />);
-    expect(await screen.findByText(/Visão da turma/)).toBeTruthy();
+    expect(await screen.findByText(/Resumo da turma/)).toBeTruthy();
     expect(screen.getByText("Média")).toBeTruthy();
     expect(screen.getByText("Distribuição das notas")).toBeTruthy();
     expect(screen.getByText("Média por critério")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Voltar para a correção/ }));
-    expect(await screen.findByLabelText("Alunos")).toBeTruthy();
+    fireEvent.click(screen.getAllByRole("button", { name: "Corrigir" })[0]); // o do cabeçalho (os demais são os das linhas de aluno)
+    expect(await screen.findByLabelText("Transcrição")).toBeTruthy();
   });
 });

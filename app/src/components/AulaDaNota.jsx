@@ -8,6 +8,7 @@ import { desenharMermaid, partirMermaid } from "@/lib/mermaid";
 import { parseAula, secoesBrutas, trocarSecao, corpoBruto, trocarCorpo, acrescentarMemoria } from "@/lib/aula";
 import { DaUltimaVez, NotaDestaVez } from "@/components/MemoriaDaAula";
 import { JogoDialog } from "@/components/JogoDialog";
+import { MenuAcoes } from "@/components/ui/MenuAcoes";
 import { acionarBotao } from "@/lib/blocoAcoes";
 import { parseFm, setProp } from "@/lib/frontmatter";
 import { IconChevronDown as ChevronDown, IconPlus as Plus, IconNote as StickyNote, IconPencil as Pencil, IconCheck as Check, IconList as List, IconX as X } from "@tabler/icons-react";
@@ -342,6 +343,7 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
   return (
     <div className="flex min-h-0 flex-1">
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {slot && !compacto && createPortal(<MenuAcoes pequeno itens={[{ rotulo: "Gerar jogo", fn: () => setJogo(true) }]} />, slot)}
       {/* O sumário do celular entra no cabeçalho do app; a linha fina abaixo mostra quanto da aula já foi lido */}
       {slot && compacto && createPortal(<><div className="flex-1" /><button type="button" aria-label="Sumário da aula" onClick={() => setGaveta(true)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"><List className="h-5 w-5" strokeWidth={1.7} /></button></>, slot)}
       <div role="progressbar" aria-label="Progresso de leitura" aria-valuenow={Math.round(prog * 100)} aria-valuemin={0} aria-valuemax={100} className="h-0.5 shrink-0 bg-border"><div className="h-full bg-primary transition-[width] duration-100" style={{ width: `${prog * 100}%` }} /></div>
@@ -361,7 +363,6 @@ export function AulaDaNota({ item, tick, onLink, onOpen, textoInicial, numeros, 
                 </select>
               </label>
               {meta.map((m) => <span key={m}>{m}</span>)}
-              {!compacto && <button onClick={() => setJogo(true)} className="font-medium text-primary hover:underline">Gerar jogo</button>}
             </div>
             <DaUltimaVez entradas={a.memoria} />
           </div>
