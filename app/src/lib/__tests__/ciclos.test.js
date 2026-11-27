@@ -78,6 +78,19 @@ describe("planejamento do ano", () => {
     expect(C.lerLinhasPlanejamento(novo).conto).toEqual({ ano: 7, tri: 2, ciclo: 1 });
   });
 
+  it("tabela vazia (modelo novo, esvaziada ou alinhada) é reaproveitada, sem segundo cabeçalho", () => {
+    const vazias = [
+      C.modeloPlanejamento(2026),
+      C.tirarDoPlanejamento(C.tirarDoPlanejamento(PLAN, "Conto"), "Fábula"),
+      "| Ano   | Trimestre | Ordem | Ciclo |\r\n| :---- | --------- | ----- | ----- |\r\n",
+    ];
+    for (const vazia of vazias) {
+      const t = C.incluirNoPlanejamento(vazia, "Crônica", { ano: 6, tri: 1 });
+      expect(t.match(/Trimestre \| Ordem|Trimestre\s+\| Ordem/g)).toHaveLength(1);
+      expect(t).toMatch(/\| -+ \|\r?\n\| 6 \| 1 \| 1 \| \[\[Crônica\]\] \|/);
+    }
+  });
+
   it("tira só a linha do ciclo", () => {
     const t = C.tirarDoPlanejamento(PLAN, "Conto");
     expect(t).not.toContain("[[Conto]]");

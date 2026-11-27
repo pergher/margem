@@ -109,6 +109,9 @@ export function incluirNoPlanejamento(text, nomeCiclo, { ano, tri }) {
   const nova = `| ${ano} | ${tri} | ${ocupadas + 1} | [[${nomeCiclo}]] |`;
   const ult = linhas.reduce((u, l, i) => (/^\|.*\[\[.*\]\]\s*\|\s*$/.test(l) ? i : u), -1);
   if (ult >= 0) { linhas.splice(ult + 1, 0, nova); return linhas.join("\n"); }
+  // Tabela ainda sem ciclos (modelo novo, ou esvaziada): a linha entra logo abaixo do separador. O Obsidian pode alinhar as colunas.
+  const sep = linhas.findIndex((l, i) => /^\|[\s:|-]+$/.test(l) && /^\|\s*Ano\s*\|\s*Trimestre\s*\|\s*Ordem\s*\|\s*Ciclo\s*\|\s*$/.test(linhas[i - 1] ?? ""));
+  if (sep >= 0) { linhas.splice(sep + 1, 0, nova); return linhas.join("\n"); }
   return text.replace(/\s*$/, "\n\n") + `| Ano | Trimestre | Ordem | Ciclo |\n| --- | --- | --- | --- |\n${nova}\n`;
 }
 
