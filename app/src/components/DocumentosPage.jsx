@@ -132,11 +132,11 @@ export function DocumentosPage({ filtroNav, items, dirs, onOpen, onRefresh, aba,
       subtitulo={<>{todos.length} {todos.length === 1 ? "documento" : "documentos"}{resumo && <> · {resumo}</>}</>}
       itens={lista} pasta={pasta} setPasta={setPasta} raiz={{ rel: RAIZ, abs: raizAbs }} pastasRel={pastasRel} colunaPasta={false} favoritos
       filtros={[
-        { id: "tipo", opcoes: tiposPresentes.map((t) => ({ id: t.id, nome: t.nome })), de: (i) => [i.tipo_] },
-        { id: "ano", opcoes: ANOS.map((a) => ({ id: a, nome: `${a}º ano`, cor: corAno(a) })), de: (i) => i.anos },
-        { id: "sit", opcoes: SITUACOES.map((s) => ({ id: s.id, nome: s.nome, ponto: s.ponto })), de: (i) => (TEM_SITUACAO.includes(i.tipo_) ? [i.situacao || "pendente"] : []) },
-        ...(generos.length ? [{ id: "genero", opcoes: generos.map((g) => ({ id: g, nome: g })), de: (i) => (i.genero ? [i.genero] : []) }] : []),
-        ...(letivos.length > 1 ? [{ id: "letivo", opcoes: letivos.map((l) => ({ id: l, nome: l })), de: (i) => (i.letivo ? [i.letivo] : []) }] : []),
+        { id: "tipo", nome: "Tipo", opcoes: tiposPresentes.map((t) => ({ id: t.id, nome: t.nome })), de: (i) => [i.tipo_] },
+        { id: "ano", nome: "Ano", opcoes: ANOS.map((a) => ({ id: a, nome: `${a}º ano`, cor: corAno(a) })), de: (i) => i.anos },
+        { id: "sit", nome: "Situação", opcoes: SITUACOES.map((s) => ({ id: s.id, nome: s.nome, ponto: s.ponto })), de: (i) => (TEM_SITUACAO.includes(i.tipo_) ? [i.situacao || "pendente"] : []) },
+        ...(generos.length ? [{ id: "genero", nome: "Gênero", opcoes: generos.map((g) => ({ id: g, nome: g })), de: (i) => (i.genero ? [i.genero] : []) }] : []),
+        ...(letivos.length > 1 ? [{ id: "letivo", nome: "Ano letivo", opcoes: letivos.map((l) => ({ id: l, nome: l })), de: (i) => (i.letivo ? [i.letivo] : []) }] : []),
       ]}
       alternadores={[{ id: "mapa", nome: "Com mindmap", Icone: Network, teste: (i) => i.mindmap }]}
       ordens={[

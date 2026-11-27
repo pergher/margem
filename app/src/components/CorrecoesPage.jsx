@@ -60,10 +60,10 @@ export function CorrecoesPage({ items, turmasAno = [], onRefresh, onCorrigir, on
       subtitulo={<>{pend} a corrigir · {lista.length - pend} já corrigidas</>}
       itens={lista}
       filtros={[
-        { id: "sit", opcoes: SITUACOES, de: (x) => [x.feita ? "feita" : "pendente"] },
-        ...(turmaGlobal === undefined && turmas.length > 1 ? [{ id: "turma", opcoes: turmas.map((t) => ({ id: t, nome: `Turma ${t}`, cor: corTurma(t) })), de: (x) => [x.turma] }] : []),
-        ...(meses.length > 1 ? [{ id: "mes", opcoes: meses.map((m) => ({ id: m, nome: m })), de: (x) => [x.mes] }] : []),
-        ...(letivos.length > 1 ? [{ id: "letivo", opcoes: letivos.map((l) => ({ id: l, nome: l })), de: (x) => [x.letivo] }] : []),
+        { id: "sit", nome: "Situação", opcoes: SITUACOES, de: (x) => [x.feita ? "feita" : "pendente"] },
+        ...(turmaGlobal === undefined && turmas.length > 1 ? [{ id: "turma", nome: "Turma", opcoes: turmas.map((t) => ({ id: t, nome: `Turma ${t}`, cor: corTurma(t) })), de: (x) => [x.turma] }] : []),
+        ...(meses.length > 1 ? [{ id: "mes", nome: "Mês", opcoes: meses.map((m) => ({ id: m, nome: m })), de: (x) => [x.mes] }] : []),
+        ...(letivos.length > 1 ? [{ id: "letivo", nome: "Ano letivo", opcoes: letivos.map((l) => ({ id: l, nome: l })), de: (x) => [x.letivo] }] : []),
       ]}
       alternadores={[{ id: "aprovar", nome: "Transcrição a aprovar", Icone: ClipboardCheck, teste: (x) => !x.aprovada }]}
       ordens={[

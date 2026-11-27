@@ -1,30 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { IconFolderSymlink as FolderInput, IconTag as Tag, IconTrash as Trash2, IconX as X, IconCircleDot as Situacao } from "@tabler/icons-react";
 import { invoke } from "@/lib/api";
 import { STATUS_LOTE, planejarStatus, planejarTag, limparTag } from "@/lib/lote";
 import { cn } from "@/lib/utils";
 
 /** Notas (não pastas) em que dá para mexer no frontmatter. */
 export const editavel = (e) => e.tipo === "item" && !e.pathAcao && /\.md$/i.test(e.path ?? "");
-
-/** Barra que aparece quando há mais de uma nota marcada (Ctrl/Shift+clique): mover, status, tag e excluir. */
-export function LoteBarra({ marcadas, onMover, onAcao, onLimpar, podeMover, podeExcluir }) {
-  const n = marcadas.length, tem = marcadas.some(editavel);
-  const Botao = ({ onClick, Icone, children, perigo }) => (
-    <button type="button" onClick={onClick} className={cn("inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-sm hover:bg-accent", perigo && "text-err")}><Icone aria-hidden className="h-4 w-4" strokeWidth={1.7} />{children}</button>
-  );
-  return (
-    <div role="toolbar" aria-label="Ações em lote" onClick={(e) => e.stopPropagation()} className="sticky top-0 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card px-3 py-2 shadow-sm">
-      <span className="mr-1 text-sm font-medium">{n} selecionad{n === 1 ? "a" : "as"}</span>
-      {podeMover && <Botao Icone={FolderInput} onClick={onMover}>Mover para…</Botao>}
-      {tem && <Botao Icone={Situacao} onClick={() => onAcao("status")}>Mudar status…</Botao>}
-      {tem && <Botao Icone={Tag} onClick={() => onAcao("tag")}>Adicionar tag…</Botao>}
-      {podeExcluir && <Botao Icone={Trash2} perigo onClick={() => onAcao("excluir")}>Excluir…</Botao>}
-      <span className="flex-1" />
-      <button type="button" onClick={onLimpar} aria-label="Limpar a seleção" title="Limpar a seleção (Esc)" className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent"><X className="h-4 w-4" /></button>
-    </div>
-  );
-}
 
 /**
  * Diálogo das ações em lote que mexem no conteúdo: mostra primeiro o que mudaria em cada nota (nada é gravado)

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconChevronRight as ChevronRight, IconFileText as FileText, IconFolder as Folder, IconFolderSymlink as FolderInput, IconFolderOpen as FolderOpen, IconFolderPlus as FolderPlus, IconLayoutGrid as LayoutGrid, IconList as List, IconPencil as Pencil, IconSearch as Search, IconStar as Star, IconTrash as Trash2, IconUpload as Upload, IconX as X } from "@tabler/icons-react";
+import { IconArrowDown as ArrowDown, IconArrowUp as ArrowUp, IconCircleDot as CircleDot, IconChevronRight as ChevronRight, IconFileText as FileText, IconFilter as Filter, IconFolder as Folder, IconFolderSymlink as FolderInput, IconFolderOpen as FolderOpen, IconFolderPlus as FolderPlus, IconLayoutGrid as LayoutGrid, IconList as List, IconPencil as Pencil, IconSearch as Search, IconStar as Star, IconTag as Tag, IconTrash as Trash2, IconUpload as Upload, IconX as X } from "@tabler/icons-react";
 import { Vazio } from "@/components/ui/estado";
 import { cn } from "@/lib/utils";
 import { useEhCompacto } from "@/lib/useCompacto";
-import { LoteBarra, LoteDialog } from "@/components/LoteBarra";
+import { LoteDialog, editavel } from "@/components/LoteDialog";
 import { intervalo } from "@/lib/lote";
 
 export const norm = (x) => String(x ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -49,6 +49,29 @@ function MenuContexto({ x, y, itens, onClose }) {
   );
 }
 
+/** Botão de filtros (ao lado de grade/lista): abre um painel com um grupo por filtro; o número mostra quantos estão ligados. */
+function BotaoFiltros({ aberto, setAberto, ativos, grupos, onLimpar }) {
+  return (
+    <div className="relative">
+      <button type="button" onClick={() => setAberto(!aberto)} aria-haspopup="dialog" aria-expanded={aberto} aria-label={ativos ? `Filtros (${ativos} ligado${ativos === 1 ? "" : "s"})` : "Filtros"} title="Filtros"
+        className={cn("flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-md border bg-background px-2.5 text-sm", ativos ? "border-primary text-foreground" : "text-muted-foreground hover:text-foreground", aberto && "bg-accent text-foreground")}>
+        <Filter aria-hidden className="h-4 w-4" />{ativos > 0 && <span aria-hidden className="rounded-full bg-primary px-1.5 text-xs font-medium text-primary-foreground">{ativos}</span>}
+      </button>
+      {aberto && <>
+        <div className="fixed inset-0 z-30" onClick={() => setAberto(false)} />
+        <div role="dialog" aria-label="Filtros" className="absolute right-0 z-40 mt-1 flex max-h-[min(70vh,32rem)] w-[min(22rem,calc(100vw-2rem))] flex-col gap-3 overflow-auto rounded-lg border bg-background p-3 shadow-xl">
+          {grupos.map((g) => (
+            <div key={g.id} role="group" aria-label={g.nome} className="flex flex-col gap-1.5">
+              <span aria-hidden className="text-xs font-medium text-muted-foreground">{g.nome}</span>
+              <div className="flex flex-wrap gap-1.5">{g.chips}</div>
+            </div>))}
+          {ativos > 0 && <button type="button" onClick={onLimpar} className="inline-flex h-8 items-center gap-1 self-start rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><X className="h-3.5 w-3.5" />Limpar filtros</button>}
+        </div>
+      </>}
+    </div>
+  );
+}
+
 /** "Mover para…": escolhe a pasta de destino numa lista com todas as pastas de Aulas. */
 function MoverDialog({ entrada, titulo, pastas, valida, onEscolher, onClose }) {
   useEffect(() => { const t = (e) => e.key === "Escape" && onClose(); window.addEventListener("keydown", t); return () => window.removeEventListener("keydown", t); }, [onClose]);
@@ -75,7 +98,8 @@ function MoverDialog({ entrada, titulo, pastas, valida, onEscolher, onClose }) {
 
 /**
  * Explorador de arquivos reutilizável (Aulas, Questões, Correção): grade ou lista, busca, filtros, ordenação, pastas,
- * seleção (clique), abrir (duplo clique/Enter), renomear no lugar (F2), mover (arrastar ou "Mover para…"), excluir e importar.
+ * seleção (clique; Ctrl/Shift para várias; Esc ou clicar fora desmarca), abrir (duplo clique/Enter), renomear no lugar (F2),
+ * mover (arrastar ou "Mover para…"), excluir, importar e Ctrl+Z (desfaz renomear, mover, status e tag).
  * Cada página só diz quais são os itens, filtros e colunas; o resto é igual em todas.
  *
  * Item: { id, path, nome, pasta ("" = raiz; relativa a `raiz.rel`), rel?, fixo?, pathAcao?, nomeEdit?, …campos próprios }
@@ -106,7 +130,10 @@ export function Explorador({
   const [marcados, setMarcados] = useState(() => new Set()); // seleção em lote (Ctrl/Shift+clique)
   const ancora = useRef(null);
   const [loteDlg, setLoteDlg] = useState(null), [loteMover, setLoteMover] = useState(false);
-  const [aviso, setAviso] = useState(null); // { texto, desfazer? } depois de uma ação em lote
+  const [aviso, setAviso] = useState(null); // { texto, desfazer? } depois de uma ação em lote ou de um Ctrl+Z
+  const historico = useRef([]);             // o que o Ctrl+Z desfaz, a ação mais recente no fim: { texto, desfazer, paths? }
+  const desfazendo = useRef(false);
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   useEffect(() => { if (!aviso) return; const t = setTimeout(() => setAviso(null), 20000); return () => clearTimeout(t); }, [aviso]);
   const arquivoRef = useRef(null);
 
@@ -149,6 +176,8 @@ export function Explorador({
   const cabecalhoOrdem = (id) => ordem.por === id ? (ordem.desc ? <ArrowDown aria-hidden className="h-3 w-3" /> : <ArrowUp aria-hidden className="h-3 w-3" />) : null;
   const ordenarPor = (id) => setOrdem((o) => o.por === id ? { por: id, desc: !o.desc } : { por: id, desc: false });
   const temFiltros = filtros.length > 0 || alternadores.length > 0 || temFav;
+  const filtrosLigados = Object.values(sels).reduce((n, v) => n + v.length, 0) + tgl.length + (soFav ? 1 : 0);
+  const limparFiltros = () => { setSels({}); setTgl([]); setSoFav(false); };
 
   // ---------- ações ----------
   const falhou = (e) => setErro(String(e?.message ?? e).replace(/^Error:\s*/, ""));
@@ -163,27 +192,42 @@ export function Explorador({
     let nome = "Nova pasta", k = 2; while (irmas.has(norm(nome))) nome = `Nova pasta (${k++})`;
     try { const p = await onNovaPasta(absDe(pasta), nome); setSel(p); setEdit({ id: p, valor: nome }); } catch (e) { falhou(e); }
   };
+  const lembrar = (acao) => { historico.current = [...historico.current.slice(-49), acao]; };
+  const desfazer = async (acao) => {
+    if (!acao || desfazendo.current) return;
+    desfazendo.current = true;
+    historico.current = historico.current.filter((a) => a !== acao);
+    try { await acao.desfazer(); await onAtualizar?.(acao.paths); setSel(null); setErro(""); setAviso({ texto: `Desfeito: ${acao.texto}` }); }
+    catch (err) { setAviso(null); falhou(err); }
+    finally { desfazendo.current = false; }
+  };
   const confirmarNome = async (e, novo) => {
     setEdit(null);
-    const v = novo.trim();
-    if (!v || v === nomeDe(e)) return;
+    const v = novo.trim(), antigo = nomeDe(e);
+    if (!v || v === antigo) return;
     try {
       const novoPath = await onRename(caminhoDe(e), v);
-      if (e.rel && temFav) { const dir = e.rel.split("/").slice(0, -1).join("/"); refavoritar(e.rel, dir + "/" + v.replace(/\.md$/, "") + ".md"); }
-      if (e.tipo === "pasta" && raiz) { const dir = raiz.rel + "/" + (e.dirPai ? e.dirPai + "/" : ""); refavoritar(dir + e.nome, dir + v); }
-      setSel(e.tipo === "pasta" || e.pathAcao ? novoPath : novoPath); setErro("");
+      let favorito = null; // [antes, depois]: o favorito acompanha o nome, na ida e na volta
+      if (e.rel && temFav) favorito = [e.rel, e.rel.split("/").slice(0, -1).join("/") + "/" + v.replace(/\.md$/, "") + ".md"];
+      if (e.tipo === "pasta" && raiz) { const dir = raiz.rel + "/" + (e.dirPai ? e.dirPai + "/" : ""); favorito = [dir + e.nome, dir + v]; }
+      if (favorito) refavoritar(...favorito);
+      lembrar({ texto: `renomear “${antigo}” para “${v}”`, desfazer: async () => { await onRename(novoPath, antigo); if (favorito) refavoritar(favorito[1], favorito[0]); } });
+      setSel(novoPath); setErro("");
     } catch (err) { falhou(err); }
   };
+  /** Move um item e devolve a função que o traz de volta (com os favoritos). */
   const moverUm = async (e, dest) => {
     const novo = await onMove(caminhoDe(e), absDe(dest));
-    if (e.rel && temFav) refavoritar(e.rel, raiz.rel + "/" + (dest ? dest + "/" : "") + e.rel.split("/").pop());
-    if (e.tipo === "pasta") refavoritar(raiz.rel + "/" + e.relPasta, raiz.rel + "/" + (dest ? dest + "/" : "") + e.nome);
-    return novo;
+    let favorito = null;
+    if (e.rel && temFav) favorito = [e.rel, raiz.rel + "/" + (dest ? dest + "/" : "") + e.rel.split("/").pop()];
+    if (e.tipo === "pasta") favorito = [raiz.rel + "/" + e.relPasta, raiz.rel + "/" + (dest ? dest + "/" : "") + e.nome];
+    if (favorito) refavoritar(...favorito);
+    return async () => { await onMove(novo, absDe(e.dirPai)); if (favorito) refavoritar(favorito[1], favorito[0]); };
   };
   const mover = async (e, dest) => {
     setMovendo(null); setArrasto(null); setAlvo(null);
     if (!podeMover(e, dest)) return;
-    try { await moverUm(e, dest); setSel(null); setErro(""); } catch (err) { falhou(err); }
+    try { const voltar = await moverUm(e, dest); lembrar({ texto: `mover “${nomeDe(e)}”`, desfazer: voltar }); setSel(null); setErro(""); } catch (err) { falhou(err); }
   };
   // ---------- seleção e ações em lote ----------
   const marcadas = entradas.filter((e) => marcados.has(e.id));
@@ -199,30 +243,69 @@ export function Explorador({
   const soltarMarcas = () => { setMarcados(new Set()); ancora.current = null; };
   const moverLote = async (dest) => {
     setLoteMover(false);
-    const feitos = [];
+    const voltas = [];
     try {
-      for (const e of marcadas) if (podeMover(e, dest)) feitos.push({ novo: await moverUm(e, dest), de: absDe(e.dirPai) });
+      for (const e of marcadas) if (podeMover(e, dest)) voltas.push(await moverUm(e, dest));
     } catch (err) { falhou(err); }
-    if (!feitos.length) return;
+    if (!voltas.length) return;
     soltarMarcas(); setSel(null);
-    setAviso({ texto: `${feitos.length} movida${feitos.length === 1 ? "" : "s"}`, desfazer: async () => { for (const f of [...feitos].reverse()) await onMove(f.novo, f.de); } });
+    const acao = { texto: `mover ${voltas.length} ${voltas.length === 1 ? "item" : "itens"}`, desfazer: async () => { for (const voltar of [...voltas].reverse()) await voltar(); } };
+    lembrar(acao);
+    setAviso({ texto: `${voltas.length} movida${voltas.length === 1 ? "" : "s"}`, desfazer: () => desfazer(acao) });
   };
-  const desfazerLote = async () => { const a = aviso; setAviso(null); try { await a.desfazer(); await onAtualizar?.(a.paths); } catch (err) { falhou(err); } };
   const excluir = (e) => onDelete(caminhoDe(e), nomeDe(e), e.tipo === "pasta" ? e.n : 0).then(() => { setSel(null); setErro(""); }).catch(falhou);
   const importar = async (arqs) => {
     setErro("");
     try { await onImportar([...arqs], pasta); } catch (e) { falhou(e); }
   };
   const podeRenomear = !!onRename, podeExcluir = !!onDelete;
+  const podeExcluirLote = podeExcluir && !!onAtualizar;
+  const itensStatusTag = (alvos, abrirDialogo) => (onAtualizar && alvos.some(editavel) ? [
+    { nome: "Mudar status…", Icone: CircleDot, fazer: () => abrirDialogo("status") },
+    { nome: "Adicionar tag…", Icone: Tag, fazer: () => abrirDialogo("tag") },
+  ] : []);
+  /** Menu do botão direito sobre várias marcadas. */
+  const itensMenuLote = (alvos) => {
+    const lista = [
+      ...(raiz && alvos.some(movivel) ? [{ nome: `Mover ${alvos.length} itens para…`, Icone: FolderInput, fazer: () => setLoteMover(true) }] : []),
+      ...itensStatusTag(alvos, setLoteDlg),
+    ];
+    if (podeExcluirLote) lista.push(...(lista.length ? ["-"] : []), { nome: `Excluir ${alvos.length} itens…`, atalho: "Del", Icone: Trash2, perigo: true, fazer: () => setLoteDlg("excluir") });
+    return lista;
+  };
   const itensMenu = (e) => [
     { nome: "Abrir", Icone: e.tipo === "pasta" ? FolderOpen : FileText, fazer: () => abrir(e) },
     ...(e.tipo === "item" && menuExtra ? menuExtra(e) : []),
     ...(podeRenomear ? [{ nome: "Renomear", atalho: "F2", Icone: Pencil, fazer: () => setEdit({ id: e.id, valor: nomeDe(e) }) }] : []),
     ...(raiz && movivel(e) ? [{ nome: "Mover para…", Icone: FolderInput, fazer: () => setMovendo(e) }] : []),
+    ...itensStatusTag([e], (tipo) => { setMarcados(new Set([e.id])); setLoteDlg(tipo); }),
     ...(temFav && e.tipo === "item" && e.rel ? [{ nome: e.fav ? "Tirar dos favoritos" : "Marcar como favorita", Icone: Star, fazer: () => alternarFav(e.rel) }] : []),
     ...(podeExcluir ? ["-", { nome: "Excluir", atalho: "Del", Icone: Trash2, perigo: true, fazer: () => excluir(e) }] : []),
   ];
   const itensMenuFundo = () => [...(raiz && onNovaPasta ? [{ nome: "Nova pasta", Icone: FolderPlus, fazer: novaPasta }] : []), ...(onImportar ? [{ nome: "Importar arquivos .md…", Icone: Upload, fazer: () => arquivoRef.current?.click() }] : [])];
+
+  // Esc, clique fora da lista e Ctrl+Z valem na tela toda, não só com o foco num item. Na fase de captura, para ler o estado
+  // de antes de os menus e diálogos reagirem à mesma tecla.
+  const janela = useRef({});
+  janela.current = { compacto, sobreposto: !!(edit || menu || movendo || loteDlg || loteMover), filtrosAbertos, temSelecao: !!sel || marcados.size > 0, desfazer: () => desfazer(historico.current.at(-1)) };
+  useEffect(() => {
+    const tecla = (ev) => {
+      const j = janela.current;
+      if (j.compacto || j.sobreposto) return;
+      if (ev.key === "Escape") {
+        if (j.filtrosAbertos) { ev.preventDefault(); setFiltrosAbertos(false); }
+        else if (j.temSelecao) { ev.preventDefault(); setSel(null); soltarMarcas(); }
+      } else if ((ev.ctrlKey || ev.metaKey) && !ev.shiftKey && !ev.altKey && ev.key.toLowerCase() === "z") {
+        if (ev.target?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(ev.target?.tagName)) return; // ali o Ctrl+Z desfaz o texto digitado
+        if (!historico.current.length) return;
+        ev.preventDefault(); j.desfazer();
+      }
+    };
+    // Dentro da lista o clique é dos itens (e o vazio entre os cartões, do fundo); menus e diálogos agem sobre a seleção.
+    const clique = (ev) => { if (!ev.target?.closest?.('[role="listbox"], [role="menu"], [role="dialog"]')) { setSel(null); soltarMarcas(); } };
+    window.addEventListener("keydown", tecla, true); window.addEventListener("click", clique, true);
+    return () => { window.removeEventListener("keydown", tecla, true); window.removeEventListener("click", clique, true); };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function alvoDeSoltar(rel) {
     return {
@@ -241,12 +324,18 @@ export function Explorador({
       else { soltarMarcas(); ancora.current = e.id; setSel(e.id); }
     },
     onDoubleClick: () => abrir(e),
-    onContextMenu: (ev) => { if (compacto) return; ev.preventDefault(); ev.stopPropagation(); setSel(e.id); const it = itensMenu(e); if (it.length) setMenu({ x: ev.clientX, y: ev.clientY, itens: it }); },
+    onContextMenu: (ev) => {
+      if (compacto) return;
+      ev.preventDefault(); ev.stopPropagation(); setSel(e.id);
+      const varias = marcados.has(e.id) && marcadas.length > 1;
+      if (!marcados.has(e.id)) soltarMarcas(); // botão direito fora das marcadas: vale só para este item
+      const it = varias ? itensMenuLote(marcadas) : itensMenu(e);
+      setMenu(it.length ? { x: ev.clientX, y: ev.clientY, itens: it } : null);
+    },
     onKeyDown: (ev) => {
       if (edit) return;
       if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "a" && !compacto) { ev.preventDefault(); setMarcados(new Set(entradas.map((x) => x.id))); }
-      else if (ev.key === "Escape" && marcados.size) { ev.preventDefault(); soltarMarcas(); }
-      else if (ev.key === "Delete" && marcados.size > 1 && podeExcluir) { ev.preventDefault(); setLoteDlg("excluir"); }
+      else if (ev.key === "Delete" && marcados.size > 1 && podeExcluirLote) { ev.preventDefault(); setLoteDlg("excluir"); }
       else if (ev.key === "Enter") { ev.preventDefault(); abrir(e); }
       else if (ev.key === "F2" && podeRenomear) { ev.preventDefault(); setEdit({ id: e.id, valor: nomeDe(e) }); }
       else if (ev.key === "Delete" && podeExcluir) { ev.preventDefault(); excluir(e); }
@@ -287,8 +376,6 @@ export function Explorador({
 
       {erro && <div role="alert" className="flex items-start gap-2 rounded-md border border-err/40 bg-err/10 px-3 py-2 text-sm text-err"><span className="flex-1">{erro}</span><button onClick={(e) => { e.stopPropagation(); setErro(""); }} aria-label="Fechar aviso"><X className="h-4 w-4" /></button></div>}
 
-      {!compacto && marcadas.length > 0 && <LoteBarra marcadas={marcadas} podeMover={!!raiz && marcadas.some(movivel)} podeExcluir={podeExcluir && !!onAtualizar} onMover={() => setLoteMover(true)} onAcao={setLoteDlg} onLimpar={soltarMarcas} />}
-
       {vazioTodo
         ? <Vazio titulo={vazio?.titulo ?? "Nada por aqui ainda"} acao={vazio?.acao}>{vazio?.texto}</Vazio>
         : <>
@@ -310,27 +397,18 @@ export function Explorador({
                 <button key={id} onClick={() => setVisao(id)} aria-pressed={visao === id} aria-label={nome} title={nome} className={cn("flex h-9 w-9 items-center justify-center rounded", visao === id ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground")}><Icon className="h-4 w-4" /></button>
               ))}
             </div>
+            {temFiltros && <BotaoFiltros aberto={filtrosAbertos} setAberto={setFiltrosAbertos} ativos={filtrosLigados} onLimpar={limparFiltros} grupos={[
+              ...(temFav ? [{ id: "_fav", nome: "Favoritos", chips: <Chip ativo={soFav} onClick={() => setSoFav((v) => !v)}><Star aria-hidden className={cn("h-3.5 w-3.5", soFav && "fill-current")} />Favoritas</Chip> }] : []),
+              ...filtros.map((f) => ({ id: f.id, nome: f.nome, chips: f.opcoes.map((o) => <Chip key={o.id} ativo={(sels[f.id] ?? []).includes(o.id)} onClick={() => alt(f.id, o.id)}>{o.cor && <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: o.cor }} />}{o.ponto && <span aria-hidden className={cn("h-2 w-2 rounded-full", o.ponto)} />}{o.nome}</Chip>) })),
+              ...(alternadores.length ? [{ id: "_outros", nome: "Outros", chips: alternadores.map((a) => <Chip key={a.id} ativo={tgl.includes(a.id)} onClick={() => setTgl((t) => t.includes(a.id) ? t.filter((x) => x !== a.id) : [...t, a.id])}>{a.Icone && <a.Icone aria-hidden className="h-3.5 w-3.5" />}{a.nome}</Chip>) }] : []),
+            ]} />}
           </div>
-
-          {temFiltros && (
-            <div className={cn("flex items-center gap-2", compacto ? "-mx-4 flex-nowrap overflow-x-auto px-4 pb-1 [&>*]:shrink-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" : "flex-wrap")} role="group" aria-label="Filtros" {...parar}>
-              {temFav && <Chip ativo={soFav} onClick={() => setSoFav((v) => !v)}><Star aria-hidden className={cn("h-3.5 w-3.5", soFav && "fill-current")} />Favoritas</Chip>}
-              {(compacto ? filtros.slice(0, 1) : filtros).map((f, gi) => (
-                <span key={f.id} className={cn("flex items-center gap-2", compacto ? "flex-nowrap" : "flex-wrap")}>
-                  {(gi > 0 || temFav) && <span aria-hidden className="mx-1 h-5 w-px bg-border" />}
-                  {f.opcoes.map((o) => <Chip key={o.id} ativo={(sels[f.id] ?? []).includes(o.id)} onClick={() => alt(f.id, o.id)}>{o.cor && <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: o.cor }} />}{o.ponto && <span aria-hidden className={cn("h-2 w-2 rounded-full", o.ponto)} />}{o.nome}</Chip>)}
-                </span>
-              ))}
-              {!compacto && alternadores.length > 0 && <span aria-hidden className="mx-1 h-5 w-px bg-border" />}
-              {!compacto && alternadores.map((a) => <Chip key={a.id} ativo={tgl.includes(a.id)} onClick={() => setTgl((t) => t.includes(a.id) ? t.filter((x) => x !== a.id) : [...t, a.id])}>{a.Icone && <a.Icone aria-hidden className="h-3.5 w-3.5" />}{a.nome}</Chip>)}
-              {filtrando && <button onClick={limpar} className="ml-1 inline-flex h-8 items-center gap-1 rounded-full px-2 text-xs text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" />Limpar filtros</button>}
-            </div>
-          )}
 
           {!compacto && (raiz || filtrando) && (
             <nav aria-label="Pastas" className="flex min-h-8 flex-wrap items-center gap-1 text-sm" {...parar}>
               {filtrando
-                ? <span className="text-muted-foreground">{arquivos.length} {arquivos.length === 1 ? "resultado" : "resultados"}{raiz ? " em todas as pastas" : ""}</span>
+                ? <><span className="text-muted-foreground">{arquivos.length} {arquivos.length === 1 ? "resultado" : "resultados"}{raiz ? " em todas as pastas" : ""}</span>
+                  <button onClick={limpar} className="ml-1 inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"><X className="h-3.5 w-3.5" />Limpar filtros</button></>
                 : <>
                   <button onClick={() => setPasta("")} {...alvoDeSoltar("")} className={cn("rounded px-1.5 py-1 hover:bg-accent", !pasta ? "font-medium text-foreground" : "text-muted-foreground", alvo === "" && "bg-primary/10 ring-2 ring-primary")}>{titulo}</button>
                   {trilha.map((seg, i) => {
@@ -404,8 +482,13 @@ export function Explorador({
       <div className="flex-1" />
       {loteMover && <MoverDialog entrada={{ nome: `${marcadas.length} itens`, dirPai: "\0" }} titulo={titulo} pastas={todasPastas} valida={(rel) => marcadas.some((e) => podeMover(e, rel))} onEscolher={moverLote} onClose={() => setLoteMover(false)} />}
       {loteDlg && <LoteDialog tipo={loteDlg} alvos={marcadas} nomeDe={nomeDe} caminhoDe={caminhoDe} onClose={() => setLoteDlg(null)} onErro={(e) => { setLoteDlg(null); falhou(e); }}
-        onFeito={async (r) => { setLoteDlg(null); soltarMarcas(); setSel(null); await onAtualizar?.(r.paths); setAviso(r); }} />}
-      {aviso && <div role="status" className="fixed bottom-10 right-6 z-40 flex items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-lg">{aviso.texto}{aviso.desfazer && <button onClick={desfazerLote} className="font-medium text-primary hover:underline">Desfazer</button>}<button onClick={() => setAviso(null)} aria-label="Fechar o aviso" className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button></div>}
+        onFeito={async (r) => {
+          setLoteDlg(null); soltarMarcas(); setSel(null); await onAtualizar?.(r.paths);
+          if (!r.desfazer) { setAviso(r); return; } // exclusão: não tem volta por aqui
+          const acao = { texto: r.texto, desfazer: r.desfazer, paths: r.paths };
+          lembrar(acao); setAviso({ texto: r.texto, desfazer: () => desfazer(acao) });
+        }} />}
+      {aviso && <div role="status" className="fixed bottom-10 right-6 z-40 flex items-center gap-3 rounded-lg border bg-background px-4 py-2 text-sm shadow-lg">{aviso.texto}{aviso.desfazer && <button onClick={aviso.desfazer} className="font-medium text-primary hover:underline">Desfazer</button>}<button onClick={() => setAviso(null)} aria-label="Fechar o aviso" className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button></div>}
       {menu && <MenuContexto {...menu} onClose={() => setMenu(null)} />}
       {movendo && <MoverDialog entrada={movendo} titulo={titulo} pastas={todasPastas} valida={(rel) => podeMover(movendo, rel)} onEscolher={(rel) => mover(movendo, rel)} onClose={() => setMovendo(null)} />}
     </div></div>
